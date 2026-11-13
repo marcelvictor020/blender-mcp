@@ -49,7 +49,7 @@ export default {
     const cloudFromPx = (x0, y0, x1, y1, puffs, seed, extra = {}) => {
       const W = x1 - x0, H = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, D = 700;
       const pf = puffs.map(([px, py, pr]) => [(px - cx) / W, (cy - py) / H, pr / H]);
-      const c = makeCloud({ w: W * wpp(D), h: H * wpp(D), seed, puffs: pf, light: '#e2e5e8', mid: '#c3ccd2', shadow: '#97adba', lightDir: [0.35, 0.95], edge: 0.1, detail: 0.55, ...extra });
+      const c = makeCloud({ w: W * wpp(D), h: H * wpp(D), seed, puffs: pf, light: '#e4e7ea', mid: '#cdd4d9', shadow: '#a3b6c2', lightDir: [0.35, 0.95], edge: 0.1, detail: 0.55, ...extra });
       c.position.copy(scr(cx, cy, D)); return facing(c);
     };
     scene.add(cloudFromPx(150, 30, 830, 430, [
@@ -283,7 +283,8 @@ export default {
       g.fillStyle = '#dfd3c2'; g.fillRect(0, 0, w, h);
       g.fillStyle = '#c9bdac'; g.fillRect(0, h * 0.78, w, h * 0.22);
       // door window (front = left in texture)
-      g.fillStyle = '#3b3036'; g.beginPath(); g.moveTo(w * 0.05, h * 0.42); g.quadraticCurveTo(w * 0.07, h * 0.1, w * 0.2, h * 0.08); g.lineTo(w * 0.38, h * 0.08); g.lineTo(w * 0.38, h * 0.42); g.closePath(); g.fill();
+      g.fillStyle = '#342a30'; g.beginPath(); g.moveTo(w * 0.03, h * 0.5); g.quadraticCurveTo(w * 0.04, h * 0.1, w * 0.16, h * 0.07); g.lineTo(w * 0.36, h * 0.07); g.lineTo(w * 0.36, h * 0.5); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(w * 0.2, h * 0.1, w * 0.1, h * 0.3);
       // barred rear section
       g.fillStyle = '#c2b6a6'; g.fillRect(w * 0.44, h * 0.06, w * 0.54, h * 0.36);
       g.fillStyle = '#4a3c3a';
@@ -508,14 +509,26 @@ export default {
       rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.6, variant: 2 });
     spray(plant, 202, plantPoly, 34, { d: 2.5, dz: 0.3, size: [54, 78], tone: (x, y, r) => (r() < 0.45 ? 0.3 + r() * 0.15 : 0.55 + r() * 0.2 + (r() < 0.3 ? 0.22 : 0)),
       rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.6, variant: 2 });
-    scene.add(leafLayer(plant, { pal: ['#13221d', '#28463a', '#527c5c', '#7fa486'], wind: 0.03 }));
+    {
+      const stemMat = new THREE.MeshBasicMaterial({ color: col('#1c3024') });
+      const stem = (pts, d, thickPx) => {
+        const P = pts.map(([x, y]) => scr(x, y, d));
+        scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(P), 24, thickPx * 0.5 * wpp(d), 5, false), stemMat));
+      };
+      stem([[60, 560], [70, 420], [55, 260], [40, 120], [30, 70]], 2.7, 5);
+      stem([[200, 560], [215, 420], [190, 290], [165, 160]], 2.8, 4);
+      stem([[300, 540], [290, 450], [262, 360], [250, 290]], 2.8, 3.5);
+      stem([[215, 420], [250, 400], [300, 395]], 2.8, 2.5);
+      stem([[190, 290], [150, 270], [120, 240]], 2.8, 2.5);
+    }
+    scene.add(leafLayer(plant, { pal: ['#12211b', '#264434', '#4a7a50', '#76a070'], wind: 0.03 }));
 
     // --- dense dark bush, lower left (butterflies hover over it)
     const bushPoly = [[-10, 450], [70, 448], [150, 470], [210, 506], [262, 548], [310, 592], [345, 640], [370, 690], [385, 730], [-10, 730]];
     const bush = [];
-    spray(bush, 301, bushPoly, 150, { d: 1.15, dz: 0.15, size: [56, 86], tone: (x, y, r) => 0.01 + r() * 0.23,
+    spray(bush, 301, bushPoly, 210, { d: 1.15, dz: 0.15, size: [46, 70], tone: (x, y, r) => 0.01 + r() * 0.23,
       rot: (x, y, r) => (r() - 0.5) * 3.0 + Math.PI * (r() < 0.5 ? 1 : 0), variant: 1 });
-    spray(bush, 302, bushPoly, 55, { d: 1.1, dz: 0.15, size: [54, 82],
+    spray(bush, 302, bushPoly, 80, { d: 1.1, dz: 0.15, size: [44, 66],
       tone: (x, y, r) => { const top = 1 - sm(440, 650, y); return r() < 0.15 + top * 0.25 ? 0.52 + r() * 0.22 + (r() < 0.25 ? 0.22 : 0) : 0.3 + r() * 0.16; },
       rot: (x, y, r) => (r() - 0.5) * 3.0 + Math.PI * (r() < 0.5 ? 1 : 0), variant: 1 });
     // loose leaves poking above the grass to the right of the bush

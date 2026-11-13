@@ -107,26 +107,30 @@ export default {
     bridge.rotation.y = -40 * Math.PI / 180;
     scene.add(bridge);
     // local: x along bridge (+x = near/right), y up (deck surface 0), z toward camera (front face z=0)
-    const faceMat = paintMat({ shadow: '#2c2421', lit: '#8e6c50', map: concreteTex, cover: 0.8, scale: 0.6, varAmt: 0.12, soft: 0.03, coverX: [4, 20, 0.13] });
+    const faceMat = paintMat({ shadow: '#2c2421', lit: '#8e6c50', map: concreteTex, cover: 0.8, scale: 0.6, varAmt: 0.12, soft: 0.03, coverX: [4, 20, 0.07] });
     const slab = new THREE.Mesh(new THREE.BoxGeometry(260, 4.6, 11), faceMat);
     slab.position.set(-100, -2.2, -5.5); bridge.add(slab);
-    const lowerMat = paintMat({ shadow: '#362c26', lit: '#82644c', map: concreteTex, cover: 0.79, scale: 0.55, varAmt: 0.12, soft: 0.03, coverX: [4, 20, 0.1] });
+    const lowerMat = paintMat({ shadow: '#362c26', lit: '#82644c', map: concreteTex, cover: 0.79, scale: 0.55, varAmt: 0.12, soft: 0.03, coverX: [4, 20, 0.06] });
     const lower = new THREE.Mesh(new THREE.BoxGeometry(94, 20, 9), lowerMat);
     lower.position.set(-10, -14.5, -6.5); bridge.add(lower);
     const pier = new THREE.Mesh(new THREE.BoxGeometry(40, 20, 3), lowerMat);
     pier.position.set(-106, -14.5, -3.5); bridge.add(pier);
+    // shaded fascia band just under the railing
+    const fascia = new THREE.Mesh(new THREE.BoxGeometry(260, 1.5, 0.4), paintMat({ shadow: '#241b1e', lit: '#7a5a48', map: concreteTex, cover: 0.84, scale: 0.6, varAmt: 0.1, soft: 0.03 }));
+    fascia.position.set(-100, -0.75, 0.2); bridge.add(fascia);
     // dark underside of the slab
     const under = new THREE.Mesh(new THREE.BoxGeometry(260, 0.3, 10), new THREE.MeshBasicMaterial({ color: col('#1c1718') }));
     under.position.set(-100, -4.55, -5.5); bridge.add(under);
     // railing: posts + rails
-    const railMat = paintMat({ shadow: '#5a6274', lit: '#d8d6d0', cover: 0.55, scale: 0.5 });
-    const postGeo = new THREE.BoxGeometry(0.16, 1.1, 0.16);
+    const railMat = paintMat({ shadow: '#6a7080', lit: '#d0ccc4', cover: 0.6, scale: 0.5 });
+    const rail2Mat = paintMat({ shadow: '#3c4050', lit: '#9a948c', cover: 0.6, scale: 0.5 });
+    const postGeo = new THREE.BoxGeometry(0.3, 1.1, 0.3);
     const posts = new THREE.InstancedMesh(postGeo, railMat, 80);
     const m4 = new THREE.Matrix4();
-    for (let i = 0; i < 80; i++) { m4.makeTranslation(25 - i * 3.6, 0.55, -0.3); posts.setMatrixAt(i, m4); }
+    for (let i = 0; i < 80; i++) { m4.makeTranslation(25 - i * 3.6, 0.55, 0.1); posts.setMatrixAt(i, m4); }
     bridge.add(posts);
-    const rail1 = new THREE.Mesh(new THREE.BoxGeometry(260, 0.14, 0.1), railMat); rail1.position.set(-100, 1.05, -0.2); bridge.add(rail1);
-    const rail2 = new THREE.Mesh(new THREE.BoxGeometry(260, 0.1, 0.08), railMat); rail2.position.set(-100, 0.55, -0.2); bridge.add(rail2);
+    const rail1 = new THREE.Mesh(new THREE.BoxGeometry(260, 0.12, 0.1), railMat); rail1.position.set(-100, 1.05, 0.0); bridge.add(rail1);
+    const rail2 = new THREE.Mesh(new THREE.BoxGeometry(260, 0.1, 0.08), rail2Mat); rail2.position.set(-100, 0.55, 0.0); bridge.add(rail2);
 
     /* ---------------- train ---------------- */
     const trainTex = paintTexture('s7_train', 1024, 128, (g, w, h, r) => {
@@ -202,11 +206,11 @@ export default {
     });
     const signMat = (map) => paintMat({ shadow: '#4a4258', lit: '#e8dcd6', map, cover: 0.6, scale: 1.6, alphaTest: 0.5, side: THREE.DoubleSide, varAmt: 0.06 });
     const signs = new THREE.Group();
-    signs.position.set(-1.25, 0, -9);
+    signs.position.set(-1.02, 0, -9);
     scene.add(signs);
     const poleMat = paintMat({ shadow: '#3a3a48', lit: '#b8b0a8', cover: 0.5, scale: 2.0 });
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 8, 8), poleMat); pole.position.set(0, 0, 0); signs.add(pole);
-    const tri = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 1.75), signMat(signTri)); tri.position.set(0, 2.45, 0.08); signs.add(tri);
+    const tri = new THREE.Mesh(new THREE.PlaneGeometry(1.62, 1.62), signMat(signTri)); tri.position.set(0, 2.4, 0.08); signs.add(tri);
     const rnd = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), signMat(signRound)); rnd.position.set(0, 0.75, 0.08); signs.add(rnd);
 
     /* ---------------- clouds ---------------- */
