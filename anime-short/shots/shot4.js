@@ -294,9 +294,9 @@ export default {
       g.fillStyle = '#f2ebe0'; g.fillRect(0, 0, w, 4);
     });
     const cabMats = [plain('#cfc5b6'), plain('#c4baab'), plain('#ece6dc'), plain('#222'), cabSide, plain('#d8cebe')];
-    const cab = new THREE.Mesh(new THREE.BoxGeometry(1.45, 1.4, 1.4), cabMats); cab.position.set(-0.95, 1.05, 0); truck.add(cab);
-    const bed = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.36, 1.4), [plain('#eae2d6'), plain('#d2c8b8'), plain('#cbc2b4'), plain('#222'), bedSide, plain('#d8cebe')]);
-    bed.position.set(0.75, 0.78, 0); truck.add(bed);
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.32, 1.4), cabMats); cab.position.set(-0.95, 1.1, 0); truck.add(cab);
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.46, 1.4), [plain('#eae2d6'), plain('#d2c8b8'), plain('#cbc2b4'), plain('#222'), bedSide, plain('#d8cebe')]);
+    bed.position.set(0.77, 0.87, 0); truck.add(bed);
     const chassis = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.42, 1.2), plain('#26242a')); chassis.position.set(0, 0.4, 0); truck.add(chassis);
     const tail = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.14), plain('#c43a2a')); tail.position.set(1.72, 0.55, 0.6); truck.add(tail);
     for (const [x, z] of [[-1.0, 0.62], [1.0, 0.62], [-1.0, -0.62], [1.0, -0.62]]) {
@@ -385,7 +385,7 @@ export default {
       g.clearRect(0, 0, 512, 128);
       const shapes = [
         (g) => { g.moveTo(64, 124); g.bezierCurveTo(14, 104, 14, 46, 64, 2); g.bezierCurveTo(114, 46, 114, 104, 64, 124); },          // ovate, pointed
-        (g) => { g.moveTo(64, 112); g.bezierCurveTo(40, 126, 4, 104, 10, 70); g.bezierCurveTo(16, 36, 50, 18, 64, 4); g.bezierCurveTo(78, 18, 112, 36, 118, 70); g.bezierCurveTo(124, 104, 88, 126, 64, 112); }, // cordate
+        (g) => { g.moveTo(64, 112); g.bezierCurveTo(44, 126, 8, 106, 12, 74); g.bezierCurveTo(16, 42, 50, 24, 64, 2); g.bezierCurveTo(78, 24, 112, 42, 116, 74); g.bezierCurveTo(120, 106, 84, 126, 64, 112); }, // cordate, pointed
         (g) => { g.moveTo(64, 124); g.bezierCurveTo(24, 100, 26, 40, 64, 4); g.bezierCurveTo(102, 40, 104, 100, 64, 124); },          // narrow
         (g) => { g.moveTo(64, 120); g.bezierCurveTo(2, 110, 6, 20, 64, 10); g.bezierCurveTo(122, 20, 126, 110, 64, 120); },           // round
       ];
@@ -499,15 +499,15 @@ export default {
     scene.add(leafLayer(plant, { pal: ['#13221d', '#28463a', '#527c5c', '#7fa486'], wind: 0.03 }));
 
     // --- dense dark bush, lower left (butterflies hover over it)
-    const bushPoly = [[-10, 425], [90, 418], [190, 436], [262, 470], [318, 508], [362, 556], [418, 588], [470, 600], [522, 604], [548, 650], [545, 730], [-10, 730]];
+    const bushPoly = [[-10, 425], [90, 418], [190, 436], [262, 470], [318, 508], [350, 556], [380, 600], [400, 660], [420, 730], [-10, 730]];
     const bush = [];
-    spray(bush, 301, bushPoly, 260, { d: 1.15, dz: 0.15, size: [48, 74], tone: (x, y, r) => 0.01 + r() * 0.23,
+    spray(bush, 301, bushPoly, 200, { d: 1.15, dz: 0.15, size: [56, 86], tone: (x, y, r) => 0.01 + r() * 0.23,
       rot: (x, y, r) => (r() - 0.5) * 3.0 + Math.PI * (r() < 0.5 ? 1 : 0), variant: 1 });
-    spray(bush, 302, bushPoly, 170, { d: 1.1, dz: 0.15, size: [46, 70],
-      tone: (x, y, r) => { const top = 1 - sm(440, 650, y); return r() < 0.3 + top * 0.35 ? 0.52 + r() * 0.22 + (r() < 0.25 ? 0.22 : 0) : 0.3 + r() * 0.16; },
+    spray(bush, 302, bushPoly, 110, { d: 1.1, dz: 0.15, size: [54, 82],
+      tone: (x, y, r) => { const top = 1 - sm(440, 650, y); return r() < 0.15 + top * 0.35 ? 0.52 + r() * 0.22 + (r() < 0.25 ? 0.22 : 0) : 0.3 + r() * 0.16; },
       rot: (x, y, r) => (r() - 0.5) * 3.0 + Math.PI * (r() < 0.5 ? 1 : 0), variant: 1 });
     // loose leaves poking above the grass to the right of the bush
-    spray(bush, 303, [[360, 590], [560, 590], [560, 730], [360, 730]], 26, { d: 1.2, dz: 0.2, size: [40, 58],
+    spray(bush, 303, [[340, 590], [550, 600], [550, 730], [340, 730]], 22, { d: 1.2, dz: 0.2, size: [44, 62],
       tone: (x, y, r) => 0.02 + r() * 0.4, rot: (x, y, r) => (r() - 0.5) * 2.2, variant: 1 });
     scene.add(leafLayer(bush, { pal: ['#0c1a14', '#1c3a26', '#335f38', '#5c8e4c'], wind: 0.025 }));
 

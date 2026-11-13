@@ -54,7 +54,7 @@ function serve() {
   const shoot = async (t, file) => {
     const t0 = Date.now();
     await page.evaluate(t => window.__render(t), t);
-    await page.screenshot({ path: file, type: file.endsWith('.png') ? 'png' : 'jpeg', quality: 92 });
+    await page.screenshot({ path: file, type: file.endsWith('.png') ? 'png' : 'jpeg', quality: 92, timeout: 0 });
     return Date.now() - t0;
   };
 

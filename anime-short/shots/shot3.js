@@ -138,7 +138,7 @@ export default {
       { density: 0.9, cardSize: PX(40, 16), kind: 'small', seed: 12, texSeed: 5, dark: '#2c5a3a', mid: '#467f50', light: '#6f9f6c', highlight: '#90bd86', wind: 0.03, shell: 0.1 });
     // top-right overhang: dark crisp broad leaves
     foliage([[950, 50, 11, 70], [1040, 80, 11, 60], [900, 140, 11, 30], [1100, 30, 11, 60], [880, 60, 11, 35]],
-      { density: 1.2, cardSize: PX(80, 11), kind: 'broad', seed: 13, texSeed: 7, dark: '#0c1812', mid: '#11221a', light: '#1d3a2a', highlight: '#2f5a40', wind: 0.02, lightWrap: 0.1, shell: 0.25 });
+      { density: 0.8, cardSize: PX(80, 11), kind: 'broad', seed: 13, texSeed: 7, dark: '#0c1812', mid: '#11221a', light: '#1d3a2a', highlight: '#2f5a40', wind: 0.02, lightWrap: 0.1, shell: 0.25 });
     // right tree mass (teal-green, clearly lit leaves)
     foliage([[1250, 110, 10, 110], [1250, 270, 10, 100], [1270, 420, 10, 90], [1180, 60, 10, 50]],
       { density: 2.4, cardSize: PX(56, 10), kind: 'broad', seed: 14, texSeed: 9, dark: '#0f2418', mid: '#1a4430', light: '#2c6646', highlight: '#4f9068', wind: 0.02, shell: 0.3 });
@@ -203,18 +203,19 @@ export default {
     greenBush([[340, 455, 7.4, 80], [280, 480, 7.2, 50], [400, 480, 7.2, 55]], { cardSize: PX(24, 7.4), seed: 31, texSeed: 4 });
     greenBush([[510, 450, 7.7, 75], [560, 470, 7.6, 60], [460, 480, 7.5, 50]], { cardSize: PX(22, 7.7), seed: 32, texSeed: 6, dark: '#132a19', mid: '#22442a', light: '#3a6a37' });
     greenBush([[700, 445, 7.9, 85], [760, 470, 7.8, 50], [640, 470, 7.8, 50]], { cardSize: PX(24, 7.9), seed: 33, texSeed: 8 });
-    greenBush([[910, 380, 8.4, 95], [900, 460, 8.3, 90], [960, 330, 8.4, 60], [850, 330, 8.4, 50]], { cardSize: PX(24, 8.4), seed: 34, texSeed: 10, dark: '#1a3420', mid: '#2c5a2e', light: '#4a8040' });
+    greenBush([[915, 400, 8.4, 85], [905, 470, 8.3, 80], [950, 320, 8.4, 55], [870, 320, 8.4, 45]], { density: 3, cardSize: PX(24, 8.4), seed: 34, texSeed: 10, dark: '#1a3420', mid: '#2c5a2e', light: '#4a8040' });
     greenBush([[1060, 190, 7.0, 30], [1100, 250, 7.0, 35], [1130, 310, 7.0, 35], [1170, 360, 7.0, 30], [1090, 330, 7.0, 25]], { density: 1.6, shell: 0.2, cardSize: PX(30, 7.0), seed: 35, texSeed: 12, dark: '#2a4a30', mid: '#4a7a50', light: '#7aa070', highlight: '#a6c79a' });
-    greenBush([[870, 540, 3.6, 70], [1020, 460, 3.7, 70], [800, 580, 3.4, 40]], { density: 3.5, cardSize: PX(26, 3.6), seed: 36, texSeed: 14, dark: '#1d3524', mid: '#2f5a36', light: '#4a7c48' });
+    greenBush([[870, 540, 3.6, 70], [1020, 460, 3.7, 70], [800, 580, 3.4, 40]], { density: 3.5, cardSize: PX(26, 3.6), seed: 36, texSeed: 14, dark: '#24452c', mid: '#3a6e40', light: '#5e9050' });
 
     bush(345, 455, 7.3, 88, 80, 300, PINK, 101);
     bush(515, 440, 7.6, 90, 100, 45, YEL, 102);
     bush(705, 440, 7.8, 98, 62, 260, PINK, 103);
-    bush(900, 300, 8.3, 70, 50, 150, RED, 104);
-    bush(950, 350, 8.3, 70, 70, 180, RED, 114);
-    bush(880, 400, 8.3, 70, 60, 160, RED, 115);
-    bush(930, 450, 8.3, 90, 55, 180, RED, 113);
-    bush(975, 270, 8.3, 30, 20, 30, RED, 116);
+    bush(875, 290, 8.3, 50, 35, 60, RED, 104);
+    bush(960, 300, 8.3, 50, 45, 70, RED, 114);
+    bush(900, 365, 8.3, 85, 50, 120, RED, 115);
+    bush(955, 425, 8.3, 80, 50, 120, RED, 113);
+    bush(890, 470, 8.3, 85, 35, 80, RED, 118);
+    bush(995, 380, 8.3, 30, 60, 40, RED, 116);
     for (let k = 0; k < 7; k++) { const t = k / 6; bush(lerp(1050, 1195, t) + (k % 2) * 20, lerp(165, 370, t), 6.9, 42, 34, 10, WHI, 120 + k); }
     bush(860, 535, 3.5, 95, 70, 85, PUR, 106);
     bush(1010, 450, 3.6, 100, 70, 85, PUR, 117);
@@ -222,6 +223,7 @@ export default {
     bush(790, 585, 3.3, 45, 35, 35, PUR, 112);
     // orange day-lilies (left), yellow sprinkles and small red flowers
     bush(115, 410, 3.7, 95, 140, 55, ORA, 108);
+    bush(120, 525, 3.7, 80, 35, 18, ORA, 119);
     bush(50, 420, 3.8, 55, 60, 30, [{ t: 1, s: 16, c: '#f2d02a', cc: '#d8a414' }], 109);
     bush(195, 548, 3.9, 40, 12, 10, [{ t: 3, s: 12, c: '#e3392a', cc: '#a01b14' }], 110);
     bush(340, 255, 12, 25, 15, 6, [{ t: 1, s: 9, c: '#e8a59a', cc: '#c0786a' }], 111);
@@ -229,7 +231,7 @@ export default {
 
     /* ---------------- 6. foreground framing leaves ---------------- */
     foliage([[40, 400, 4.6, 110], [150, 470, 4.6, 90], [60, 290, 4.8, 60]],
-      { density: 3, cardSize: PX(60, 4.6), kind: 'broad', seed: 44, texSeed: 5, dark: '#0c1d12', mid: '#17331f', light: '#2f5a33', highlight: '#5a8a4a', wind: 0.025, lightWrap: 0.25, shell: 0.5 });
+      { density: 3, cardSize: PX(60, 4.6), kind: 'broad', seed: 44, texSeed: 5, dark: '#12261a', mid: '#20432a', light: '#3f7240', highlight: '#6a9a4a', wind: 0.025, lightWrap: 0.25, shell: 0.5 });
     foliage([[90, 640, 2.6, 140], [200, 705, 2.2, 90], [20, 690, 2.2, 100], [150, 600, 2.8, 60], [80, 730, 2.1, 100]],
       { density: 3.2, cardSize: PX(70, 3.2), kind: 'broad', seed: 41, texSeed: 2, dark: '#0c1d12', mid: '#17331f', light: '#2f5a33', highlight: '#5a8a4a', wind: 0.025, lightWrap: 0.25, shell: 0.5 });
     foliage([[1210, 520, 3.4, 150], [1180, 650, 2.6, 120], [1270, 380, 3.6, 100], [1090, 690, 2.3, 60], [1250, 680, 2.3, 90], [1180, 730, 2.1, 80], [1270, 730, 2.1, 80]],

@@ -223,14 +223,13 @@ export default {
           puffs.push([x * W2, y * H2, rad * H2 * 1.4]);
         }
         const layer = (color, dy, k, blur) => {
-          g.filter = `blur(${blur}px)`; g.fillStyle = color;
+          g.fillStyle = color;
           for (const [x, y, rr] of puffs) { g.beginPath(); g.ellipse(x, y + dy * rr, rr * k * 1.25, rr * k, 0, 0, Math.PI * 2); g.fill(); }
         };
         layer('#6c88a8', 0.0, 1.0, 1.5);
         layer('#8a9cb4', -0.18, 0.82, 1.5);
         layer('#a4b0c0', -0.36, 0.6, 2);
         layer('#b8c0cc', -0.5, 0.36, 2.5);
-        g.filter = 'none';
         // flat-ish base
         g.globalCompositeOperation = 'destination-out';
         const fade = g.createLinearGradient(0, H2 * 0.68, 0, H2 * 0.82);

@@ -35,7 +35,7 @@ export default {
     scene.add(makeSky({ zenith: '#3c6c98', mid: '#5996b8', horizon: '#8cbcc4', haze: 0.4, horizonY: 0.0 }));
     const SUN = V3(-0.3, 0.3, 0.9).normalize();
     const rig = lightRig(scene, { sunDir: SUN.toArray(), sunColor: '#ffcf6e', sunIntensity: 3.6, sky: '#86acd8', ground: '#5a6a8a', hemiIntensity: 0.9,
-      ambient: '#4a6aa0', ambientIntensity: 0.4, shadows: true, shadowBox: 45, shadowRes: 2048, target: [5, 10, -40] });
+      ambient: '#5a7cb4', ambientIntensity: 0.9, shadows: true, shadowBox: 45, shadowRes: 2048, target: [5, 10, -40] });
     rig.sun.shadow.camera.far = 400; rig.sun.shadow.bias = -0.0008; rig.sun.shadow.normalBias = 0.04;
     rig.sun.shadow.camera.updateProjectionMatrix();
 
@@ -129,12 +129,12 @@ export default {
     const girdTop = local(700, 445, 0.6)[1];
     const girdBot = local(700, 612, 0.6)[1];
     // parapet / edge beam (lit band)
-    vbox(S0, S1, bandBot, 0, -1.2, 0, concLit);
+    vbox(S0, S1, bandBot, 0, -1.2, 0, concLit, false, true);
     // deck slab underside (overhang)
-    vbox(S0, S1, bandBot - 0.15, bandBot + 0.4, -3.0, -0.6, concDark);
-    vbox(S0, S1, bandBot - 0.6, bandBot + 0.4, -14, -3.0, concDark, true, false);
+    vbox(S0, S1, bandBot - 0.15, bandBot + 0.4, -3.0, -0.6, concDark, false, true);
+    vbox(S0, S1, bandBot - 0.6, bandBot + 0.4, -14, -3.0, concDark, false, false);
     // web wall (set back) — receives bracket shadows
-    vbox(S0, S1, wallBot, bandBot, -3.0, -2.2, concLit);
+    vbox(S0, S1, wallBot, bandBot, -3.0, -2.2, concLit, false, false);
     // brackets under overhang
     const bracketMat = vtoon('#efe2c8', { sB: SB, slope: 0.6 });
     for (let s = -40; s < S1; s += 9.5) {
@@ -149,7 +149,7 @@ export default {
       g.add(m); g.position.set(s, bandBot, -2.2); via.add(g);
     }
     // lower girder (cross beam, ribbed) — mostly in shadow
-    const girdMat = vtoon('#c4ccd6', { k: 1, sB: local(330, 590, 0)[0], slope: 0 });
+    const girdMat = vtoon('#c8d2de', { k: 1, sB: local(330, 590, 0)[0], slope: 0 });
     vbox(S0, S1, girdBot, girdTop, -1.0, 0.6, girdMat);
     for (let k = 1; k <= 3; k++) { const hh = lerp(girdBot, girdTop, k / 4); vbox(S0, S1, hh - 0.08, hh + 0.08, 0.6, 0.85, girdMat); }
     // piers
@@ -202,8 +202,8 @@ export default {
     /* ---------------- catenary gantries ---------------- */
     const latticeTex = paintTexture('s1_lattice', 256, 64, (g, w, h) => {
       g.clearRect(0, 0, w, h); g.strokeStyle = '#fff'; g.lineCap = 'square';
-      g.lineWidth = 7; g.beginPath(); g.moveTo(0, 4); g.lineTo(w, 4); g.moveTo(0, h - 4); g.lineTo(w, h - 4); g.stroke();
-      g.lineWidth = 4; g.beginPath();
+      g.lineWidth = 12; g.beginPath(); g.moveTo(0, 6); g.lineTo(w, 6); g.moveTo(0, h - 6); g.lineTo(w, h - 6); g.stroke();
+      g.lineWidth = 7; g.beginPath();
       for (let x = 0; x <= w; x += 64) { g.moveTo(x, 4); g.lineTo(x + 32, h - 4); g.lineTo(x + 64, 4); g.moveTo(x, 4); g.lineTo(x, h - 4); }
       g.stroke();
     }, { srgb: false });
@@ -422,8 +422,8 @@ export default {
         g2.fillStyle = 'rgba(255,220,140,0.6)'; g2.fillRect(0, 0, w, 10);
       });
       const Q = atDist(1000, 690, FD + 4);
-      const wall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3), flat({ map: panelTex }));
-      wall.position.set(Q.x, Q.y - 0.6, Q.z); wall.rotation.y = ang; scene.add(wall);
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.6), flat({ map: panelTex }));
+      wall.position.set(Q.x, Q.y - 0.3, Q.z); wall.rotation.y = ang; scene.add(wall);
       // left low railing + lit wall
       const lrM = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffc870').multiplyScalar(1.15) });
       const L0 = atDist(290, 648, 16), L1 = atDist(470, 655, 16); L1.y = L0.y;
@@ -463,17 +463,18 @@ export default {
       const TD = 7.5;
       const clumps = [];
       // silhouette: right edge x(py)
-      const rightEdge = (py) => py < 40 ? 190 : py < 250 ? 225 : py < 560 ? 265 : 275;
+      const rightEdge = (py) => py < 40 ? 190 : py < 250 ? 215 : py < 560 ? 250 : 260;
+      const leftEdge = (py) => py < 140 ? 130 - py * 0.9 : -80;
       for (let py = -40; py < 780; py += 34) {
         const re = rightEdge(py);
-        for (let px = -80; px < re; px += 60) {
+        for (let px = leftEdge(py); px < re; px += 60) {
           const jx = px + (r() - 0.5) * 40, jy = py + (r() - 0.5) * 30;
           const edge = re - jx;
           const p = atDist(jx, jy, TD + (r() - 0.5) * 1.2 + (edge < 60 ? 0.4 : 0));
           clumps.push([p.x, p.y, p.z, lerp(0.35, 0.6, r())]);
         }
       }
-      const tree = makeFoliage({ clumps, density: 7, cardSize: 0.32, kind: 'round', seed: 3, texSeed: 2,
+      const tree = makeFoliage({ clumps, density: 4, cardSize: 0.45, kind: 'round', seed: 3, texSeed: 2,
         dark: '#1a210f', mid: '#283216', light: '#4b5e2c', highlight: '#7f9a4c', wind: 0.02, shell: 0.6, lightWrap: 0.25, terminator: -0.05, sizeJitter: 0.6 });
       scene.add(tree);
       // lower-left broad leaves (very close)

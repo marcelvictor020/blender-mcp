@@ -131,7 +131,7 @@ export default {
 
     // left building (lantern facade): px 0..270
     surface('lfac', PA, [-40, -60, 300, 760], {
-      res: [512, 1024], shade: '#2a2a36', lit: '#b09080', cover: 0.5, scale: 4.0, seed: 3,
+      res: [512, 1024], shade: '#48424e', lit: '#b09080', cover: 0.48, scale: 5.0, seed: 3,
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#6a4c3a'; g.fillRect(0, 0, w, h);
         for (let y = -60; y < 760; y += 13) fillPoly(g, poly, [[-40, y], [300, y], [300, y + 1.6], [-40, y + 1.6]], 'rgba(25,12,6,0.45)');
@@ -146,7 +146,7 @@ export default {
 
     // corrugated metal wall section px 262..540
     surface('corr', PA, [262, -60, 548, 760], {
-      res: [512, 1024], shade: '#1c1e2a', lit: '#e8dcd8', cover: 0.52, scale: 4.5, seed: 7, off: 0.02,
+      res: [512, 1024], shade: '#262836', lit: '#c8b8b4', cover: 0.52, scale: 6.5, seed: 7, off: 0.02,
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#d8c4bc'; g.fillRect(0, 0, w, h);
         for (let x = 0; x < w; x += 7) { g.fillStyle = 'rgba(40,30,40,0.45)'; g.fillRect(x, 0, 2.5, h); g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(x + 3.5, 0, 1.2, h); }
@@ -168,7 +168,7 @@ export default {
 
     // balcony house wall px 540..950 (first floor windows etc.)
     surface('hwall', PA, [532, -60, 960, 760], {
-      res: [768, 1024], shade: '#2a2c40', lit: '#e0c4b4', cover: 0.52, scale: 4.5, seed: 11, off: -0.15,
+      res: [768, 1024], shade: '#30324a', lit: '#c0a498', cover: 0.52, scale: 6.5, seed: 11, off: -0.15,
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#5a5262'; g.fillRect(0, 0, w, h);
         // vertical boards
@@ -216,7 +216,7 @@ export default {
     // balcony (2nd floor), protruding
     const PB = PA.shift(0.9);
     surface('balc', PB, [530, -80, 960, 350], {
-      res: [1024, 768], shade: '#3a2c30', lit: '#ffffff', cover: 0.52, scale: 4.5, seed: 21, emit: '#e8784a',
+      res: [1024, 768], shade: '#3a2c30', lit: '#ffffff', cover: 0.52, scale: 6.0, seed: 21, emit: '#e8784a',
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#8a5c40'; g.fillRect(0, 0, w, h);
         // vertical slats with dark gaps
@@ -230,7 +230,7 @@ export default {
         // bottom beam (lit warm) and dark fascia below
         fillPoly(g, poly, [[530, 118], [960, 262], [960, 292], [530, 146]], '#b8684a');
         fillPoly(g, poly, [[530, 146], [960, 292], [960, 322], [530, 172]], '#3a2a2c');
-        g.globalCompositeOperation = 'destination-out'; fillPoly(g, poly, [[530, 172], [960, 322], [960, 400], [530, 400]], '#000'); g.globalCompositeOperation = 'source-over';
+        g.globalCompositeOperation = 'destination-out'; fillPoly(g, poly, [[530, 172], [960, 322], [960, 900], [530, 900]], '#000'); g.globalCompositeOperation = 'source-over';
         // roof soffit (dark) top right
         fillPoly(g, poly, [[700, -80], [960, -80], [960, 70], [890, 88], [760, 20]], '#1a1210');
       },
@@ -251,7 +251,7 @@ export default {
       g.font = 'bold 118px serif'; g.fillText('串', w * 0.5, h * 0.3); g.fillText('焼', w * 0.5, h * 0.66);
       g.font = 'bold 22px serif'; g.fillText('や', w * 0.75, h * 0.25); g.fillText('き', w * 0.75, h * 0.33); g.fillText('と', w * 0.75, h * 0.41); g.fillText('り', w * 0.75, h * 0.49);
     });
-    const lantern = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), pmat({ map: lanTex, shade: '#585060', lit: '#d8d0c8', cover: 0.5, scale: 4.0, seed: 4 }));
+    const lantern = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), pmat({ map: lanTex, shade: '#a098a4', lit: '#ece4dc', cover: 0.5, scale: 6.0, seed: 4 }));
     lantern.scale.set(0.22, 0.32, 0.22);
     lantern.position.copy(at(152, 226, 4.5));
     lantern.rotation.y = -Math.PI / 2 + 0.45;
@@ -278,7 +278,7 @@ export default {
     /* ---------------- overpass ---------------- */
     const PO = plane(at(1100, 470, 24), dirTo(250));
     surface('over', PO, [930, 250, 1300, 800], {
-      res: [768, 768], shade: '#62606a', lit: '#fff2dc', cover: 0.4, scale: 1.6, seed: 31, order: 1,
+      res: [768, 768], shade: '#6a6670', lit: '#e0d4c0', cover: 0.37, scale: 2.6, seed: 31, order: 1,
       paint(g, C, poly, w, h, r) {
         g.clearRect(0, 0, w, h);
         const F_ = (pts, c) => fillPoly(g, poly, pts, c);
@@ -325,7 +325,7 @@ export default {
     {
       const fwd = dirTo(1700), side = new THREE.Vector3().crossVectors(fwd, UP).normalize();
       const Lc = 4.18, Wc = 1.63;
-      const cw = { shade: '#5a6278', lit: '#ffffff', cover: 0.47, scale: 4.0, seed: 41 };
+      const cw = { shade: '#606880', lit: '#d4d0ca', cover: 0.5, scale: 5.5, seed: 41 };
       const white = pmat({ color: '#dcdad6', ...cw });
       const black = pmat({ color: '#141418', ...cw, shade: '#ffffff', lit: '#b0b0b8' });
       const glassTex = paintTexture('s5_glass', 128, 128, (g, w, h) => { g.fillStyle = '#e0dedc'; g.fillRect(0, 0, w, h); g.fillStyle = '#10131e'; g.fillRect(9, 8, w - 18, h - 14); });
@@ -379,7 +379,7 @@ export default {
       for (const [x, y, rr] of pts) treeClumps.push(pxClump(x + (r() - 0.5) * 20, y, 7, rr));
     }
     const tree = makeFoliage({ clumps: treeClumps, density: 1.8, cardSize: 0.55, kind: 'round', seed: 8, texSeed: 3,
-      dark: '#1e4c44', mid: '#367250', light: '#5a9a62', highlight: '#94c682', wind: 0.04, shell: 0.85, lightWrap: 0.7, sizeJitter: 0.5 });
+      dark: '#163a30', mid: '#2c5e40', light: '#4c8850', highlight: '#88b86c', wind: 0.04, shell: 0.85, lightWrap: 0.7, sizeJitter: 0.5 });
     scene.add(tree);
 
     const bushClumps = [];

@@ -5,7 +5,7 @@ export default {
   duration: 3.041,
   credit: null,
   post: { bloom: 0.22, bloomThreshold: 0.88, bloomRadius: 0.5, exposure: 1.0, contrast: 1.02, saturation: 1.0,
-    lift: [0.0, 0.0, 0.02], vignette: 0.16, grain: 0.025, soft: 0.25, ca: 0.001 },
+    lift: [0.05, 0.05, 0.035], vignette: 0.16, grain: 0.025, soft: 0.25, ca: 0.001 },
   build(core) {
     const { THREE, makeCloud, makeFoliage, lightRig, toon, shared, rng, lerp, NOISE_GLSL, col, paintTexture, chainLinkTexture } = core;
     const scene = new THREE.Scene();
@@ -21,8 +21,8 @@ export default {
     const groundD = (py) => CAMY * F / (py - 360);        // depth at which ground (y=0) appears at row py
 
     const SUN = new THREE.Vector3(-0.35, 0.6, 0.75).normalize();
-    lightRig(scene, { sunDir: SUN.toArray(), sunColor: '#ffe9cc', sunIntensity: 1.9, sky: '#a4b8e0', ground: '#6a6878',
-      hemiIntensity: 1.05, ambient: '#5a64a0', ambientIntensity: 0.5 });
+    lightRig(scene, { sunDir: SUN.toArray(), sunColor: '#ffe9cc', sunIntensity: 1.9, sky: '#b0bcd8', ground: '#6e6c70',
+      hemiIntensity: 1.05, ambient: '#6a6890', ambientIntensity: 0.5 });
 
     /* ---------------- sky (painted in reference-pixel space) ---------------- */
     const skyMat = new THREE.ShaderMaterial({
@@ -219,7 +219,7 @@ export default {
     const kH = 0.06;
     const kerb = new THREE.Mesh(new THREE.PlaneGeometry(60, kH), kerbMat);
     kerb.position.set(0, -kH / 2, -sidewalkD0); scene.add(kerb);
-    const roadMat = toon({ color: '#55525e' });
+    const roadMat = toon({ color: '#625e66' });
     const road = new THREE.Mesh(new THREE.PlaneGeometry(60, sidewalkD0 - 3), roadMat);
     road.rotation.x = -Math.PI / 2; road.position.set(0, -kH, -(sidewalkD0 + 3) / 2); scene.add(road);
     // gutter line

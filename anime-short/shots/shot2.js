@@ -55,18 +55,18 @@ export default {
       const tex = paintTexture('s2_cloud', (X1 - X0) * SC, (Y1 - Y0) * SC, (g, w, h, r) => {
         g.clearRect(0, 0, w, h);
         const LD = [0.55, -0.83];
-        g.filter = 'blur(0.8px)';
+        g.filter = 'blur(2.2px)';
         for (const [bx, by, br] of blobs) {
           const x = (bx - X0) * SC, y = (by - Y0) * SC, rr = br * SC;
           // bumpy silhouette: main disc + sub-lobes on the upper rim
           const subs = [[0, 0, 1]];
           for (let k = 0; k < 3; k++) { const a = -Math.PI * (0.1 + 0.8 * r()); subs.push([Math.cos(a) * 0.72, Math.sin(a) * 0.72, 0.4 + r() * 0.2]); }
           const disc = (col, ox, oy, sc) => { g.fillStyle = col; for (const [sx, sy, sr] of subs) { g.beginPath(); g.arc(x + (sx + ox) * rr, y + (sy + oy) * rr, sr * rr * sc, 0, Math.PI * 2); g.fill(); } };
-          disc('#6a8792', 0, 0, 1.0);
+          disc('#76909a', 0, 0, 1.0);
           g.save(); g.beginPath(); for (const [sx, sy, sr] of subs) { g.moveTo(x + sx * rr + sr * rr, y + sy * rr); g.arc(x + sx * rr, y + sy * rr, sr * rr, 0, Math.PI * 2); } g.clip();
-          disc('#8f9b9c', LD[0] * 0.18, LD[1] * 0.18, 0.95);
-          disc('#aaa69c', LD[0] * 0.38, LD[1] * 0.38, 0.88);
-          disc('#b8b2a6', LD[0] * 0.62, LD[1] * 0.62, 0.6);
+          disc('#93a0a0', LD[0] * 0.14, LD[1] * 0.14, 0.97);
+          disc('#aba79d', LD[0] * 0.3, LD[1] * 0.3, 0.9);
+          disc('#b5afa3', LD[0] * 0.55, LD[1] * 0.55, 0.62);
           g.restore();
         }
       });
@@ -216,7 +216,7 @@ export default {
       const Hf = 1.05;
       const A = hitY(60, 568, Hf), B = hitY(600, 400, Hf);
       const len = A.distanceTo(B);
-      const f = quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), fenceMat([len / 0.2, (Hf - GROUND) / 0.2], '#6a4c42', '#e6b88c', 0.5));
+      const f = quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), fenceMat([len / 0.3, (Hf - GROUND) / 0.3], '#5a3c34', '#e0a880', 0.52));
       scene.add(f);
       tube(hitY(-40, 600, Hf), B, 0.035, railMat);
       // posts
@@ -374,12 +374,13 @@ export default {
 
     /* ---------------- traffic cone ---------------- */
     {
-      const coneTex = paintTexture('s2_cone', 128, 256, (g, w, h) => {
-        g.fillStyle = '#e8712c'; g.fillRect(0, 0, w, h);
-        g.fillStyle = '#f2ece4'; g.fillRect(0, h * 0.18, w, h * 0.12); g.fillRect(0, h * 0.45, w, h * 0.14);
-      });
+      const coneDraw = (sh) => (g, w, h) => {
+        g.fillStyle = sh ? '#5e2c24' : '#f08a4a'; g.fillRect(0, 0, w, h);
+        g.fillStyle = sh ? '#8a7c78' : '#fff6e8'; g.fillRect(0, h * 0.16, w, h * 0.13); g.fillRect(0, h * 0.42, w, h * 0.15);
+      };
       const cp = hitY(1196, 545, 0.25);
-      const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.16, 0.85, 16, 1, true), toon({ color: '#ffffff', map: coneTex, dapple: true }));
+      const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.16, 0.85, 16, 1, true),
+        dappleMat(paintTexture('s2_coneL', 128, 256, coneDraw(false)), paintTexture('s2_coneS', 128, 256, coneDraw(true)), 0.6, 9.0));
       cone.position.copy(cp).setY(cp.y - 0.425); scene.add(cone);
     }
 
