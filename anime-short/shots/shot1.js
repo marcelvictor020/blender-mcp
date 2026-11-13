@@ -61,7 +61,7 @@ export default {
       const LIT = [246, 247, 242], MID = [200, 214, 224], SH = [128, 156, 186];
       // [cx, cy, rx, ry, rot, n, alpha]
       const regions = [
-        [905, 78, 125, 50, -0.42, 260, 0.16], [985, 18, 70, 30, -0.3, 120, 0.17], [865, 128, 62, 22, -0.25, 90, 0.14],
+        [905, 78, 125, 50, -0.42, 320, 0.26], [985, 18, 70, 30, -0.3, 150, 0.26], [865, 128, 62, 22, -0.25, 110, 0.2],
         [800, 112, 40, 16, -0.3, 50, 0.12], [738, 82, 52, 20, -0.5, 80, 0.13], [716, 124, 30, 7, -0.25, 30, 0.12],
         [785, 196, 75, 6, -0.15, 50, 0.1], [930, 176, 50, 7, -0.2, 40, 0.1], [960, 246, 52, 6, -0.05, 40, 0.1],
         [1012, 236, 30, 7, -0.1, 30, 0.12], [956, 190, 16, 8, -0.2, 25, 0.14], [1050, 60, 30, 14, -0.4, 40, 0.12],
@@ -127,7 +127,7 @@ export default {
     };
     const SB = local(805, 380, 0)[0];
     const concLit = vtoon('#efe2c8', { sB: SB, slope: 0.6 });
-    const concDark = vtoon('#c8c0b8', { sB: SB, slope: 0.6 });
+    const concDark = vtoon('#9a8a88', { sB: SB, slope: 0.6 });
     const S0 = -90, S1 = 260;
     const bandBot = local(420, 312, 0)[1];
     const wallBot = local(420, 470, -2.2)[1];
@@ -160,9 +160,22 @@ export default {
     for (let k = 1; k <= 3; k++) { const hh = lerp(girdBot, girdTop, k / 4); vbox(S0, S1, hh - 0.1, hh + 0.06, 0.6, 0.85, ribMat); }
     // piers
     const pierMat = vtoon('#8a8088', { k: 0 });
-    for (const s of [-6, 4.5, 16, 33, 45, 62, 80]) {
-      vbox(s - 1.0, s + 1.0, -14.5, girdBot, -1.6, 0.2, pierMat);
-      vbox(s - 1.3, s + 1.3, girdBot - 0.6, girdBot, -1.8, 0.5, pierMat);
+    const pierTop = local(370, 532, 1.6)[1];
+    for (const px of [370, 478, 880, 965, 1180]) {
+      const sp = local(px, 600, 1.6)[0];
+      vbox(sp - 0.8, sp + 0.8, -16, pierTop, 1.0, 2.2, pierMat);
+      vbox(sp - 0.95, sp + 0.95, pierTop - 0.5, pierTop, 0.9, 2.3, vtoon('#b4a69c', { k: 0 }));
+    }
+    // backdrop under the viaduct: shaded buildings with a few sunlit patches
+    {
+      const bt = paintTexture('s1_under', 512, 128, (g, w, h, r) => {
+        g.fillStyle = '#4a5468'; g.fillRect(0, 0, w, h);
+        g.fillStyle = '#3c4254'; for (let i = 0; i < 12; i++) g.fillRect(r() * w, 0, 10 + r() * 30, h);
+        g.fillStyle = '#e8b25e'; for (const [x, y, ww, hh] of [[60, 70, 50, 40], [150, 90, 30, 30], [330, 60, 70, 50], [420, 80, 40, 40]]) g.fillRect(x, y, ww, hh);
+        g.fillStyle = '#9fc2d8'; g.fillRect(250, 30, 30, 30);
+      });
+      const bm = new THREE.Mesh(new THREE.PlaneGeometry(120, 12), flat({ map: bt }));
+      bm.position.set(20, girdBot - 6, -14); via.add(bm);
     }
     // railing posts on parapet + top rail
     const railMat = vtoon('#f0e6d4', { sB: SB + 2, slope: 0.6 });
@@ -182,18 +195,18 @@ export default {
     }
 
     /* ---------------- train ---------------- */
-    const trainTex = paintTexture('s1_train', 1024, 256, (g, w, h) => {
-      g.fillStyle = '#f3e2c4'; g.fillRect(0, 0, w, h);
-      g.fillStyle = '#d9cbb3'; g.fillRect(0, 0, w, 18);
-      g.fillStyle = '#e04428'; g.fillRect(0, 36, w, 16);      // upper stripe
-      g.fillStyle = '#e04428'; g.fillRect(0, 142, w, 18);     // lower stripe
-      // windows and doors
-      const dw = 70, win = '#5d6a78';
+    const trainTex = paintTexture('s1_train2', 1024, 256, (g, w, h) => {
+      // visible part above the parapet = top ~170 rows
+      g.fillStyle = '#f1dfc2'; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#b8aea4'; g.fillRect(0, 0, w, 8);
+      g.fillStyle = '#e2462a'; g.fillRect(0, 12, w, 14);       // upper stripe (under roof)
+      g.fillStyle = '#e2462a'; g.fillRect(0, 122, w, 16);      // lower stripe
+      const win = '#6c6f7a';
       for (let i = 0; i < 4; i++) {
-        const x = 60 + i * 250;
-        g.fillStyle = '#c9b9a0'; g.fillRect(x - 2, 52, dw + 4, 200);
-        g.fillStyle = win; g.fillRect(x + 8, 62, 22, 70); g.fillRect(x + 40, 62, 22, 70);
-        if (i < 3) { g.fillStyle = win; g.fillRect(x + dw + 30, 64, 140, 66); g.fillStyle = 'rgba(255,240,200,0.25)'; g.fillRect(x + dw + 30, 64, 140, 18); }
+        const x = 40 + i * 250;
+        g.fillStyle = '#d2c2a8'; g.fillRect(x, 30, 64, 226);                    // door
+        g.fillStyle = win; g.fillRect(x + 6, 40, 22, 66); g.fillRect(x + 36, 40, 22, 66);
+        if (i < 4) { g.fillStyle = win; g.fillRect(x + 90, 40, 140, 62); g.fillStyle = 'rgba(255,230,190,0.28)'; g.fillRect(x + 90, 40, 140, 14); g.fillStyle = '#e8d8bc'; g.fillRect(x + 158, 40, 5, 62); }
       }
       g.fillStyle = 'rgba(0,0,0,0.25)'; for (let x = 0; x < w; x += 250) g.fillRect(x, 0, 3, h);
     });
@@ -358,7 +371,7 @@ export default {
       const housDark = toon({ color: '#4a3c44', dapple: false });
       head.add(box(0.72, 0.36, 0.26, hous, 0, 0, 0));
       for (const sx of [-1, 1]) { const c = cyl(0.18, 0.18, 0.26, hous, sx * 0.36, 0, 0, 20); c.rotation.x = Math.PI / 2; head.add(c); }
-      const lampCols = ['#86c4ae', '#ffb43c', '#ff4428'], glow = [0.35, 1.7, 1.5];
+      const lampCols = ['#7cc0a8', '#ff9a30', '#ff3c24'], glow = [0.45, 1.6, 1.5];
       for (let i = 0; i < 3; i++) {
         const x = (i - 1) * 0.36;
         const L = new THREE.Mesh(new THREE.CircleGeometry(0.135, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(lampCols[i]).multiplyScalar(glow[i]) }));
@@ -475,7 +488,7 @@ export default {
       const clumps = [];
       // silhouette: right edge x(py)
       const rightEdge = (py) => py < 40 ? 160 : py < 250 ? 190 : py < 560 ? 215 : 225;
-      const leftEdge = (py) => py < 140 ? 130 - py * 0.9 : -80;
+      const leftEdge = (py) => py < 160 ? 190 - py * 1.3 : -80;
       for (let py = -40; py < 780; py += 34) {
         const re = rightEdge(py);
         for (let px = leftEdge(py); px < re; px += 60) {
@@ -485,8 +498,8 @@ export default {
           clumps.push([p.x, p.y, p.z, lerp(0.28, 0.45, r())]);
         }
       }
-      const tree = makeFoliage({ clumps, density: 4, cardSize: 0.45, kind: 'round', seed: 3, texSeed: 2,
-        dark: '#1b220f', mid: '#2a3417', light: '#56702f', highlight: '#86a052', wind: 0.02, shell: 0.6, lightWrap: 0.35, terminator: -0.04, sizeJitter: 0.6 });
+      const tree = makeFoliage({ clumps, density: 3, cardSize: 0.42, kind: 'round', seed: 3, texSeed: 2,
+        dark: '#1f2611', mid: '#2e3a19', light: '#62793a', highlight: '#90a85a', wind: 0.02, shell: 0.6, lightWrap: 0.35, terminator: -0.04, sizeJitter: 0.6 });
       scene.add(tree);
       // lower-left broad leaves (very close)
       const lc = [];

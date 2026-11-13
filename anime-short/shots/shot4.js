@@ -49,7 +49,7 @@ export default {
     const cloudFromPx = (x0, y0, x1, y1, puffs, seed, extra = {}) => {
       const W = x1 - x0, H = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, D = 700;
       const pf = puffs.map(([px, py, pr]) => [(px - cx) / W, (cy - py) / H, pr / H]);
-      const c = makeCloud({ w: W * wpp(D), h: H * wpp(D), seed, puffs: pf, light: '#e4e7ea', mid: '#cdd4d9', shadow: '#a3b6c2', lightDir: [0.35, 0.95], edge: 0.1, detail: 0.55, ...extra });
+      const c = makeCloud({ w: W * wpp(D), h: H * wpp(D), seed, puffs: pf, light: '#e6e9eb', mid: '#d6dce0', shadow: '#b0c1cb', lightDir: [0.35, 0.95], edge: 0.1, detail: 0.55, ...extra });
       c.position.copy(scr(cx, cy, D)); return facing(c);
     };
     scene.add(cloudFromPx(150, 30, 830, 430, [
@@ -67,6 +67,7 @@ export default {
     scene.add(makeFoliage({ clumps: clumpsPx([
       [345, 340, 55], [335, 430, 55], [390, 295, 55], [440, 255, 60], [495, 228, 58], [545, 235, 58], [400, 385, 80],
       [470, 330, 80], [540, 320, 70], [440, 460, 80], [360, 480, 60], [520, 440, 70], [590, 400, 60], [300, 500, 40],
+      [330, 515, 40, -12], [400, 520, 40, -12], [460, 515, 35, -12], [250, 520, 30, -12],
     ], 42), density: 6, cardSize: 2.6, kind: 'round', seed: 21, texSeed: 3,
       dark: '#0f1718', mid: '#172625', light: '#22423a', highlight: '#346a54', lightWrap: 0.1, wind: 0.004, shell: 0.6 }));
     // lit teal right half of that mass
@@ -93,7 +94,7 @@ export default {
 
     /* ---------------- farmhouse: painted card (lighting painted in) ---------------- */
     const HX0 = 780, HY0 = 225, HX1 = 1280, HY1 = 580, HS = 2;
-    const houseTex = paintTexture('s4_house_v3', (HX1 - HX0) * HS, (HY1 - HY0) * HS, (g, W, H, r) => {
+    const houseTex = paintTexture('s4_house_v4', (HX1 - HX0) * HS, (HY1 - HY0) * HS, (g, W, H, r) => {
       g.save(); g.scale(HS, HS); g.translate(-HX0, -HY0);
       const path = (pts) => { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); };
       const fillPoly = (pts, fill) => { path(pts); g.fillStyle = fill; g.fill(); };
@@ -127,7 +128,7 @@ export default {
       fillPoly([[985, 350], [1100, 350], [1100, 565], [985, 565]], '#1c1612');
       // --- building A: front wall
       g.fillStyle = vgrad(350, 400, [[0, '#33261c'], [1, '#6e5a44']]); g.fillRect(848, 350, 152, 50);
-      planks(848, 403, 1000, 518, '#5e4532', 'rgba(50,34,22,0.8)', 8);
+      planks(848, 403, 1000, 518, '#56402e', 'rgba(50,34,22,0.8)', 8);
       g.fillStyle = 'rgba(255,220,170,0.10)'; g.fillRect(848, 403, 70, 115);
       g.fillStyle = '#58412e'; g.fillRect(848, 398, 152, 6);
       g.fillStyle = '#4a3828'; g.fillRect(848, 455, 152, 3);
@@ -168,7 +169,7 @@ export default {
       g.beginPath(); g.moveTo(1066, 239); g.lineTo(1108, 312); g.strokeStyle = '#6e6458'; g.lineWidth = 3; g.stroke();
       // --- building B
       // wall under pent roof
-      planks(1092, 386, 1280, 566, '#4c3a28', 'rgba(40,28,18,0.85)', 7);
+      planks(1092, 386, 1280, 566, '#3a2c20', 'rgba(40,28,18,0.85)', 7);
       g.fillStyle = '#241c16'; g.fillRect(1092, 386, 188, 60);
       for (let x = 1100; x < 1250; x += 30) { g.fillStyle = 'rgba(52,40,30,0.8)'; g.fillRect(x, 392, 24, 48); }
       g.fillStyle = vgrad(386, 430, [[0, 'rgba(10,8,6,0.75)'], [1, 'rgba(10,8,6,0)']]); g.fillRect(1092, 386, 188, 44);
@@ -176,7 +177,7 @@ export default {
       g.fillStyle = '#c8a87e'; g.fillRect(1246, 386, 10, 180);
       g.fillStyle = '#7a6248'; g.fillRect(1090, 386, 8, 180);
       g.fillStyle = '#8a6d50'; g.fillRect(1172, 386, 6, 180);
-      g.fillStyle = 'rgba(20,14,10,0.35)'; g.fillRect(1098, 452, 74, 114);
+      g.fillStyle = 'rgba(20,14,10,0.5)'; g.fillRect(1098, 452, 148, 114);
       // gable triangle (planks, warm lit)
       g.save(); path([[1153, 262], [1092, 340], [1218, 342]]); g.clip();
       planks(1090, 258, 1220, 345, '#7c5c3e', 'rgba(45,30,18,0.8)', 6);
@@ -318,7 +319,7 @@ export default {
 
     /* ---------------- ground + grass ---------------- */
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshBasicMaterial({ color: col('#4f8a3a') }));
-    ground.rotation.x = -Math.PI / 2; ground.position.set(0, -0.01, -60); scene.add(ground);
+    ground.material.color = col('#2a4630'); ground.rotation.x = -Math.PI / 2; ground.position.set(0, -0.01, -60); scene.add(ground);
     // custom painterly grass: blades sampled per screen column + depth; each blade's height is chosen so that its
     // tip lands near the reference grass line (~y 540) regardless of depth -> tall near grass, short far grass.
     {
@@ -332,7 +333,7 @@ export default {
       ig.setIndex(idx); ig.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); ig.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
       const aO = new Float32Array(N * 4), aS = new Float32Array(N * 4), aC = new Float32Array(N * 2);
       for (let i = 0; i < N; i++) {
-        const z = 1.4 * Math.pow(24 / 1.4, Math.pow(r(), 0.85));
+        const z = 1.4 * Math.pow(34 / 1.4, Math.pow(r(), 0.85));
         const px = lerp(-80, 1360, r());
         const p = scr(px, HORIZON, z);
         const spike = r() < 0.08 ? 15 + r() * 30 : 0;
@@ -498,7 +499,7 @@ export default {
     const canopyR = [[995, -30], [1300, -30], [1300, 300], [1242, 302], [1196, 285], [1165, 258], [1146, 210], [1110, 168], [1068, 136], [1030, 104], [1004, 64]];
     spray(canopy, 103, canopyR, 140, { d: 4.6, dz: 0.5, size: [36, 52], tone: (x, y, r) => 0.05 + r() * 0.2, rot: (x, y, r) => Math.PI * 0.85 + (r() - 0.5) * 2.4, variant: 0 });
     spray(canopy, 104, canopyR, 230, { d: 4.4, dz: 0.5, size: [36, 54],
-      tone: (x, y, r) => { const q = r(); return q < 0.2 ? 0.32 + r() * 0.12 : 0.55 + r() * 0.18 + (q > 0.6 ? 0.25 : 0); },
+      tone: (x, y, r) => { const q = r(); return q < (y < 110 ? 0.55 : 0.2) ? 0.32 + r() * 0.12 : 0.55 + r() * 0.18 + (q > 0.6 ? 0.25 : 0); },
       rot: (x, y, r) => Math.PI * 0.85 + (r() - 0.5) * 2.4, variant: 0 });
     scene.add(leafLayer(canopy, { pal: ['#0c1b1b', '#1b3a30', '#33694c', '#5b946b'], wind: 0.015 }));
 
