@@ -505,9 +505,9 @@ export default {
     // --- tall broad-leaf weed on the left edge (silhouetted against the sky)
     const plantPoly = [[-10, 60], [50, 66], [92, 120], [150, 130], [210, 140], [262, 250], [256, 300], [300, 360], [352, 460], [290, 480], [240, 520], [-10, 540]];
     const plant = [];
-    spray(plant, 201, plantPoly, 34, { d: 2.6, dz: 0.3, size: [54, 76], tone: (x, y, r) => 0.02 + r() * 0.22,
+    spray(plant, 201, plantPoly, 44, { d: 2.6, dz: 0.3, size: [54, 76], tone: (x, y, r) => 0.02 + r() * 0.22,
       rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.6, variant: 2 });
-    spray(plant, 202, plantPoly, 34, { d: 2.5, dz: 0.3, size: [54, 78], tone: (x, y, r) => (r() < 0.45 ? 0.3 + r() * 0.15 : 0.55 + r() * 0.2 + (r() < 0.3 ? 0.22 : 0)),
+    spray(plant, 202, plantPoly, 46, { d: 2.5, dz: 0.3, size: [54, 78], tone: (x, y, r) => (r() < 0.45 ? 0.3 + r() * 0.15 : 0.55 + r() * 0.2 + (r() < 0.3 ? 0.22 : 0)),
       rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.6, variant: 2 });
     {
       const stemMat = new THREE.MeshBasicMaterial({ color: col('#1c3024') });
