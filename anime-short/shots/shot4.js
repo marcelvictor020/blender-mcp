@@ -16,7 +16,7 @@ export default {
     bloom: 0.22, bloomRadius: 0.6, bloomThreshold: 0.82,
     exposure: 1.0, contrast: 1.0, saturation: 1.0,
     lift: [0.0, 0.01, 0.02], gamma: [1, 1, 1], gain: [1, 1, 1],
-    vignette: 0.14, grain: 0.025, ca: 0.0012, soft: 0.25,
+    vignette: 0.06, grain: 0.025, ca: 0.0012, soft: 0.25,
   },
   build(core) {
     const { THREE, makeSky, makeCloud, makeFoliage, makeGrass, lightRig, toon, rng, lerp, clamp, col, shared, paintTexture, canvasTexture } = core;
@@ -55,7 +55,7 @@ export default {
     scene.add(cloudFromPx(150, 30, 830, 430, [
       [250, 190, 55], [262, 285, 60], [330, 150, 55], [395, 115, 52], [450, 160, 60], [380, 230, 75], [300, 330, 55],
       [520, 160, 60], [600, 165, 58], [670, 145, 48], [725, 175, 45], [700, 230, 60], [610, 250, 75], [500, 260, 80],
-      [420, 320, 70], [745, 255, 40], [560, 330, 70],
+      [420, 320, 70], [745, 255, 40], [560, 330, 70], [235, 245, 50], [250, 330, 45],
     ], 4));
     scene.add(cloudFromPx(-60, 170, 190, 400, [
       [10, 255, 36], [62, 248, 38], [100, 275, 34], [40, 298, 44], [-10, 240, 36], [112, 318, 30], [62, 322, 40], [140, 300, 26],
@@ -93,7 +93,7 @@ export default {
 
     /* ---------------- farmhouse: painted card (lighting painted in) ---------------- */
     const HX0 = 780, HY0 = 225, HX1 = 1280, HY1 = 580, HS = 2;
-    const houseTex = paintTexture('s4_house_v1', (HX1 - HX0) * HS, (HY1 - HY0) * HS, (g, W, H, r) => {
+    const houseTex = paintTexture('s4_house_v3', (HX1 - HX0) * HS, (HY1 - HY0) * HS, (g, W, H, r) => {
       g.save(); g.scale(HS, HS); g.translate(-HX0, -HY0);
       const path = (pts) => { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); };
       const fillPoly = (pts, fill) => { path(pts); g.fillStyle = fill; g.fill(); };
@@ -106,24 +106,28 @@ export default {
           g.fillStyle = line; g.fillRect(x, y0, 1, y1 - y0);
         }
       };
+      // kawara tile courses: each tile a rounded scallop with a dark lower lip and a lit crown
       const tiles = (pts, base, rowH, colW, lineA, slope = 0) => {
         g.save(); path(pts); g.clip();
         g.fillStyle = base; g.fillRect(HX0, HY0, HX1 - HX0, HY1 - HY0);
         let k = 0;
         for (let y = HY0; y < HY1; y += rowH, k++) {
-          g.fillStyle = `rgba(60,50,40,${lineA})`; g.fillRect(HX0, y, HX1 - HX0, 1.1);
-          g.fillStyle = `rgba(255,245,225,${lineA * 0.35})`; g.fillRect(HX0, y + 1.1, HX1 - HX0, 0.9);
-          for (let x = HX0 + (k % 2) * colW * 0.5; x < HX1; x += colW) {
-            g.fillStyle = `rgba(60,50,40,${lineA * 0.7})`; g.fillRect(x + slope * (y - HY0), y, 0.9, rowH);
+          for (let x = HX0 - colW + (k % 2) * colW * 0.5; x < HX1 + colW; x += colW) {
+            const xx = x + slope * (y - HY0);
+            g.beginPath(); g.ellipse(xx, y + rowH * 0.15, colW * 0.5, rowH * 0.85, 0, 0, Math.PI);
+            g.strokeStyle = `rgba(40,34,30,${lineA})`; g.lineWidth = 1.1; g.stroke();
+            g.beginPath(); g.ellipse(xx, y + rowH * 0.05, colW * 0.3, rowH * 0.45, 0, Math.PI * 1.1, Math.PI * 1.9);
+            g.strokeStyle = `rgba(255,245,228,${lineA * 0.45})`; g.lineWidth = 0.9; g.stroke();
           }
+          g.fillStyle = `rgba(30,26,22,${lineA * 0.35})`; g.fillRect(HX0, y + rowH - 1.2, HX1 - HX0, 1.2);
         }
         g.restore();
       };
       // --- recess between buildings (deep shade)
-      fillPoly([[985, 350], [1100, 350], [1100, 565], [985, 565]], '#2a211c');
+      fillPoly([[985, 350], [1100, 350], [1100, 565], [985, 565]], '#1c1612');
       // --- building A: front wall
-      g.fillStyle = vgrad(350, 400, [[0, '#4c3a2a'], [1, '#9c8566']]); g.fillRect(848, 350, 152, 50);
-      planks(848, 403, 1000, 518, '#735740', 'rgba(50,34,22,0.8)', 8);
+      g.fillStyle = vgrad(350, 400, [[0, '#33261c'], [1, '#6e5a44']]); g.fillRect(848, 350, 152, 50);
+      planks(848, 403, 1000, 518, '#5e4532', 'rgba(50,34,22,0.8)', 8);
       g.fillStyle = 'rgba(255,220,170,0.10)'; g.fillRect(848, 403, 70, 115);
       g.fillStyle = '#58412e'; g.fillRect(848, 398, 152, 6);
       g.fillStyle = '#4a3828'; g.fillRect(848, 455, 152, 3);
@@ -132,8 +136,8 @@ export default {
       g.fillStyle = '#c4a47e'; g.fillRect(848, 352, 7, 166);      // corner post (lit)
       g.fillStyle = '#7d6248'; g.fillRect(986, 352, 8, 166);
       // building A: left end wall under the roof overhang
-      g.fillStyle = vgrad(352, 420, [[0, '#4a3828'], [1, '#b39978']]); g.fillRect(805, 352, 43, 66);
-      planks(805, 418, 848, 518, '#8a6b4c', 'rgba(60,40,26,0.7)', 7);
+      g.fillStyle = vgrad(352, 420, [[0, '#3a2c20'], [1, '#8a7458']]); g.fillRect(805, 352, 43, 66);
+      planks(805, 418, 848, 518, '#6e5640', 'rgba(60,40,26,0.7)', 7);
       // stone base
       g.fillStyle = '#9d8d80'; g.fillRect(802, 516, 200, 40);
       for (let i = 0; i < 70; i++) {
@@ -146,10 +150,10 @@ export default {
       // building A roof
       const roofA = [[862, 241], [1066, 239], [1108, 312], [1100, 350], [840, 346], [801, 353], [818, 326], [838, 296], [852, 266]];
       g.save(); path(roofA); g.clip();
-      g.fillStyle = (() => { const gr = g.createLinearGradient(860, 240, 1100, 340); gr.addColorStop(0, '#dcc6ae'); gr.addColorStop(0.45, '#bcae9a'); gr.addColorStop(1, '#8e8676'); return gr; })();
+      g.fillStyle = (() => { const gr = g.createLinearGradient(860, 240, 1100, 340); gr.addColorStop(0, '#d6bea2'); gr.addColorStop(0.45, '#ad9e88'); gr.addColorStop(1, '#8a7f70'); return gr; })();
       g.fillRect(HX0, HY0, 500, 200);
       g.restore();
-      tiles(roofA, 'rgba(0,0,0,0)', 7.5, 9, 0.45, -0.25);
+      tiles(roofA, 'rgba(0,0,0,0)', 7.5, 9, 0.7, -0.25);
       g.fillStyle = 'rgba(255,236,210,0.18)'; fillPoly([[862, 241], [960, 240], [930, 300], [850, 300]], 'rgba(255,236,210,0.16)');
       // eave tile-ends band
       g.fillStyle = '#6b655a'; fillPoly([[806, 345], [1102, 343], [1100, 354], [804, 356]], '#6b655a');
@@ -164,13 +168,13 @@ export default {
       g.beginPath(); g.moveTo(1066, 239); g.lineTo(1108, 312); g.strokeStyle = '#6e6458'; g.lineWidth = 3; g.stroke();
       // --- building B
       // wall under pent roof
-      planks(1092, 386, 1280, 566, '#6a5034', 'rgba(40,28,18,0.85)', 7);
-      g.fillStyle = '#3e3126'; g.fillRect(1092, 386, 188, 60);
-      for (let x = 1100; x < 1250; x += 30) { g.fillStyle = 'rgba(80,64,48,0.8)'; g.fillRect(x, 392, 24, 48); }
+      planks(1092, 386, 1280, 566, '#4c3a28', 'rgba(40,28,18,0.85)', 7);
+      g.fillStyle = '#241c16'; g.fillRect(1092, 386, 188, 60);
+      for (let x = 1100; x < 1250; x += 30) { g.fillStyle = 'rgba(52,40,30,0.8)'; g.fillRect(x, 392, 24, 48); }
       g.fillStyle = vgrad(386, 430, [[0, 'rgba(10,8,6,0.75)'], [1, 'rgba(10,8,6,0)']]); g.fillRect(1092, 386, 188, 44);
-      g.fillStyle = '#ab8d68'; g.fillRect(1092, 446, 188, 6);
+      g.fillStyle = '#7e664c'; g.fillRect(1092, 446, 188, 6);
       g.fillStyle = '#c8a87e'; g.fillRect(1246, 386, 10, 180);
-      g.fillStyle = '#b39470'; g.fillRect(1090, 386, 8, 180);
+      g.fillStyle = '#7a6248'; g.fillRect(1090, 386, 8, 180);
       g.fillStyle = '#8a6d50'; g.fillRect(1172, 386, 6, 180);
       g.fillStyle = 'rgba(20,14,10,0.35)'; g.fillRect(1098, 452, 74, 114);
       // gable triangle (planks, warm lit)
@@ -181,9 +185,9 @@ export default {
       // right roof surface of B
       const roofB = [[1155, 256], [1282, 247], [1282, 344], [1219, 343]];
       g.save(); path(roofB); g.clip();
-      g.fillStyle = (() => { const gr = g.createLinearGradient(1160, 250, 1280, 340); gr.addColorStop(0, '#c9b8a2'); gr.addColorStop(1, '#a89884'); return gr; })();
+      g.fillStyle = (() => { const gr = g.createLinearGradient(1160, 250, 1280, 340); gr.addColorStop(0, '#b4a690'); gr.addColorStop(1, '#8e8476'); return gr; })();
       g.fillRect(1100, 240, 190, 110); g.restore();
-      tiles(roofB, 'rgba(0,0,0,0)', 7, 8.5, 0.42, 0.3);
+      tiles(roofB, 'rgba(0,0,0,0)', 7, 8.5, 0.7, 0.3);
       // B bargeboards
       g.beginPath(); g.moveTo(1153, 258); g.lineTo(1086, 343); g.strokeStyle = '#5e4630'; g.lineWidth = 9; g.stroke();
       g.beginPath(); g.moveTo(1154, 257); g.lineTo(1089, 340); g.strokeStyle = '#ae8c64'; g.lineWidth = 5; g.stroke();
@@ -192,8 +196,8 @@ export default {
       // pent roof (hisashi) across B, wrapping left
       const pent = [[1006, 347], [1282, 339], [1282, 384], [990, 389]];
       g.save(); path(pent); g.clip();
-      g.fillStyle = vgrad(340, 389, [[0, '#a4988a'], [1, '#867c6e']]); g.fillRect(980, 335, 310, 60); g.restore();
-      tiles(pent, 'rgba(0,0,0,0)', 6.5, 8, 0.45, 0.6);
+      g.fillStyle = vgrad(340, 389, [[0, '#948a7e'], [1, '#6e665c']]); g.fillRect(980, 335, 310, 60); g.restore();
+      tiles(pent, 'rgba(0,0,0,0)', 6.5, 8, 0.7, 0.6);
       fillPoly([[990, 383], [1282, 378], [1282, 388], [988, 391]], '#5c564c');
       for (let x = 994; x < 1280; x += 7.5) { g.fillStyle = 'rgba(170,160,145,0.6)'; g.beginPath(); g.arc(x, 386, 2, 0, 7); g.fill(); }
       // small lower roof piece at left of B
@@ -331,7 +335,7 @@ export default {
         const px = lerp(-80, 1360, r());
         const p = scr(px, HORIZON, z);
         const spike = r() < 0.08 ? 15 + r() * 30 : 0;
-        const tipY = 560 + (r() - 0.5) * 40 - spike + (px < 420 ? 10 : 0) + Math.max(0, (px - 1000) * 0.03);
+        const tipY = 560 + (r() - 0.5) * 40 - spike + (px < 420 ? 10 : 0) + Math.max(0, (px - 980) * 0.06);
         const h = Math.max(0.12, CAM_H - (tipY - HORIZON) * z / F);
         const w = (0.032 + 0.0105 * z) * lerp(0.7, 1.35, r());
         aO.set([p.x, 0, p.z, (r() - 0.5) * 1.1], i * 4);
@@ -343,8 +347,8 @@ export default {
       ig.setAttribute('aC', new THREE.InstancedBufferAttribute(aC, 2));
       ig.instanceCount = N;
       const gm = new THREE.ShaderMaterial({
-        uniforms: { uTime: shared.uTime, cLo: { value: col('#4a8a3b') }, cMid: { value: col('#6da347') }, cHi: { value: col('#86b851') },
-          cTip: { value: col('#aed072') }, cDk: { value: col('#3e7636') } },
+        uniforms: { uTime: shared.uTime, cLo: { value: col('#447f37') }, cMid: { value: col('#62983f') }, cHi: { value: col('#78ab49') },
+          cTip: { value: col('#9cc464') }, cDk: { value: col('#3e7636') } },
         vertexShader: `attribute vec4 aO; attribute vec4 aS; attribute vec2 aC; uniform float uTime;
           varying float vT, vR, vR2, vSide, vShade, vZ;
           ${core.NOISE_GLSL}
@@ -472,13 +476,23 @@ export default {
     // --- top canopy (main mass across the top)
     const canopyPoly = [[280, -30], [1015, -30], [1000, 30], [978, 62], [948, 92], [915, 112], [878, 130], [848, 140], [818, 122], [788, 102],
       [758, 112], [728, 128], [700, 152], [672, 172], [655, 178], [664, 205], [642, 242], [602, 252], [560, 242], [520, 218], [490, 202],
-      [468, 188], [440, 192], [412, 172], [400, 142], [372, 112], [332, 92], [300, 62], [284, 40]];
+      [468, 188], [440, 190], [412, 170], [380, 120], [340, 100], [300, 70], [284, 40]];
     const canopy = [];
-    spray(canopy, 101, canopyPoly, 260, { d: 5.2, dz: 0.6, size: [34, 52],
+    // dense core along the very top (dark interior + lit leaves)
+    const canopyCore = [[430, -30], [1015, -30], [1000, 26], [975, 52], [945, 76], [905, 92], [870, 104], [840, 104], [812, 88], [784, 74],
+      [752, 80], [722, 92], [690, 108], [650, 112], [610, 100], [570, 92], [530, 84], [490, 64], [455, 30]];
+    spray(canopy, 101, canopyCore, 150, { d: 5.2, dz: 0.6, size: [36, 54],
       tone: (x, y, r) => 0.02 + r() * 0.22, rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.4, variant: 0 });
-    spray(canopy, 102, canopyPoly, 330, { d: 5.0, dz: 0.6, size: [36, 54],
-      tone: (x, y, r) => { const q = r(); return q < 0.55 ? 0.3 + r() * 0.15 : 0.52 + r() * 0.2 + (q > 0.93 ? 0.25 : 0); },
-      rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.2, variant: (r) => (r() < 0.8 ? 0 : 3) });
+    spray(canopy, 102, canopyCore, 150, { d: 5.0, dz: 0.6, size: [38, 56],
+      tone: (x, y, r) => { const q = r(); return q < 0.5 ? 0.3 + r() * 0.15 : 0.52 + r() * 0.2 + (q > 0.93 ? 0.25 : 0); },
+      rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.2, variant: 0 });
+    // sparse fringe of individual hanging leaves (sky shows between them)
+    spray(canopy, 105, canopyPoly, 95, { d: 4.9, dz: 0.5, size: [38, 54],
+      tone: (x, y, r) => { const q = r(); return q < 0.35 ? 0.05 + r() * 0.15 : q < 0.6 ? 0.3 + r() * 0.15 : 0.52 + r() * 0.2; },
+      rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.0, variant: 0 });
+    // the drooping spray above the transformer pole
+    spray(canopy, 106, [[480, 150], [670, 150], [660, 250], [600, 256], [520, 225]], 26, { d: 4.8, dz: 0.4, size: [40, 56],
+      tone: (x, y, r) => (r() < 0.45 ? 0.05 + r() * 0.15 : 0.3 + r() * 0.4), rot: (x, y, r) => Math.PI + (r() - 0.5) * 1.6, variant: 0 });
     // right-hand bright cluster
     const canopyR = [[995, -30], [1300, -30], [1300, 300], [1242, 302], [1196, 285], [1165, 258], [1146, 210], [1110, 168], [1068, 136], [1030, 104], [1004, 64]];
     spray(canopy, 103, canopyR, 140, { d: 4.6, dz: 0.5, size: [36, 52], tone: (x, y, r) => 0.05 + r() * 0.2, rot: (x, y, r) => Math.PI * 0.85 + (r() - 0.5) * 2.4, variant: 0 });
@@ -490,24 +504,24 @@ export default {
     // --- tall broad-leaf weed on the left edge (silhouetted against the sky)
     const plantPoly = [[-10, 60], [50, 66], [92, 120], [150, 130], [210, 140], [262, 250], [256, 300], [300, 360], [352, 460], [290, 480], [240, 520], [-10, 540]];
     const plant = [];
-    spray(plant, 201, plantPoly, 60, { d: 2.6, dz: 0.3, size: [54, 76], tone: (x, y, r) => 0.02 + r() * 0.22,
+    spray(plant, 201, plantPoly, 34, { d: 2.6, dz: 0.3, size: [54, 76], tone: (x, y, r) => 0.02 + r() * 0.22,
       rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.6, variant: 2 });
-    spray(plant, 202, plantPoly, 55, { d: 2.5, dz: 0.3, size: [54, 78], tone: (x, y, r) => (r() < 0.45 ? 0.3 + r() * 0.15 : 0.55 + r() * 0.2 + (r() < 0.3 ? 0.22 : 0)),
+    spray(plant, 202, plantPoly, 34, { d: 2.5, dz: 0.3, size: [54, 78], tone: (x, y, r) => (r() < 0.45 ? 0.3 + r() * 0.15 : 0.55 + r() * 0.2 + (r() < 0.3 ? 0.22 : 0)),
       rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.6, variant: 2 });
     scene.add(leafLayer(plant, { pal: ['#13221d', '#28463a', '#527c5c', '#7fa486'], wind: 0.03 }));
 
     // --- dense dark bush, lower left (butterflies hover over it)
-    const bushPoly = [[-10, 425], [90, 418], [190, 436], [262, 470], [318, 508], [350, 556], [380, 600], [400, 660], [420, 730], [-10, 730]];
+    const bushPoly = [[-10, 450], [70, 448], [150, 470], [210, 506], [262, 548], [310, 592], [345, 640], [370, 690], [385, 730], [-10, 730]];
     const bush = [];
-    spray(bush, 301, bushPoly, 200, { d: 1.15, dz: 0.15, size: [56, 86], tone: (x, y, r) => 0.01 + r() * 0.23,
+    spray(bush, 301, bushPoly, 150, { d: 1.15, dz: 0.15, size: [56, 86], tone: (x, y, r) => 0.01 + r() * 0.23,
       rot: (x, y, r) => (r() - 0.5) * 3.0 + Math.PI * (r() < 0.5 ? 1 : 0), variant: 1 });
-    spray(bush, 302, bushPoly, 110, { d: 1.1, dz: 0.15, size: [54, 82],
-      tone: (x, y, r) => { const top = 1 - sm(440, 650, y); return r() < 0.15 + top * 0.35 ? 0.52 + r() * 0.22 + (r() < 0.25 ? 0.22 : 0) : 0.3 + r() * 0.16; },
+    spray(bush, 302, bushPoly, 55, { d: 1.1, dz: 0.15, size: [54, 82],
+      tone: (x, y, r) => { const top = 1 - sm(440, 650, y); return r() < 0.15 + top * 0.25 ? 0.52 + r() * 0.22 + (r() < 0.25 ? 0.22 : 0) : 0.3 + r() * 0.16; },
       rot: (x, y, r) => (r() - 0.5) * 3.0 + Math.PI * (r() < 0.5 ? 1 : 0), variant: 1 });
     // loose leaves poking above the grass to the right of the bush
     spray(bush, 303, [[340, 590], [550, 600], [550, 730], [340, 730]], 22, { d: 1.2, dz: 0.2, size: [44, 62],
       tone: (x, y, r) => 0.02 + r() * 0.4, rot: (x, y, r) => (r() - 0.5) * 2.2, variant: 1 });
-    scene.add(leafLayer(bush, { pal: ['#0c1a14', '#1c3a26', '#335f38', '#5c8e4c'], wind: 0.025 }));
+    scene.add(leafLayer(bush, { pal: ['#0a1711', '#18341f', '#2c5832', '#4f8444'], wind: 0.025 }));
 
     /* ---------------- butterflies (tiny glowing yellow) ---------------- */
     const bfTex = canvasTexture('s4_bfly', 64, 64, (g, w, h) => {
@@ -516,7 +530,7 @@ export default {
         g.beginPath(); g.ellipse(12, -8, 13, 10, -0.5, 0, 7); g.fill(); g.beginPath(); g.ellipse(9, 10, 8, 7, 0.6, 0, 7); g.fill(); g.restore(); }
     }, { srgb: false });
     {
-      const r = rng(77); const n = 36; const D = 1.0;
+      const r = rng(77); const n = 30; const D = 1.0;
       const aB = new Float32Array(n * 4);
       for (let i = 0; i < n; i++) {
         let px, py;
@@ -528,7 +542,7 @@ export default {
       ig.index = geo.index; ig.attributes.position = geo.attributes.position; ig.attributes.uv = geo.attributes.uv;
       ig.setAttribute('aB', new THREE.InstancedBufferAttribute(aB, 4)); ig.instanceCount = n;
       const mat = new THREE.ShaderMaterial({
-        uniforms: { uTime: shared.uTime, uSize: { value: 11 * wpp(D) }, uAmp: { value: 14 * wpp(D) }, tB: { value: bfTex }, uCol: { value: col('#ffe38a') } },
+        uniforms: { uTime: shared.uTime, uSize: { value: 8.5 * wpp(D) }, uAmp: { value: 14 * wpp(D) }, tB: { value: bfTex }, uCol: { value: col('#ffe38a') } },
         vertexShader: `attribute vec4 aB; uniform float uTime, uSize, uAmp; varying vec2 vUv;
           void main(){ vUv = uv; float ph = aB.w; float t = uTime;
             vec3 c = aB.xyz + vec3(sin(t*0.9+ph)*1.0 + sin(t*2.3+ph*2.)*0.35, sin(t*1.3+ph*1.3)*0.7 + sin(t*3.7+ph)*0.2, 0.0) * uAmp;
@@ -549,9 +563,11 @@ export default {
         shared.uSunDir.value.copy(sunV);
         shared.uDapple.value = 0;
         shared.uFogMax.value = 0;
-        const p = truckPos(t), q = truckPos(t + 0.05);
+        // the reference keeps the truck almost perfectly side-on while it recedes: face its flank to the camera
+        // (tiny yaw so a sliver of the cab front shows, as in the ref)
+        const p = truckPos(t);
         truck.position.copy(p);
-        truck.rotation.y = Math.atan2(-(q.z - p.z), q.x - p.x) + Math.PI;
+        truck.rotation.y = Math.atan2(-(p.x - camera.position.x), -(p.z - camera.position.z)) + 0.12;
       },
     };
   },

@@ -4,7 +4,7 @@
 export default {
   duration: 3.041,
   credit: null,
-  post: { bloom: 0.22, bloomThreshold: 0.88, bloomRadius: 0.5, exposure: 1.0, contrast: 1.02, saturation: 1.0,
+  post: { bloom: 0.22, bloomThreshold: 0.88, bloomRadius: 0.5, exposure: 1.0, contrast: 1.03, saturation: 1.08,
     lift: [0.05, 0.05, 0.035], vignette: 0.16, grain: 0.025, soft: 0.25, ca: 0.001 },
   build(core) {
     const { THREE, makeCloud, makeFoliage, lightRig, toon, shared, rng, lerp, NOISE_GLSL, col, paintTexture, chainLinkTexture } = core;
@@ -48,7 +48,7 @@ export default {
           // high diagonal cirrus streaks (upper sky)
           float ci = layer(px, -0.45, vec2(0.004, 0.022), 3.0);
           float ciMask = smoothstep(0.30, 0.0, yy) * 0.9 + smoothstep(0.42, 0.22, yy) * 0.25;
-          float cA = smoothstep(0.46, 0.70, ci) * ciMask;
+          float cA = smoothstep(0.42, 0.68, ci) * ciMask;
           float cl = layer(px + vec2(0., 6.), -0.45, vec2(0.004, 0.022), 3.0);
           vec3 cirrus = mix(hx(140.,172.,192.), hx(214.,226.,234.), smoothstep(0.50, 0.75, ci - (cl - ci) * 3.0));
           c = mix(c, cirrus, cA * 0.75);
@@ -81,7 +81,7 @@ export default {
       side: THREE.BackSide, depthWrite: false,
     });
     const sky = new THREE.Mesh(new THREE.SphereGeometry(1500, 64, 32), skyMat);
-    sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
+    sky.renderOrder = 100; sky.frustumCulled = false; scene.add(sky);  // drawn last among opaques: only shades uncovered pixels
 
     /* ---------------- painted grass banks ---------------- */
     const grassBank = ({ x0, x1, yTop, yBot, d, top = '#8fcb5c', mid = '#5fa444', bot = '#3f8037', dark = '#2f6a32', tipAmp = 14, tipFreq = 0.09, seed = 1, edgeFn = '0.0' }) => {
@@ -147,12 +147,12 @@ export default {
     /* ---------------- background tree masses ---------------- */
     // right tree mass (px 1000-1280, py 210-470)
     fol({ clumps: fillPoly([[1000, 470], [1010, 330], [1050, 280], [1110, 240], [1180, 215], [1300, 205], [1300, 470]], 70, 18, 34, 60, 41, 4),
-      density: 7, cardSize: S(16, 60), kind: 'round', seed: 4, texSeed: 3,
-      dark: '#112e2c', mid: '#1a4a3e', light: '#2a6a52', highlight: '#4f9068', wind: 0.008, shell: 0.55, lightWrap: 0.45, flatten: 0.8 }, [-0.7, 0.6, 0.5]);
+      density: 5, cardSize: S(19, 60), kind: 'round', seed: 4, texSeed: 3,
+      dark: '#0e2826', mid: '#163f36', light: '#235c48', highlight: '#42825e', wind: 0.008, shell: 0.55, lightWrap: 0.45, flatten: 0.8 }, [-0.7, 0.6, 0.5]);
     // left mass behind fence (px 120-510, py 230-560)
     fol({ clumps: fillPoly([[110, 560], [130, 330], [260, 300], [380, 250], [440, 235], [500, 260], [515, 320], [505, 430], [500, 560]], 80, 20, 38, 40, 43, 4),
-      density: 7, cardSize: S(16, 40), kind: 'round', seed: 6, texSeed: 5,
-      dark: '#0f3029', mid: '#1b5a44', light: '#2f8a62', highlight: '#6cbc7c', wind: 0.01, shell: 0.55, lightWrap: 0.4, flatten: 0.85 }, [0.5, 0.6, 0.6]);
+      density: 5, cardSize: S(19, 40), kind: 'round', seed: 6, texSeed: 5,
+      dark: '#0d2a24', mid: '#174d3c', light: '#287a56', highlight: '#5aa86c', wind: 0.01, shell: 0.55, lightWrap: 0.4, flatten: 0.85 }, [0.5, 0.6, 0.6]);
     // dark backdrop so no sky leaks through the left woods
     {
       const a0 = P(60, 300, 45), b0 = P(520, 600, 45);
@@ -160,7 +160,7 @@ export default {
       bd.position.set((a0.x + b0.x) / 2, (a0.y + b0.y) / 2, -45); scene.add(bd);
     }
     fol({ clumps: fillPoly([[60, 600], [70, 330], [200, 320], [300, 300], [400, 330], [400, 600]], 40, 22, 40, 44, 49, 2),
-      density: 6, cardSize: S(16, 44), kind: 'round', seed: 10, texSeed: 11,
+      density: 4, cardSize: S(20, 44), kind: 'round', seed: 10, texSeed: 11,
       dark: '#0c2622', mid: '#143c34', light: '#1f5a48', highlight: '#3f8060', wind: 0.008, shell: 0.6, lightWrap: 0.3 }, [0.5, 0.6, 0.6]);
     // low bushes behind left fence (px 120-360, py 440-540)
     fol({ clumps: fillPoly([[120, 540], [140, 470], [220, 450], [300, 440], [380, 460], [380, 545]], 22, 16, 26, 20, 47),
@@ -168,17 +168,17 @@ export default {
       dark: '#163f30', mid: '#286a46', light: '#4a9a58', highlight: '#94cf74', wind: 0.012, shell: 0.6 }, [0.3, 0.8, 0.5]);
 
     // grass field
-    grassBank({ x0: 500, x1: 1300, yTop: 412, yBot: 640, d: 70, top: '#78b450', mid: '#5a9a42', bot: '#4a8a3c', dark: '#3a7034', tipAmp: 16, seed: 2 });
+    grassBank({ x0: 500, x1: 1300, yTop: 412, yBot: 640, d: 70, top: '#6ca648', mid: '#528e3e', bot: '#447e38', dark: '#346630', tipAmp: 16, seed: 2 });
     grassBank({ x0: -20, x1: 600, yTop: 515, yBot: 640, d: 30, top: '#7ab650', mid: '#5c9c44', bot: '#467f3a', dark: '#346a32', tipAmp: 20, seed: 4 });
-    grassBank({ x0: 760, x1: 1300, yTop: 490, yBot: 640, d: 30, top: '#6cab48', mid: '#55923f', bot: '#467f38', dark: '#336530', tipAmp: 22, seed: 6,
+    grassBank({ x0: 760, x1: 1300, yTop: 490, yBot: 640, d: 30, top: '#64a044', mid: '#4f8a3c', bot: '#427636', dark: '#305e2e', tipAmp: 22, seed: 6,
       edgeFn: '(fbm(vec2(px*0.004, 7.)) - 0.5) * 50.0' });
     grassBank({ x0: 760, x1: 1300, yTop: 560, yBot: 640, d: 16, top: '#62a044', mid: '#4f8a3c', bot: '#427636', dark: '#305f2e', tipAmp: 18, seed: 8 });
 
     /* ---------------- utility pole + wires ---------------- */
     const poleD = 17.3;
-    const poleMat = toon({ color: '#8a7462', dapple: false });
+    const poleMat = toon({ color: '#6e6058', dapple: false });
     const poleTop = P(882, 88, poleD), poleBot = P(882, 560, poleD);
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(S(7, poleD), S(9, poleD), poleTop.y - poleBot.y, 10), poleMat);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(S(6, poleD), S(7.5, poleD), poleTop.y - poleBot.y, 10), poleMat);
     pole.position.set(poleTop.x, (poleTop.y + poleBot.y) / 2, -poleD); scene.add(pole);
     // transformer / box + crossarm details
     const darkMetal = toon({ color: '#3a3f4a', dapple: false });
@@ -232,14 +232,14 @@ export default {
           gl_FragColor = vec4(c, 1.);
         }`,
     });
-    const swMat = groundShader('#4a4652', '#b09888', { kerb: '#67646e', k0: sidewalkD0, k1: sidewalkD0 + 0.55, cover: 0.63, seed: 1 });
+    const swMat = groundShader('#4a4652', '#b09888', { kerb: '#67646e', k0: sidewalkD0, k1: sidewalkD0 + 0.55, cover: 0.73, seed: 1 });
     const sw = new THREE.Mesh(new THREE.PlaneGeometry(60, sidewalkD1 - sidewalkD0), swMat);
     sw.rotation.x = -Math.PI / 2; sw.position.set(0, 0, -(sidewalkD0 + sidewalkD1) / 2); scene.add(sw);
     // kerb face (step down to road)
     const kH = 0.07;
     const kerb = new THREE.Mesh(new THREE.PlaneGeometry(60, kH), new THREE.MeshBasicMaterial({ color: col('#2a2a34') }));
     kerb.position.set(0, -kH / 2, -sidewalkD0); scene.add(kerb);
-    const roadMat = groundShader('#2f303c', '#86766e', { cover: 0.6, seed: 5 });
+    const roadMat = groundShader('#2c2d39', '#7e6e68', { cover: 0.7, seed: 5 });
     const road = new THREE.Mesh(new THREE.PlaneGeometry(60, sidewalkD0 - 3), roadMat);
     road.rotation.x = -Math.PI / 2; road.position.set(0, -kH, -(sidewalkD0 + 3) / 2); scene.add(road);
     // contact shadows under the vending machines / props (soft dark strips just in front of their bases)
@@ -285,7 +285,7 @@ export default {
       const wpx = x1 - x0, hpx = y1 - y0;
       tex.repeat.set(wpx / 100, hpx / 100);
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(S(wpx, fenceD), S(hpx, fenceD)),
-        new THREE.MeshBasicMaterial({ color: col('#8b99a8'), alphaMap: tex, transparent: true, opacity: 0.5, depthWrite: false }));
+        new THREE.MeshBasicMaterial({ color: col('#8b99a8'), alphaMap: tex, transparent: true, opacity: 0.4, depthWrite: false }));
       const c = P((x0 + x1) / 2, (y0 + y1) / 2, fenceD + 0.03); mesh.position.copy(c); scene.add(mesh);
     }
     // gate hinge clamps on the posts
@@ -418,7 +418,7 @@ export default {
 
     /* ---------------- cardboard boxes ---------------- */
     const cardTex = paintTexture('s6_cardboard', 128, 128, (g, w, h, r) => {
-      g.fillStyle = '#a89480'; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#b4a492'; g.fillRect(0, 0, w, h);
       for (let i = 0; i < 80; i++) { g.fillStyle = `rgba(${70 + r() * 40},${60 + r() * 30},${50 + r() * 20},${r() * 0.12})`; g.fillRect(r() * w, r() * h, 10 + r() * 30, 2 + r() * 6); }
       g.fillStyle = 'rgba(60,50,40,0.35)'; g.fillRect(0, h * 0.48, w, 4);
       g.strokeStyle = 'rgba(50,40,35,0.4)'; g.lineWidth = 3; g.strokeRect(1, 1, w - 2, h - 2);
@@ -635,16 +635,16 @@ export default {
     // top-left: near-black mass; lit leaves toward the sky opening (lower-right edge)
     const tlPoly = [[-40, -40], [545, -40], [530, 40], [500, 110], [455, 170], [420, 215], [370, 260], [310, 300], [200, 296], [100, 300], [-40, 310]];
     const tlTone = (x, y, r) => {
-      const edge = smooth01(0.45, 0.95, (x + 0.85 * y) / 560);
+      const edge = smooth01(0.4, 0.92, (x + 0.85 * y) / 560);
       const patch = vn(x / 90, y / 90);
       return Math.min(1, Math.max(0, 0.02 + edge * 0.6 + (patch - 0.5) * 0.3 + (r() - 0.5) * 0.22));
     };
-    leafSpray(sprayPoly(tlPoly, 260, 101, (x, y, r) => ({ size: lerp(70, 110, r()), rot: r() * 6.28, cell: 2, tone: tlTone(x, y, r) * 0.6 })), 7.2,
+    leafSpray(sprayPoly(tlPoly, 260, 101, (x, y, r) => (x + 0.85 * y > 480 ? null : { size: lerp(70, 110, r()), rot: r() * 6.28, cell: 2, tone: tlTone(x, y, r) * 0.6 })), 7.2,
       ['#08160f', '#10281a', '#24502e', '#4f8a48'], 0.6);
-    leafSpray(sprayPoly(tlPoly, 1600, 103, (x, y, r) => ({ size: lerp(20, 34, r()), rot: r() * 6.28, cell: r() < 0.6 ? 0 : 1, tone: tlTone(x, y, r) })), 7.0,
+    leafSpray(sprayPoly(tlPoly, 1600, 103, (x, y, r) => ((x + 0.85 * y > 470 && r() < 0.3) ? null : { size: lerp(20, 34, r()), rot: r() * 6.28, cell: r() < 0.6 ? 0 : 1, tone: tlTone(x, y, r) })), 7.0,
       ['#0a1a12', '#153424', '#2c6040', '#5e9a5a'], 1.0);
     // top-right: dark core at right, bright lime leaves toward the left / bottom
-    const trPoly = [[690, -40], [1320, -40], [1320, 205], [1230, 215], [1160, 200], [1090, 180], [1040, 200], [990, 250], [940, 275], [910, 230], [880, 160], [800, 110], [720, 90], [690, 50]];
+    const trPoly = [[690, -40], [1320, -40], [1320, 215], [1230, 225], [1160, 205], [1090, 180], [1040, 205], [990, 255], [945, 280], [915, 240], [902, 170], [900, 90], [870, 75], [800, 90], [720, 85], [690, 50]];
     const trTone = (x, y, r) => {
       const lit = smooth01(1080, 860, x + (y - 100) * 0.3);
       const patch = vn(x / 80, y / 80);
@@ -652,17 +652,18 @@ export default {
     };
     const trCore = [[960, -40], [1320, -40], [1320, 205], [1230, 215], [1160, 200], [1090, 180], [1030, 140], [990, 80]];
     leafSpray(sprayPoly(trCore, 200, 105, (x, y, r) => ({ size: lerp(70, 110, r()), rot: r() * 6.28, cell: 2, tone: trTone(x, y, r) * 0.6 })), 7.2,
-      ['#0a1d15', '#132f22', '#285634', '#4f8a48'], 0.6);
+      ['#0f251c', '#183a2a', '#2c5c3a', '#4f8a48'], 0.6);
     leafSpray(sprayPoly(trPoly, 1700, 107, (x, y, r) => {
       const t = trTone(x, y, r);
       if (x < 1000 && r() < 0.35) return null;    // sparse fringe with sky gaps
       return { size: lerp(20, 34, r()), rot: r() * 6.28, cell: r() < 0.6 ? 0 : 1, tone: t };
-    }), 7.0, ['#0d241a', '#1d4630', '#46845a', '#7cb46a'], 1.0);
+    }), 7.0, ['#11291f', '#1f4a32', '#46865a', '#80b86c'], 1.0);
 
     /* ---------------- foreground broad leaves (lower-left plant) ---------------- */
     const plPoly = [[-40, 270], [60, 275], [140, 310], [190, 400], [230, 500], [330, 590], [390, 700], [380, 740], [-40, 740]];
     leafSpray(sprayPoly(plPoly, 230, 109, (x, y, r) => {
-      if (x > 200 && r() < 0.5) return null;
+      if (x > 180 && r() < 0.72) return null;
+      if (x > 120 && y < 420 && r() < 0.5) return null;
       const patch = vn(x / 120, y / 120);
       return { size: lerp(36, 62, r()), rot: (r() - 0.5) * 2.6 + (x > 150 ? 0.6 : -0.3), cell: 3,
         tone: Math.min(1, Math.max(0, 0.38 + (patch - 0.5) * 0.8 + (r() - 0.5) * 0.5 - smooth01(560, 720, y) * 0.3)) };

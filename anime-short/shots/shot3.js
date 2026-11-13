@@ -12,8 +12,8 @@ const GD = (py) => CAM_Y / ((py / 360 - 1) * TV);          // view distance of g
 export default {
   duration: 3.042,
   credit: { role: '3D ANIMATOR', cx: 0.743, ry: 0.674, ny: 0.726 },
-  post: { bloom: 0.18, bloomRadius: 0.5, bloomThreshold: 0.9, exposure: 1.0, contrast: 1.03, saturation: 1.04,
-    lift: [0.0, 0.01, 0.015], gamma: [1, 1, 1], gain: [1, 1, 1], vignette: 0.14, grain: 0.025, ca: 0.0008, soft: 0.25 },
+  post: { bloom: 0.18, bloomRadius: 0.5, bloomThreshold: 0.9, exposure: 1.05, contrast: 1.03, saturation: 1.04,
+    lift: [0.0, 0.01, 0.015], gamma: [1, 1, 1], gain: [1.02, 1.02, 0.96], vignette: 0.14, grain: 0.025, ca: 0.0008, soft: 0.25 },
 
   build(core) {
     const { THREE, rng, lerp, clamp, col, shared, NOISE_GLSL, paintTexture, makeFoliage, makeButterflies, makeMotes, lightRig } = core;
@@ -129,15 +129,15 @@ export default {
       const m = makeFoliage({ clumps, ...opts }); scene.add(m); return m;
     };
     // top-left canopy: near-black mass broken by mid-green leaf sprays
-    foliage([[40, 30, 14, 90], [170, 60, 14, 80], [50, 160, 14, 75], [220, 160, 14, 50], [260, 60, 14, 50]],
-      { density: 4.5, cardSize: PX(46, 14), kind: 'small', seed: 11, texSeed: 3, dark: '#0b120e', mid: '#121d16', light: '#22382a', highlight: '#3a5e40', wind: 0.02, lightWrap: 0.2, shell: 0.2 });
+    foliage([[40, 30, 14, 90], [160, 50, 14, 75], [50, 160, 14, 75], [195, 150, 14, 35]],
+      { density: 3.2, cardSize: PX(80, 14), kind: 'broad', seed: 11, texSeed: 3, dark: '#0b120e', mid: '#121d16', light: '#22382a', highlight: '#3a5e40', wind: 0.02, lightWrap: 0.2, shell: 0.2 });
     foliage([[150, 120, 13, 60], [60, 90, 13, 40], [280, 120, 13, 40], [250, 40, 13, 50], [20, 230, 13, 30]],
       { density: 0.7, cardSize: PX(40, 13), kind: 'small', seed: 16, texSeed: 11, dark: '#1f3a28', mid: '#2f5a3a', light: '#4a7a50', highlight: '#6a9a68', wind: 0.03, shell: 0.1 });
     // pale leaf sprays hanging into the light (centre)
     foliage([[420, 110, 16, 50], [470, 210, 16, 40], [600, 280, 16, 45], [560, 170, 16, 30], [700, 120, 16, 30], [840, 250, 16, 30]],
       { density: 0.9, cardSize: PX(40, 16), kind: 'small', seed: 12, texSeed: 5, dark: '#2c5a3a', mid: '#467f50', light: '#6f9f6c', highlight: '#90bd86', wind: 0.03, shell: 0.1 });
     // top-right overhang: dark crisp broad leaves
-    foliage([[950, 50, 11, 70], [1040, 80, 11, 60], [900, 140, 11, 30], [1100, 30, 11, 60], [880, 60, 11, 35]],
+    foliage([[950, 30, 11, 65], [1040, 55, 11, 55], [905, 110, 11, 25], [1100, 20, 11, 60], [880, 40, 11, 30]],
       { density: 0.8, cardSize: PX(80, 11), kind: 'broad', seed: 13, texSeed: 7, dark: '#0c1812', mid: '#11221a', light: '#1d3a2a', highlight: '#2f5a40', wind: 0.02, lightWrap: 0.1, shell: 0.25 });
     // right tree mass (teal-green, clearly lit leaves)
     foliage([[1250, 110, 10, 110], [1250, 270, 10, 100], [1270, 420, 10, 90], [1180, 60, 10, 50]],
@@ -191,10 +191,10 @@ export default {
       }
       return { c, rx, ry };
     }
-    const PINK = [{ t: 1, s: 21, c: '#e98aa8', cc: '#c94f78' }, { t: 1, s: 18, c: '#f2a7bd', cc: '#d0607f' }, { t: 1, s: 17, c: '#d66f92', cc: '#b04066' }, { t: 1, s: 15, c: '#e07a9c', cc: '#b84870' }];
-    const YEL = [{ t: 1, s: 27, c: '#f6d42a', cc: '#d79a12' }, { t: 3, s: 22, c: '#f3cf20', cc: '#d79a12' }];
+    const PINK = [{ t: 1, s: 18, c: '#e98aa8', cc: '#c94f78' }, { t: 1, s: 16, c: '#f2a7bd', cc: '#d0607f' }, { t: 1, s: 15, c: '#d66f92', cc: '#b04066' }, { t: 1, s: 14, c: '#e07a9c', cc: '#b84870' }, { t: 1, s: 15, c: '#f4bccb', cc: '#d77892' }];
+    const YEL = [{ t: 1, s: 17, c: '#f6d42a', cc: '#d79a12' }, { t: 3, s: 14, c: '#f3cf20', cc: '#d79a12' }];
     const RED = [{ t: 1, s: 14, c: '#c8162a', cc: '#7a0a16' }, { t: 1, s: 12, c: '#d42232', cc: '#8a0c1a' }, { t: 3, s: 11, c: '#b0122a', cc: '#700814' }];
-    const ORA = [{ t: 0, s: 36, c: '#f07a1e', cc: '#7a1d0c' }, { t: 0, s: 30, c: '#ee8a26', cc: '#7a1d0c' }];
+    const ORA = [{ t: 0, s: 44, c: '#f07a1e', cc: '#5a160a' }, { t: 0, s: 38, c: '#ec8a24', cc: '#5a160a' }, { t: 0, s: 34, c: '#e86a18', cc: '#5a160a' }];
     const WHI = [{ t: 1, s: 18, c: '#ece6d4', cc: '#cdbd8e' }, { t: 1, s: 15, c: '#e2dcc6', cc: '#c0b082' }];
     const PUR = [{ t: 2, s: 27, c: '#9c94e0', cc: '#e6c23a' }, { t: 2, s: 23, c: '#8c86d4', cc: '#e6c23a' }, { t: 2, s: 25, c: '#aaa2e8', cc: '#efcf48' }];
 
@@ -207,9 +207,9 @@ export default {
     greenBush([[1060, 190, 7.0, 30], [1100, 250, 7.0, 35], [1130, 310, 7.0, 35], [1170, 360, 7.0, 30], [1090, 330, 7.0, 25]], { density: 1.6, shell: 0.2, cardSize: PX(30, 7.0), seed: 35, texSeed: 12, dark: '#2a4a30', mid: '#4a7a50', light: '#7aa070', highlight: '#a6c79a' });
     greenBush([[870, 540, 3.6, 70], [1020, 460, 3.7, 70], [800, 580, 3.4, 40]], { density: 3.5, cardSize: PX(26, 3.6), seed: 36, texSeed: 14, dark: '#24452c', mid: '#3a6e40', light: '#5e9050' });
 
-    bush(345, 455, 7.3, 88, 80, 300, PINK, 101);
-    bush(515, 440, 7.6, 90, 100, 45, YEL, 102);
-    bush(705, 440, 7.8, 98, 62, 260, PINK, 103);
+    bush(345, 455, 7.3, 90, 82, 380, PINK, 101);
+    bush(515, 440, 7.6, 90, 100, 65, YEL, 102);
+    bush(705, 440, 7.8, 100, 64, 330, PINK, 103);
     bush(875, 290, 8.3, 50, 35, 60, RED, 104);
     bush(960, 300, 8.3, 50, 45, 70, RED, 114);
     bush(900, 365, 8.3, 85, 50, 120, RED, 115);
@@ -222,7 +222,7 @@ export default {
     bush(1080, 410, 3.6, 60, 50, 60, PUR, 107);
     bush(790, 585, 3.3, 45, 35, 35, PUR, 112);
     // orange day-lilies (left), yellow sprinkles and small red flowers
-    bush(115, 410, 3.7, 95, 140, 55, ORA, 108);
+    bush(110, 405, 3.7, 105, 140, 40, ORA, 108);
     bush(120, 525, 3.7, 80, 35, 18, ORA, 119);
     bush(50, 420, 3.8, 55, 60, 30, [{ t: 1, s: 16, c: '#f2d02a', cc: '#d8a414' }], 109);
     bush(195, 548, 3.9, 40, 12, 10, [{ t: 3, s: 12, c: '#e3392a', cc: '#a01b14' }], 110);
@@ -230,12 +230,12 @@ export default {
     scene.add(makeFlowers(core, flowers));
 
     /* ---------------- 6. foreground framing leaves ---------------- */
-    foliage([[40, 400, 4.6, 110], [150, 470, 4.6, 90], [60, 290, 4.8, 60]],
+    foliage([[40, 400, 4.6, 110], [150, 470, 4.6, 90], [60, 290, 4.8, 60], [90, 545, 4.3, 85], [190, 530, 4.4, 40]],
       { density: 3, cardSize: PX(60, 4.6), kind: 'broad', seed: 44, texSeed: 5, dark: '#12261a', mid: '#20432a', light: '#3f7240', highlight: '#6a9a4a', wind: 0.025, lightWrap: 0.25, shell: 0.5 });
-    foliage([[80, 670, 2.6, 120], [200, 710, 2.2, 85], [20, 690, 2.2, 100], [170, 625, 2.8, 50], [80, 730, 2.1, 100]],
+    foliage([[80, 670, 2.6, 120], [170, 715, 2.2, 75], [20, 690, 2.2, 100], [170, 625, 2.8, 50], [80, 730, 2.1, 100]],
       { density: 3.2, cardSize: PX(70, 3.2), kind: 'broad', seed: 41, texSeed: 2, dark: '#0c1d12', mid: '#17331f', light: '#2f5a33', highlight: '#5a8a4a', wind: 0.025, lightWrap: 0.25, shell: 0.5 });
-    foliage([[1210, 520, 3.4, 150], [1180, 650, 2.6, 120], [1270, 380, 3.6, 100], [1090, 690, 2.3, 60], [1250, 680, 2.3, 90], [1180, 730, 2.1, 80], [1270, 730, 2.1, 80]],
-      { density: 3.2, cardSize: PX(70, 3.3), kind: 'broad', seed: 42, texSeed: 3, dark: '#0f2316', mid: '#21452b', light: '#4b7f4a', highlight: '#86b36c', wind: 0.025, lightWrap: 0.3, shell: 0.5 });
+    foliage([[1235, 520, 3.4, 130], [1190, 650, 2.6, 115], [1270, 380, 3.6, 100], [1090, 690, 2.3, 60], [1250, 680, 2.3, 90], [1180, 730, 2.1, 80], [1270, 730, 2.1, 80]],
+      { density: 3.2, cardSize: PX(70, 3.3), kind: 'broad', seed: 42, texSeed: 3, dark: '#0f2316', mid: '#1f4029', light: '#3f7040', highlight: '#6f9a5a', wind: 0.025, lightWrap: 0.3, shell: 0.5 });
     foliage([[820, 715, 2.1, 25], [965, 715, 2.1, 30]],
       { density: 3, cardSize: PX(50, 2.9), kind: 'broad', seed: 43, texSeed: 4, dark: '#0b1a10', mid: '#132a19', light: '#24452a', highlight: '#3a6640', wind: 0.02 });
 

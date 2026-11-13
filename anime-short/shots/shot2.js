@@ -6,8 +6,8 @@ const SUN = [-0.55, 0.62, 0.56];
 export default {
   duration: 3.0,
   credit: { role: 'CONCEPT AND DESIGN', cx: 0.297, ry: 0.51, ny: 0.556 },
-  post: { bloom: 0.35, bloomRadius: 0.45, bloomThreshold: 0.8, exposure: 1.0, contrast: 1.04, saturation: 1.04,
-    lift: [0.0, 0.0, 0.01], vignette: 0.2, grain: 0.03, ca: 0.001, soft: 0.2 },
+  post: { bloom: 0.35, bloomRadius: 0.45, bloomThreshold: 0.8, exposure: 1.0, contrast: 1.04, saturation: 1.0,
+    lift: [0.02, 0.012, 0.0], vignette: 0.2, grain: 0.03, ca: 0.001, soft: 0.2 },
   build(core) {
     const { THREE, makeSky, makeCloud, makeFoliage, lightRig, toon, makeWire, makeButterflies, makeMotes, shared,
       paintTexture, chainLinkTexture, softDotTexture, NOISE_GLSL, rng, lerp, col } = core;
@@ -55,7 +55,7 @@ export default {
       const tex = paintTexture('s2_cloud', (X1 - X0) * SC, (Y1 - Y0) * SC, (g, w, h, r) => {
         g.clearRect(0, 0, w, h);
         const LD = [0.55, -0.83];
-        g.filter = 'blur(2.2px)';
+        g.filter = 'blur(1.5px)';
         // build bumpy lobes once, then shade the merged silhouette in global passes (crisp painted bands)
         const lobes = [];
         for (const [bx, by, br] of blobs) {
@@ -67,19 +67,22 @@ export default {
         pass('#7a929b', 0, 1.0);
         g.save(); g.beginPath(); for (const [x, y, rr] of lobes) { g.moveTo(x + rr, y); g.arc(x, y, rr, 0, Math.PI * 2); } g.clip();
         pass('#97a3a2', 0.18, 0.96);
-        pass('#aca89e', 0.34, 0.88);
-        pass('#b7b1a5', 0.6, 0.55);
-        // central shaded cleft between the tower and the left lobes
-        g.globalAlpha = 0.55; g.fillStyle = '#7690a0';
-        for (const [bx, by, br] of [[690, 205, 20], [665, 235, 18], [720, 250, 16], [645, 262, 12], [780, 232, 12]]) { g.beginPath(); g.arc((bx - X0) * SC, (by - Y0) * SC, br * SC, 0, Math.PI * 2); g.fill(); }
-        g.globalAlpha = 1; g.restore();
+        pass('#aca89e', 0.42, 0.84);
+        pass('#b8b2a6', 0.7, 0.5);
+        // lower body falls into cool shade
+        g.globalCompositeOperation = 'multiply';
+        const gr = g.createLinearGradient(0, (150 - Y0) * SC, 0, (330 - Y0) * SC);
+        gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.55, 'rgba(200,215,225,0.55)'); gr.addColorStop(1, 'rgba(170,195,210,0.8)');
+        g.fillStyle = gr; g.fillRect(0, 0, w, h);
+        g.globalCompositeOperation = 'source-over';
+        g.restore();
       });
       card(X0, Y0, X1, Y1, 900, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })).renderOrder = -5;
     }
 
     /* ---------------- lights ---------------- */
-    lightRig(scene, { sunDir: SUN, sunColor: '#fff0dc', sunIntensity: 2.4, sky: '#6fb6c8', ground: '#4a3a30', hemiIntensity: 0.55,
-      ambient: '#3a4a6a', ambientIntensity: 0.35 });
+    lightRig(scene, { sunDir: SUN, sunColor: '#fff0dc', sunIntensity: 2.4, sky: '#6fb6c8', ground: '#4a4440', hemiIntensity: 0.55,
+      ambient: '#4a5470', ambientIntensity: 0.7 });
 
     /* ---------------- overpass ---------------- */
     const H = 5.2;                         // fascia top height above camera
@@ -98,11 +101,11 @@ export default {
     }, { repeat: true });
     concTex.repeat.set(6, 1);
     const fasciaMat = toon({ color: '#d8c8a8', map: concTex, dapple: false });
-    const underMat = toon({ color: '#3a3632', dapple: false });
-    const girderMat = toon({ color: '#48443e', dapple: false });
+    const underMat = toon({ color: '#504f4c', dapple: false });
+    const girderMat = toon({ color: '#5a5856', dapple: false });
     const flangeMat = toon({ color: '#77716a', dapple: false });
     const postMat = toon({ color: '#f4efe6', dapple: false });
-    const L0 = -60, L1 = 60, LEN = L1 - L0, WID = 40;
+    const L0 = -80, L1 = 220, LEN = L1 - L0, WID = 40;
     const obox = (w, h, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); opGroup.add(m); return m; };
     // deck slab (fascia face at z=0)
     obox(LEN, 0.75, WID, underMat, (L0 + L1) / 2, -0.375, WID / 2);
@@ -139,7 +142,7 @@ export default {
       const r = ray(518, 132); const hb = Math.hypot(PB.x, PB.z); const rh = Math.hypot(r.x, r.z);
       PT.copy(CAM).addScaledVector(r, hb / rh);
       const len = PT.distanceTo(PB);
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.17, len, 10), poleMat);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.15, len, 10), poleMat);
       pole.position.copy(PB).lerp(PT, 0.5);
       pole.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), PT.clone().sub(PB).normalize());
       scene.add(pole);
@@ -166,6 +169,8 @@ export default {
       W(at(487, 100, dP), at(515, 200, dP), 0.15, 0.012);
     }
 
+    { const gp = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshBasicMaterial({ color: col('#2a2420') })); gp.rotation.x = -Math.PI / 2; gp.position.y = GROUND; scene.add(gp); }
+
     /* ---------------- right tree mass (behind right fence) ---------------- */
     {
       const clumps = []; const r = rng(77);
@@ -173,7 +178,7 @@ export default {
         [960, 420, 1.3], [1060, 450, 1.7], [1180, 470, 1.9], [1260, 560, 1.8], [1100, 620, 1.8], [1000, 600, 1.5], [980, 700, 1.4], [1200, 700, 1.6], [940, 290, 1.0]];
       for (const [px, py, rr] of pts) { const p = at(px, py, 11 + r() * 2); clumps.push([p.x, p.y, p.z, rr]); }
       scene.add(makeFoliage({ clumps, density: 7, cardSize: 1.1, kind: 'round', seed: 31, texSeed: 3,
-        dark: '#18241e', mid: '#21402f', light: '#335a3c', highlight: '#4f7a4a', wind: 0.02, lightWrap: 0.45, shell: 0.6 }));
+        dark: '#1a2a20', mid: '#284a34', light: '#3c6a44', highlight: '#62925a', wind: 0.02, lightWrap: 0.45, shell: 0.6 }));
     }
 
     /* ---------------- chain-link fences ---------------- */
@@ -220,7 +225,7 @@ export default {
       const Hf = 1.05;
       const A = hitY(60, 568, Hf), B = hitY(600, 400, Hf);
       const len = A.distanceTo(B);
-      const f = quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), fenceMat([len / 0.3, (Hf - GROUND) / 0.3], '#5a3c34', '#e0a880', 0.52));
+      const f = quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), fenceMat([len / 0.3, (Hf - GROUND) / 0.3], '#6a4a42', '#d8a07c', 0.6));
       scene.add(f);
       tube(hitY(-40, 600, Hf), B, 0.035, railMat);
       // posts
@@ -231,7 +236,7 @@ export default {
       const Hr = 1.5;
       const A = hitY(860, 258, Hr), B = hitY(1330, 62, Hr);
       const len = A.distanceTo(B);
-      scene.add(quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), fenceMat([len / 0.12, (Hr - GROUND) / 0.12], '#2e2420', '#d8c8b0', 0.6)));
+      scene.add(quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), fenceMat([len / 0.12, (Hr - GROUND) / 0.12], '#2a221e', '#d8c8b0', 0.66)));
       tube(A, B, 0.03, darkRailMat);
       // diagonal brace / lower rail
       tube(at(975, 395, A.distanceTo(CAM) * 1.0), at(1300, 512, 2.6), 0.022, darkRailMat);
@@ -250,10 +255,10 @@ export default {
       g.fillStyle = shade ? '#5a0810' : '#d43a3c'; g.fillRect(0, 0, w, h * 0.018);
       // glass display
       const gx0 = w * 0.045, gx1 = w * 0.86, gy0 = h * 0.03, gy1 = h * 0.6;
-      g.fillStyle = shade ? '#4a3a34' : '#e2d6be'; g.fillRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
+      g.fillStyle = shade ? '#3e302c' : '#cfc0a4'; g.fillRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
       const rows = 5, rh = (gy1 - gy0) / rows;
       const cols = shade ? ['#8a7a6c', '#7a6458', '#86504a', '#6a6a5a', '#9a8a74', '#5a5a6a', '#8a6a4a', '#a09080'] :
-        ['#f4ece0', '#efe0d0', '#f0c8b8', '#e4e8d4', '#f6e6c4', '#d8dce8', '#f2d8b0', '#fbf6ec'];
+        ['#e4d8c4', '#dccab4', '#e0b8a4', '#d4d4bc', '#e6d2ac', '#c8c8cc', '#e0c49c', '#ece2d0'];
       for (let k = 0; k < rows; k++) {
         const y0 = gy0 + k * rh;
         g.fillStyle = shade ? '#2e2220' : '#cbbca4'; g.fillRect(gx0, y0, gx1 - gx0, rh * 0.12);
@@ -264,7 +269,7 @@ export default {
           const by = y0 + rh * 0.78 - bh;
           g.fillRect(bx - bw / 2, by + bh * 0.25, bw, bh * 0.75);
           g.fillRect(bx - bw * 0.3, by + bh * 0.08, bw * 0.6, bh * 0.2);
-          g.fillStyle = shade ? '#b8a898' : '#ffffff'; g.fillRect(bx - bw * 0.2, by, bw * 0.4, bh * 0.08);
+          g.fillStyle = shade ? '#a89888' : '#f4ecdc'; g.fillRect(bx - bw * 0.2, by, bw * 0.4, bh * 0.08);
           g.fillStyle = shade ? '#9a8a7a' : '#fff8ec'; g.fillRect(bx - bw * 0.45, y0 + rh * 0.82, bw * 0.9, rh * 0.06);
           g.fillStyle = shade ? '#2a2a2a' : '#7a7068'; g.fillRect(bx - bw * 0.18, y0 + rh * 0.9, bw * 0.36, rh * 0.05);
         }
@@ -349,15 +354,15 @@ export default {
     /* ---------------- barrier tape with bulbs ---------------- */
     const tapeTex = paintTexture('s2_tape', 512, 32, (g, w, h) => {
       g.fillStyle = '#16120f'; g.fillRect(0, 0, w, h);
-      for (let x = 0; x < w; x += 64) { g.fillStyle = '#f2cf62'; g.beginPath(); g.moveTo(x, h); g.lineTo(x + 20, 0); g.lineTo(x + 52, 0); g.lineTo(x + 32, h); g.fill(); }
+      for (let x = 0; x < w; x += 64) { g.fillStyle = '#ffe28a'; g.beginPath(); g.moveTo(x, h); g.lineTo(x + 20, 0); g.lineTo(x + 52, 0); g.lineTo(x + 32, h); g.fill(); }
     }, { repeat: true });
-    const ribbon = (pts, width, rep) => {
-      const curve = new THREE.CatmullRomCurve3(pts);
+    const ribbon = (pts, width) => {
+      const curve = new THREE.CatmullRomCurve3(pts); const rep = curve.getLength() / 0.32;
       const n = 80, pos = [], uv = [], idx = [];
       for (let i = 0; i <= n; i++) {
         const t = i / n, p = curve.getPoint(t), tg = curve.getTangent(t);
         const side = new THREE.Vector3(0, 1, 0).sub(tg.clone().multiplyScalar(tg.y)).normalize().multiplyScalar(width / 2);
-        side.applyAxisAngle(tg, 0.4 * Math.sin(t * 9));
+        side.applyAxisAngle(tg, 0.15 * Math.sin(t * 7));
         pos.push(...p.clone().add(side).toArray(), ...p.clone().sub(side).toArray()); uv.push(t * rep, 1, t * rep, 0);
         if (i < n) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
       }
@@ -367,20 +372,20 @@ export default {
     };
     const bulbs = [];
     {
-      const c1 = ribbon([at(-20, 700, 3.2), at(120, 680, 3.4), at(260, 668, 3.6), at(380, 645, 3.8), at(470, 612, 4.0), at(540, 565, 4.2), at(590, 530, 4.4)], 0.065, 16);
-      const c2 = ribbon([at(980, 492, 4.0), at(1100, 482, 3.6), at(1220, 466, 3.2), at(1320, 455, 3.0)], 0.075, 10);
+      const c1 = ribbon([at(-20, 700, 3.2), at(120, 680, 3.4), at(260, 668, 3.6), at(380, 645, 3.8), at(470, 612, 4.0), at(540, 565, 4.2), at(590, 530, 4.4)], 0.1);
+      const c2 = ribbon([at(980, 492, 4.0), at(1100, 482, 3.6), at(1220, 466, 3.2), at(1320, 455, 3.0)], 0.16);
       for (let i = 0; i < 9; i++) bulbs.push(c1.getPoint((i + 0.4) / 9));
       for (let i = 0; i < 4; i++) bulbs.push(c2.getPoint((i + 0.3) / 4));
       const bg = new THREE.BufferGeometry().setFromPoints(bulbs);
-      const bm = new THREE.PointsMaterial({ size: 0.22, map: softDotTexture(), color: col('#ffe8a0'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+      const bm = new THREE.PointsMaterial({ size: 0.35, map: softDotTexture(), color: col('#ffe8a0'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
       scene.add(new THREE.Points(bg, bm));
     }
 
     /* ---------------- traffic cone ---------------- */
     {
       const coneDraw = (sh) => (g, w, h) => {
-        g.fillStyle = sh ? '#5e2c24' : '#f08a4a'; g.fillRect(0, 0, w, h);
-        g.fillStyle = sh ? '#8a7c78' : '#fff6e8'; g.fillRect(0, h * 0.16, w, h * 0.13); g.fillRect(0, h * 0.42, w, h * 0.15);
+        g.fillStyle = sh ? '#94442a' : '#f28c48'; g.fillRect(0, 0, w, h);
+        g.fillStyle = sh ? '#b0a098' : '#fff6e8'; g.fillRect(0, h * 0.16, w, h * 0.13); g.fillRect(0, h * 0.42, w, h * 0.15);
       };
       const cp = hitY(1196, 545, 0.25);
       const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.16, 0.85, 16, 1, true),
@@ -398,8 +403,8 @@ export default {
       scene.add(m); return m;
     };
     // top-left mass + left edge column
-    fol([[60, 40, 90], [180, 20, 70], [300, 5, 45], [20, 180, 80], [70, 260, 55], [10, 380, 60], [30, 480, 50], [120, 470, 35],
-      [150, 560, 35], [40, 620, 55], [200, 650, 35], [100, 700, 45]], 2.2, 120, { seed: 41, texSeed: 2 });
+    fol([[60, 40, 90], [170, 15, 60], [290, 0, 40], [20, 180, 80], [60, 270, 50], [0, 380, 50], [10, 480, 45], [110, 480, 28],
+      [140, 560, 28], [20, 610, 45], [180, 650, 25], [70, 700, 40]], 2.2, 115, { seed: 41, texSeed: 2 });
     // top-centre hanging cluster
     fol([[470, 30, 55], [540, 60, 50], [600, 100, 40], [630, 40, 45], [430, 15, 40]], 3.2, 100, { seed: 43, texSeed: 4,
       dark: '#0f2018', mid: '#1b4a36', light: '#2f7050', highlight: '#5f9a6a' });
@@ -408,7 +413,7 @@ export default {
     {
       const a = at(60, 700, 3.0), b = at(460, 530, 3.6);
       scene.add(makeButterflies({ count: 14, box: [[Math.min(a.x, b.x), Math.min(a.y, b.y), Math.min(a.z, b.z)], [Math.max(a.x, b.x), Math.max(a.y, b.y), Math.max(a.z, b.z)]],
-        size: 0.05, color: '#ffd84a', glow: 1.5, speed: 0.8, seed: 12 }));
+        size: 0.075, color: '#ffd84a', glow: 1.6, speed: 0.8, seed: 12 }));
       const m1 = at(200, 650, 2.5), m2 = at(900, 150, 6);
       scene.add(makeMotes({ count: 30, box: [[Math.min(m1.x, m2.x), Math.min(m1.y, m2.y), Math.min(m1.z, m2.z)], [Math.max(m1.x, m2.x), Math.max(m1.y, m2.y), Math.max(m1.z, m2.z)]],
         size: 0.03, opacity: 0.6, seed: 4 }));

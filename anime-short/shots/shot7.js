@@ -26,40 +26,42 @@ export default {
     scene.add(camera);
     const SUN = new THREE.Vector3(0.35, 0.75, 0.55).normalize();
 
-    scene.add(makeSky({ zenith: '#46709a', mid: '#4e7d9e', horizon: '#5a88a6', haze: 0.3 }));
+    scene.add(makeSky({ zenith: '#4a76a0', mid: '#5482a4', horizon: '#6a92ae', haze: 0.3 }));
 
     /* ---------------- painted material with dapple ---------------- */
     const uDap = { value: 0 };
     const DAPPLE_GLSL = `
       ${NOISE_GLSL}
       uniform float uT;
-      float dapple(vec3 p, float scale, float cover){
+      float dapple(vec3 p, float scale, float cover, float soft){
         vec2 q = vec2(p.x + p.z * 0.6, p.y + p.z * 0.35) * scale;
         q += vec2(sin(uT * 0.9 + q.y * 0.5), cos(uT * 0.7 + q.x * 0.4)) * 0.06;
         float n = fbm(q) + 0.22 * vnoise(q * 5.0 + 3.1);
-        return smoothstep(cover - 0.02, cover + 0.02, n);
+        return smoothstep(cover - soft, cover + soft, n);
       }`;
     const uT = { value: 0 };
     function paintMat({ shadow = '#333', lit = '#999', map = null, cover = 0.62, scale = 0.35, dap = 1.0, alphaTest = 0.5,
-      side = THREE.FrontSide, varAmt = 0.18, varScale = 0.25, litFace = 0.0, rim = null } = {}) {
+      side = THREE.FrontSide, varAmt = 0.18, varScale = 0.25, litFace = 0.0, rim = null, soft = 0.02, litMax = 1.0, boost = 1.0, coverX = [0, 1, 0] } = {}) {
       return new THREE.ShaderMaterial({
         uniforms: { cS: { value: col(shadow) }, cL: { value: col(lit) }, tMap: { value: map }, uHasMap: { value: map ? 1 : 0 },
           uCover: { value: cover }, uScale: { value: scale }, uDap: { value: dap }, uSun: { value: SUN }, uT,
-          uAT: { value: alphaTest }, uVar: { value: varAmt }, uVS: { value: varScale }, uLitFace: { value: litFace } },
+          uAT: { value: alphaTest }, uVar: { value: varAmt }, uVS: { value: varScale }, uLitFace: { value: litFace },
+          uSoftE: { value: soft }, uLitMax: { value: litMax }, uBoost: { value: boost }, uCovX: { value: new THREE.Vector3(...coverX) } },
         vertexShader: `varying vec2 vUv; varying vec3 vW; varying vec3 vN;
           void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position,1.); vW = w.xyz; vN = normalize(mat3(modelMatrix) * normal);
             gl_Position = projectionMatrix * viewMatrix * w; }`,
         fragmentShader: `varying vec2 vUv; varying vec3 vW; varying vec3 vN;
-          uniform vec3 cS, cL, uSun; uniform sampler2D tMap; uniform float uHasMap, uCover, uScale, uDap, uAT, uVar, uVS, uLitFace;
+          uniform vec3 cS, cL, uSun; uniform sampler2D tMap; uniform float uHasMap, uCover, uScale, uDap, uAT, uVar, uVS, uLitFace, uSoftE, uLitMax, uBoost; uniform vec3 uCovX;
           ${DAPPLE_GLSL}
           void main(){
             vec4 m = uHasMap > 0.5 ? texture2D(tMap, vUv) : vec4(1.);
             if (m.a < uAT) discard;
             float ndl = dot(normalize(vN), uSun);
             float face = smoothstep(-0.05, 0.1, ndl);
-            float d = mix(1.0, dapple(vW, uScale, uCover), uDap);
-            float L = max(face * d, uLitFace * face);
-            vec3 c = mix(cS, cL, L) * m.rgb;
+            float cov = uCover - smoothstep(uCovX.x, uCovX.y, vW.x) * uCovX.z;
+            float d = mix(1.0, dapple(vW, uScale, cov, uSoftE), uDap);
+            float L = max(face * d, uLitFace * face) * uLitMax;
+            vec3 c = mix(cS, cL * uBoost, L) * m.rgb;
             c *= 1.0 + (fbm(vW.xy * uVS + vW.z * 0.1) - 0.5) * uVar * 2.0;
             gl_FragColor = vec4(c, 1.);
           }`,
@@ -105,10 +107,10 @@ export default {
     bridge.rotation.y = -40 * Math.PI / 180;
     scene.add(bridge);
     // local: x along bridge (+x = near/right), y up (deck surface 0), z toward camera (front face z=0)
-    const faceMat = paintMat({ shadow: '#221a1c', lit: '#8e6c50', map: concreteTex, cover: 0.77, scale: 0.6, varAmt: 0.12 });
+    const faceMat = paintMat({ shadow: '#2c2421', lit: '#8e6c50', map: concreteTex, cover: 0.8, scale: 0.6, varAmt: 0.12, soft: 0.03, coverX: [4, 20, 0.13] });
     const slab = new THREE.Mesh(new THREE.BoxGeometry(260, 4.6, 11), faceMat);
     slab.position.set(-100, -2.2, -5.5); bridge.add(slab);
-    const lowerMat = paintMat({ shadow: '#2e2724', lit: '#7c5e48', map: concreteTex, cover: 0.76, scale: 0.55, varAmt: 0.12 });
+    const lowerMat = paintMat({ shadow: '#362c26', lit: '#82644c', map: concreteTex, cover: 0.79, scale: 0.55, varAmt: 0.12, soft: 0.03, coverX: [4, 20, 0.1] });
     const lower = new THREE.Mesh(new THREE.BoxGeometry(94, 20, 9), lowerMat);
     lower.position.set(-10, -14.5, -6.5); bridge.add(lower);
     const pier = new THREE.Mesh(new THREE.BoxGeometry(40, 20, 3), lowerMat);
@@ -128,25 +130,25 @@ export default {
 
     /* ---------------- train ---------------- */
     const trainTex = paintTexture('s7_train', 1024, 128, (g, w, h, r) => {
-      g.fillStyle = '#2c3a8c'; g.fillRect(0, 0, w, h);
-      g.fillStyle = '#6a8ad8'; g.fillRect(0, 0, w, 10);           // roof rim
-      g.fillStyle = '#2a3780'; g.fillRect(0, 10, w, 6);
+      g.fillStyle = '#1f1b33'; g.fillRect(0, 0, w, h);             // navy/indigo body (in shade)
+      g.fillStyle = '#3c4888'; g.fillRect(0, 0, w, 8);             // pale roof rim
+      g.fillStyle = '#2c2c58'; g.fillRect(0, 8, w, 8);
+      g.fillStyle = '#41445a'; g.fillRect(0, 32, w, 48);           // pale window band
       for (let i = 0; i < 8; i++) {                                // windows
         const x = 40 + i * 122;
-        g.fillStyle = '#6c7080'; g.fillRect(x, 34, 92, 44);
-        g.fillStyle = '#44485a'; g.fillRect(x + 4, 38, 84, 36);
-        g.fillStyle = 'rgba(160,170,190,0.5)'; g.fillRect(x + 6, 40, 30, 6);
+        g.fillStyle = '#2c2e40'; g.fillRect(x + 4, 37, 84, 38);
+        g.fillStyle = 'rgba(150,160,185,0.45)'; g.fillRect(x + 6, 39, 34, 6);
       }
-      g.fillStyle = '#26306c'; g.fillRect(0, 96, w, 32);
-      g.strokeStyle = '#1d2450'; g.lineWidth = 3;
-      for (const x of [20, w - 20]) { g.beginPath(); g.moveTo(x, 20); g.lineTo(x, h); g.stroke(); }
+      g.fillStyle = '#1e1c36'; g.fillRect(0, 98, w, 30);
+      g.strokeStyle = '#17152c'; g.lineWidth = 3;
+      for (const x of [20, w - 20]) { g.beginPath(); g.moveTo(x, 16); g.lineTo(x, h); g.stroke(); }
     });
-    const trainMat = paintMat({ shadow: '#2e2c4a', lit: '#a8b4dc', map: trainTex, cover: 0.74, scale: 0.6, varAmt: 0.1 });
+    const trainMat = paintMat({ shadow: '#ffffff', lit: '#ffd2a8', boost: 2.4, litMax: 0.75, soft: 0.07, map: trainTex, cover: 0.7, scale: 0.5, varAmt: 0.08 });
     const train = new THREE.Group();
     bridge.add(train);
     const CAR = 20, NCARS = 14;
     for (let i = 0; i < NCARS; i++) {
-      const car = new THREE.Mesh(new THREE.BoxGeometry(CAR - 0.6, 3.6, 2.9), trainMat);
+      const car = new THREE.Mesh(new THREE.BoxGeometry(CAR - 0.2, 3.6, 2.9), trainMat);
       car.position.set(-(i + 0.5) * CAR, 2.2, -3.0);
       train.add(car);
     }
@@ -158,7 +160,7 @@ export default {
 
     /* ---------------- catenary gantries ---------------- */
     const rustMat = paintMat({ shadow: '#33231f', lit: '#a87650', map: latWhite, cover: 0.62, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
-    const redMat = paintMat({ shadow: '#6a3434', lit: '#b88a90', map: latWhite, cover: 0.55, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
+    const redMat = paintMat({ shadow: '#5e2e2e', lit: '#b07068', map: latWhite, cover: 0.55, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
     const greyMat = paintMat({ shadow: '#4c4a5a', lit: '#c8a060', map: latWhite, cover: 0.62, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
     const yelMat = paintMat({ shadow: '#9a8048', lit: '#e0c27a', map: latWhite, cover: 0.4, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
     function beam(a, b, wid, dep, mat, seg = 1.5) {
@@ -198,7 +200,7 @@ export default {
       g.beginPath(); g.arc(128, 128, 84, 0, Math.PI * 2); g.fillStyle = '#2a4aa0'; g.fill();
       g.save(); g.translate(128, 128); g.rotate(Math.PI / 4); g.fillStyle = '#c42a30'; g.fillRect(-100, -14, 200, 28); g.restore();
     });
-    const signMat = (map) => paintMat({ shadow: '#4a4058', lit: '#e8e0e0', map, cover: 0.55, scale: 2.2, alphaTest: 0.5, side: THREE.DoubleSide, varAmt: 0.06 });
+    const signMat = (map) => paintMat({ shadow: '#4a4258', lit: '#e8dcd6', map, cover: 0.6, scale: 1.6, alphaTest: 0.5, side: THREE.DoubleSide, varAmt: 0.06 });
     const signs = new THREE.Group();
     signs.position.set(-1.25, 0, -9);
     scene.add(signs);
@@ -226,10 +228,10 @@ export default {
           g.fillStyle = color;
           for (const [x, y, rr] of puffs) { g.beginPath(); g.ellipse(x, y + dy * rr, rr * k * 1.25, rr * k, 0, 0, Math.PI * 2); g.fill(); }
         };
-        layer('#6684a6', 0.0, 1.0, 1.5);
-        layer('#8294ae', -0.16, 0.84, 1.5);
-        layer('#9aa6b8', -0.32, 0.64, 2);
-        layer('#aab2c0', -0.46, 0.4, 2.5);
+        layer('#62809f', 0.0, 1.0, 1.5);
+        layer('#7a8ca6', -0.16, 0.84, 1.5);
+        layer('#8c99ae', -0.32, 0.64, 2);
+        layer('#9ba5b6', -0.46, 0.4, 2.5);
         // flat-ish base
         g.globalCompositeOperation = 'destination-out';
         const fade = g.createLinearGradient(0, H2 * 0.68, 0, H2 * 0.82);
@@ -244,7 +246,8 @@ export default {
     const clouds = [
       [38, 92, -200, 125, 62, 3, 26], [98, 110, -200, 75, 40, 5, 14], [152, 134, -200, 100, 55, 8, 20], [-2, 80, -200, 55, 28, 11, 10],
       [190, 106, -200, 55, 28, 13, 10], [-92, 100, -200, 40, 18, 17, 8], [-104, 55, -200, 34, 16, 19, 8], [64, 128, -200, 64, 30, 23, 12],
-      [120, 150, -210, 60, 26, 29, 10],
+      [120, 150, -210, 60, 26, 29, 10], [-14, 100, -200, 45, 22, 31, 9], [212, 140, -200, 60, 28, 37, 12],
+      [-70, 125, -200, 30, 12, 41, 7], [-118, 85, -200, 26, 11, 43, 7], [-84, 40, -200, 24, 10, 47, 6], [108, 78, -200, 40, 16, 53, 8],
     ];
     for (const [x, y, z, w, h, sd, n] of clouds) {
       const c = cloudCard(sd, w, h, n);
@@ -256,15 +259,15 @@ export default {
     const treeL = [];
     { const r = rng(77);
       // canopy envelope: x edge (toward the pillar) as a function of height
-      for (let i = 0; i < 110; i++) {
+      for (let i = 0; i < 95; i++) {
         const y = lerp(-2, 24, r());
         const edge = -10.5 - Math.max(0, y - 9) * 0.45 - Math.max(0, 3 - y) * 0.5;
         const x = lerp(-26, edge, Math.pow(r(), 0.55));
-        treeL.push([x, y, lerp(-17, -22, r()), lerp(0.7, 1.25, r())]);
+        treeL.push([x, y, lerp(-17, -22, r()), lerp(1.0, 1.7, r())]);
       } }
     scene.add(makeFoliage({ clumps: treeL, maxCards: 20000,
-      density: 3.2, cardSize: 0.5, kind: 'small', seed: 21, wind: 0.05, shell: 0.45, lightWrap: 0.7, sizeJitter: 0.4,
-      dark: '#173d36', mid: '#25604f', light: '#3b8268', highlight: '#6aa888' }));
+      density: 2.6, cardSize: 0.62, kind: 'small', seed: 21, wind: 0.05, shell: 0.5, lightWrap: 0.8, sizeJitter: 0.4,
+      dark: '#164634', mid: '#22644a', light: '#3a8a60', highlight: '#76b87e' }));
     // tree behind the bridge on the right
     scene.add(makeFoliage({ clumps: [[38, 20, -60, 7], [46, 18, -58, 6], [30, 17, -64, 5.5]],
       density: 6, cardSize: 1.6, kind: 'small', seed: 31, wind: 0.02,
@@ -356,8 +359,8 @@ export default {
         void main(){
           vec2 p = vUv;
           vec3 c = vec3(0.);
-          c += arc(p, vec2(1.0, 1.1), 0.26, 0.06, 0.45);
-          c += arc(p, vec2(0.12, -0.62), 0.78, 0.09, 0.22);
+          c += arc(p, vec2(0.95, 1.12), 0.22, 0.1, 0.32);
+          c += arc(p, vec2(0.12, -0.62), 0.78, 0.12, 0.15);
           c += vec3(0.9, 0.35, 0.15) * smoothstep(0.35, 0.0, length((p - vec2(1.02, 0.1)) * vec2(1.6, 1.))) * 0.35;
           c += vec3(0.8, 0.5, 0.25) * smoothstep(0.30, 0.0, length((p - vec2(0.95, 1.02)) * vec2(1.6, 1.))) * 0.25;
           gl_FragColor = vec4(c * c, 1.);

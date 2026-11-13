@@ -19,6 +19,7 @@ const BLOBS = [
   [0.400, 0.033, 0.019, 0.32], [0.819, 0.511, 0.031, 0.19], [0.156, 0.178, 0.031, 0.19], [0.806, 0.022, 0.019, -0.31],
   // correction pass (fitted to the reference after a first render)
   [0.200, 0.044, 0.087, -0.19], [0.781, 0.033, 0.037, 0.34], [0.750, 0.300, 0.087, -0.13], [0.256, 0.556, 0.087, -0.11], [0.956, 0.678, 0.056, 0.17], [0.644, 0.467, 0.025, 0.29], [0.613, 0.667, 0.087, -0.09], [0.050, 0.000, 0.025, -0.26], [0.037, 0.222, 0.025, -0.25], [0.588, 0.856, 0.025, 0.24], [0.506, 0.778, 0.025, -0.23], [0.706, 0.067, 0.025, 0.23], [0.863, 0.156, 0.025, -0.22], [0.069, 0.611, 0.025, -0.22], [0.787, 0.644, 0.025, 0.21], [0.731, 0.711, 0.025, -0.23],
+  [0.856, 0.044, 0.037, 0.30], [0.006, 0.511, 0.037, 0.25], [0.581, 0.644, 0.087, 0.11], [0.981, 0.944, 0.056, 0.15], [0.525, 0.978, 0.037, 0.17], [0.662, 0.256, 0.056, -0.11], [0.469, 0.189, 0.025, 0.23], [0.650, 0.878, 0.037, -0.14], [0.188, 0.422, 0.025, 0.21], [0.900, 0.889, 0.025, -0.20], [0.319, 0.078, 0.025, -0.20], [0.894, 0.422, 0.025, 0.19], [0.800, 0.889, 0.025, -0.19], [0.113, 0.311, 0.037, -0.12], [0.506, 0.411, 0.025, 0.18], [0.725, 0.422, 0.025, -0.18],
 ];
 
 // Bird screen paths (pixels in a 1280x720 frame) fitted to the reference: cubic in t, plus log-size slope.
@@ -51,7 +52,8 @@ float patchField(vec2 s){
     vec4 b = uBlobs[i];
     vec2 d = s - b.xy; d.y *= ${(REF_H / REF_W).toFixed(4)};
     d = abs(d); d = min(d, vec2(1.0, ${(REF_H / REF_W).toFixed(4)}) - d);
-    v += b.w * exp(-dot(d, d) / (2.0 * b.z * b.z));
+    float sg = max(b.z, 0.03);
+    v += b.w * (b.z / sg) * exp(-dot(d, d) / (2.0 * sg * sg));
   }
   return v;
 }
@@ -124,7 +126,7 @@ void main(){
   float streak = vnoise(Q * vec2(0.09, 0.008) + 4.0) * 0.6 + vnoise(Q * vec2(0.25, 0.02) + 9.0) * 0.4;
   float mid = fbm(P * 0.012 + 21.0);
 
-  vec3 base = cBase + (pvn < 0.0 ? vec3(46.0, 46.0, 15.0) : vec3(46.0, 40.0, 10.0)) / 255.0 * pvn * 1.1;
+  vec3 base = cBase + (pvn < 0.0 ? vec3(46.0, 46.0, 15.0) : vec3(46.0, 40.0, 10.0)) / 255.0 * pvn * (pvn < 0.0 ? 1.2 : 1.2);
   base = mix(base, base * vec3(0.92, 1.0, 1.08), smoothstep(-0.1, -0.6, pvn));  // cooler shadows
   base *= 0.95 + 0.1 * streak;
   vec3 c = base;
@@ -134,15 +136,18 @@ void main(){
   // dense dark-stroke clumps live inside the dark patches
   float clump = smoothstep(0.28, 0.62, darkness + (mid - 0.5) * 1.1 + (streak - 0.5) * 0.3);
 
+  // some areas are painted smoother (fewer visible strands)
+  float tex = mix(0.4, 1.0, max(smoothstep(0.38, 0.62, fbm(P * 0.007 + 40.0)), clump));
   vec2 sc = strokes(P + vec2(3.3, 11.0), D, N, 5.0, 28.0, 3.0, 3.0);
   vec2 sb = strokes(P + vec2(1.7, 5.0), D, N, 6.0, 32.0, 2.0, 3.0);
   vec2 sa = strokes(P, D, N, 7.0, 30.0, 1.0, 4.2);
+  sc.x *= tex; sb.x *= tex; sa.x *= mix(tex, 1.0, 0.5);
 
   float pDark = mix(0.12, 0.85, clump);
   float pLight = 0.6 * (1.0 - clump * 0.7);
-  vec3 lightCol = mix(base * vec3(1.2, 1.12, 1.2), cLight, 0.25 + 0.35 * lightness);
+  vec3 lightCol = mix(base * vec3(1.14, 1.08, 1.14), cLight, 0.2 + 0.25 * lightness);
   vec3 olive = mix(base, cOlive, 0.7);
-  vec3 darkSoft = mix(cDark, base, 0.45 - 0.4 * clump);
+  vec3 darkSoft = mix(cDark, base, 0.6 - 0.5 * clump);
   // C: long thin light strands (and a few olive ones)
   if (sc.y < pLight) c = mix(c, (fract(sc.y * 17.0) > 0.85 ? olive : mix(lightCol, cLime, step(0.75, fract(sc.y * 29.0)) * lightness)), sc.x * 0.85);
   else if (sc.y > 1.0 - max(pDark, 0.3) * 0.7) c = mix(c, darkSoft, sc.x * 0.75);
@@ -150,7 +155,7 @@ void main(){
   if (sb.y < pLight * 0.7) c = mix(c, lightCol, sb.x * 0.7);
   else if (sb.y > 1.0 - pDark) c = mix(c, mix(darkSoft, cCool, step(0.75, fract(sb.y * 13.0)) * clump), sb.x * 0.85);
   // A: chunky dark clump strokes
-  if (sa.y > 1.0 - pDark * 0.9 * smoothstep(0.1, 0.5, clump)) c = mix(c, mix(darkSoft, cDeep, clump * 0.7), sa.x * 0.95);
+  if (sa.y > 1.0 - pDark * 0.9 * smoothstep(0.1, 0.5, clump)) c = mix(c, mix(darkSoft, cDeep, clump * 0.4), sa.x * 0.95);
   else if (sa.y < pLight * 0.35) c = mix(c, lightCol, sa.x * 0.6);
 
   gl_FragColor = vec4(toLin(c), 1.0);
@@ -282,7 +287,7 @@ export default {
   duration: 6.125,
   credit: null,
   post: { bloom: 0.0, bloomThreshold: 1.0, exposure: 1.0, contrast: 1.0, saturation: 1.0, lift: [0, 0, 0], gamma: [1, 1, 1], gain: [1, 1, 1],
-    vignette: 0.0, grain: 0.02, ca: 0.0, leak: 0, soft: 0.25 },
+    vignette: 0.0, grain: 0.008, ca: 0.0, leak: 0, soft: 0.25 },
   build(core) {
     const { THREE, NOISE_GLSL, shared } = core;
     const scene = new THREE.Scene();
@@ -313,17 +318,33 @@ export default {
 
     // pollen motes
     const r = core.rng(88);
-    const NM = 40, aM = new Float32Array(NM * 4);
-    for (let i = 0; i < NM; i++) aM.set([r(), r(), r(), 3 + r() * 4], i * 4);
+    const NM = 110, aM = new Float32Array(NM * 4);
+    for (let i = 0; i < NM; i++) aM.set([r(), r(), r(), 4 + Math.pow(r(), 2) * 9], i * 4);
     const mg = new THREE.BufferGeometry();
     mg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NM * 3), 3));
     mg.setAttribute('aM', new THREE.BufferAttribute(aM, 4));
     const motes = new THREE.Points(mg, new THREE.ShaderMaterial({
-      uniforms: { uT, uView: { value: new THREE.Vector2(viewW, viewH) }, uCol: { value: raw('#a9cf86') }, uOp: { value: 0.55 } },
+      uniforms: { uT, uView: { value: new THREE.Vector2(viewW, viewH) }, uCol: { value: raw('#a9cf86') }, uOp: { value: 0.7 } },
       vertexShader: MOTE_VS, fragmentShader: MOTE_FS, transparent: true, depthWrite: false, depthTest: false,
     }));
     motes.frustumCulled = false; motes.renderOrder = 1;
     scene.add(motes);
+
+    // a few tiny dark insects/seeds crawling on the grass (seen in the reference near the bottom centre)
+    const SPK = [[0.556, 0.953, 0.0, 6.0], [0.524, 0.962, 1.0, 5.0], [0.527, 0.976, 2.0, 6.5], [0.562, 0.848, 3.0, 5.0]];
+    const sg = new THREE.BufferGeometry();
+    sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SPK.length * 3), 3));
+    sg.setAttribute('aM', new THREE.BufferAttribute(new Float32Array(SPK.flat()), 4));
+    const specks = new THREE.Points(sg, new THREE.ShaderMaterial({
+      uniforms: { uT, uView: { value: new THREE.Vector2(viewW, viewH) } },
+      vertexShader: `attribute vec4 aM; uniform float uT; uniform vec2 uView;
+        void main(){ vec2 p = aM.xy + vec2(sin(uT * 0.4 + aM.z) * 0.004, -0.0015 * uT);
+          gl_Position = projectionMatrix * viewMatrix * vec4((p.x - 0.5) * uView.x, 0.04, (p.y - 0.5) * uView.y, 1.0); gl_PointSize = aM.w; }`,
+      fragmentShader: `void main(){ vec2 q = (gl_PointCoord - 0.5) * vec2(2.0, 1.2); if (dot(q, q) > 0.55) discard; gl_FragColor = vec4(0.035, 0.006, 0.003, 1.0); }`,
+      depthTest: false,
+    }));
+    specks.frustumCulled = false; specks.renderOrder = 1;
+    scene.add(specks);
 
     // birds (flat silhouettes in a plane parallel to the ground)
     const BIRD_Y = 6;

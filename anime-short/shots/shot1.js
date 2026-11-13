@@ -8,7 +8,7 @@ export default {
   credit: { role: 'CREATED BY', cx: 0.744, ry: 0.6875, ny: 0.736 },
   post: {
     bloom: 0.45, bloomRadius: 0.55, bloomThreshold: 0.78,
-    exposure: 1.0, contrast: 1.06, saturation: 1.05,
+    exposure: 0.93, contrast: 1.06, saturation: 1.0,
     lift: [0.03, 0.015, 0.0], gamma: [1.02, 1.0, 0.98], gain: [1.03, 1.0, 0.95],
     vignette: 0.2, grain: 0.03, ca: 0.0012, soft: 0.12,
   },
@@ -34,8 +34,8 @@ export default {
     /* ---------------- sky + light ---------------- */
     scene.add(makeSky({ zenith: '#3c6c98', mid: '#5996b8', horizon: '#8cbcc4', haze: 0.4, horizonY: 0.0 }));
     const SUN = V3(-0.3, 0.3, 0.9).normalize();
-    const rig = lightRig(scene, { sunDir: SUN.toArray(), sunColor: '#ffcf6e', sunIntensity: 3.6, sky: '#86acd8', ground: '#5a6a8a', hemiIntensity: 0.9,
-      ambient: '#5a7cb4', ambientIntensity: 0.9, shadows: true, shadowBox: 45, shadowRes: 2048, target: [5, 10, -40] });
+    const rig = lightRig(scene, { sunDir: SUN.toArray(), sunColor: '#ffcf6e', sunIntensity: 3.6, sky: '#8aa8cc', ground: '#6a7088', hemiIntensity: 0.9,
+      ambient: '#7a8aa8', ambientIntensity: 0.8, shadows: true, shadowBox: 45, shadowRes: 2048, target: [5, 10, -40] });
     rig.sun.shadow.camera.far = 400; rig.sun.shadow.bias = -0.0008; rig.sun.shadow.normalBias = 0.04;
     rig.sun.shadow.camera.updateProjectionMatrix();
 
@@ -48,37 +48,43 @@ export default {
       camera.add(m); return m;
     };
     const CX0 = 600, CY0 = -20, CX1 = 1100, CY1 = 300, CS = 2;
-    const cloudTex = paintTexture('s1_clouds', (CX1 - CX0) * CS, (CY1 - CY0) * CS, (g, w, h, r) => {
+    const cloudTex = paintTexture('s1_clouds2', (CX1 - CX0) * CS, (CY1 - CY0) * CS, (g, w, h, r) => {
       g.clearRect(0, 0, w, h);
-      const P = (px, py) => [(px - CX0) * CS, (py - CY0) * CS];
-      const blob = (px, py, rx, ry, rot, color, a) => {
-        const [x, y] = P(px, py);
-        g.save(); g.translate(x, y); g.rotate(rot); g.scale(1, ry / rx);
+      const stroke = (px, py, rx, ry, rot, c, a) => {
+        const x = (px - CX0) * CS, y = (py - CY0) * CS;
+        g.save(); g.translate(x, y); g.rotate(rot); g.scale(1, Math.max(ry, 0.5) / rx);
         const gr = g.createRadialGradient(0, 0, 0, 0, 0, rx * CS);
-        gr.addColorStop(0, color.replace('A', a)); gr.addColorStop(0.6, color.replace('A', a * 0.85)); gr.addColorStop(1, color.replace('A', 0));
+        gr.addColorStop(0, `rgba(${c},${a})`); gr.addColorStop(0.55, `rgba(${c},${a * 0.7})`); gr.addColorStop(1, `rgba(${c},0)`);
         g.fillStyle = gr; g.beginPath(); g.arc(0, 0, rx * CS, 0, 7); g.fill(); g.restore();
       };
-      // cloud masses: [px,py,size]
-      const masses = [
-        // big diagonal bank
-        [790, 120, 26], [820, 100, 30], [850, 80, 34], [885, 60, 34], [920, 45, 32], [955, 30, 30], [990, 15, 28], [1020, 5, 24],
-        [870, 115, 24], [905, 130, 22], [940, 110, 26], [975, 90, 24], [1005, 70, 20], [1025, 110, 16], [990, 140, 18],
-        [840, 140, 18], [960, 150, 16],
-        // left wisps
-        [700, 90, 16], [725, 75, 18], [750, 65, 14], [690, 120, 10], [760, 105, 10],
-        // small lower puffs
-        [955, 192, 12], [975, 188, 9], [1010, 240, 12], [1030, 246, 10],
+      const mix = (c1, c2, t) => c1.map((v, i) => Math.round(v + (c2[i] - v) * t)).join(',');
+      const LIT = [246, 247, 242], MID = [200, 214, 224], SH = [128, 156, 186];
+      // [cx, cy, rx, ry, rot, n, alpha]
+      const regions = [
+        [905, 78, 125, 50, -0.42, 260, 0.16], [985, 18, 70, 30, -0.3, 120, 0.17], [865, 128, 62, 22, -0.25, 90, 0.14],
+        [800, 112, 40, 16, -0.3, 50, 0.12], [738, 82, 52, 20, -0.5, 80, 0.13], [716, 124, 30, 7, -0.25, 30, 0.12],
+        [785, 196, 75, 6, -0.15, 50, 0.1], [930, 176, 50, 7, -0.2, 40, 0.1], [960, 246, 52, 6, -0.05, 40, 0.1],
+        [1012, 236, 30, 7, -0.1, 30, 0.12], [956, 190, 16, 8, -0.2, 25, 0.14], [1050, 60, 30, 14, -0.4, 40, 0.12],
       ];
-      // shadow layer
-      for (const [x, y, s] of masses) for (let i = 0; i < 4; i++) blob(x + (r() - 0.5) * s, y + s * 0.35 + (r() - 0.3) * s * 0.4, s * lerp(0.6, 0.95, r()), s * lerp(0.35, 0.6, r()), -0.35, 'rgba(118,150,184,A)', 0.55);
-      // mid layer
-      for (const [x, y, s] of masses) for (let i = 0; i < 4; i++) blob(x + (r() - 0.5) * s, y + (r() - 0.5) * s * 0.4, s * lerp(0.55, 0.85, r()), s * lerp(0.3, 0.55, r()), -0.4, 'rgba(196,212,222,A)', 0.6);
-      // lit tops
-      for (const [x, y, s] of masses) for (let i = 0; i < 3; i++) blob(x - s * 0.2 + (r() - 0.5) * s * 0.8, y - s * 0.25 + (r() - 0.5) * s * 0.3, s * lerp(0.35, 0.6, r()), s * lerp(0.2, 0.35, r()), -0.45, 'rgba(244,246,240,A)', 0.75);
-      // thin streaks
-      const streak = (x0, y0, x1, y1, wdt, a) => { for (let i = 0; i <= 12; i++) { const t = i / 12; blob(lerp(x0, x1, t), lerp(y0, y1, t) + (r() - 0.5) * 3, wdt * lerp(0.6, 1.2, r()), wdt * 0.25, Math.atan2(y1 - y0, x1 - x0), 'rgba(220,232,238,A)', a); } };
-      streak(700, 205, 830, 175, 14, 0.35); streak(860, 215, 960, 185, 12, 0.3); streak(640, 160, 720, 140, 12, 0.3); streak(1000, 205, 1080, 190, 10, 0.3);
-      streak(880, 250, 1000, 238, 10, 0.25);
+      for (const [cx, cy, rx, ry, rot, n, a] of regions) {
+        const c = Math.cos(rot), s = Math.sin(rot);
+        for (let i = 0; i < n; i++) {
+          let u, v; do { u = r() * 2 - 1; v = r() * 2 - 1; } while (u * u + v * v > 1);
+          v = v * 0.9 + (r() - 0.5) * 0.2;
+          const px = cx + u * rx * c - v * ry * s, py = cy + u * rx * s + v * ry * c;
+          const shade = Math.min(1, Math.max(0, v * 0.6 + 0.45 + (r() - 0.5) * 0.3));
+          const col = shade < 0.5 ? mix(LIT, MID, shade * 2) : mix(MID, SH, (shade - 0.5) * 2);
+          const len = rx * lerp(0.18, 0.4, r()) * (1 - 0.5 * Math.abs(u));
+          stroke(px, py, len, len * lerp(0.18, 0.35, r()), rot + (r() - 0.5) * 0.35, col, a * (1 - 0.4 * Math.abs(u)));
+        }
+        // lit crest along the upper edge
+        for (let i = 0; i < n / 4; i++) {
+          const u = r() * 1.8 - 0.9, v = -0.75 + (r() - 0.5) * 0.3;
+          const px = cx + u * rx * c - v * ry * s, py = cy + u * rx * s + v * ry * c;
+          const len = rx * lerp(0.1, 0.25, r());
+          stroke(px, py, len, len * 0.3, rot + (r() - 0.5) * 0.3, LIT.join(','), a * 1.3 * (1 - Math.abs(u) * 0.6));
+        }
+      }
     });
     const cloudMat = new THREE.MeshBasicMaterial({ map: cloudTex, transparent: true, depthWrite: false, fog: false });
     const cloudCard = camCard(CX0, CY0, CX1, CY1, 800, cloudMat); cloudCard.renderOrder = -5;
@@ -99,7 +105,6 @@ export default {
     via.position.copy(A);
     via.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(U, UP, N));
     scene.add(via);
-    console.warn('DBG A', A.toArray().map(v=>v.toFixed(2)).join(','), 'B', B.toArray().map(v=>v.toFixed(2)).join(','), 'N', N.toArray().map(v=>v.toFixed(2)).join(','), 'NdotL', N.dot(SUN).toFixed(2));
     const local = (px, py, d) => { const p = onPlane(px, py, A.clone().add(N.clone().multiplyScalar(d)), N).sub(A); return [p.dot(U), p.y]; };
     const vbox = (s0, s1, h0, h1, d0, d1, mat, cast = true, recv = true) => {
       const m = box(s1 - s0, h1 - h0, d1 - d0, mat, (s0 + s1) / 2, (h0 + h1) / 2, (d0 + d1) / 2);
@@ -129,14 +134,14 @@ export default {
     const girdTop = local(700, 445, 0.6)[1];
     const girdBot = local(700, 612, 0.6)[1];
     // parapet / edge beam (lit band)
-    vbox(S0, S1, bandBot, 0, -1.2, 0, concLit, false, true);
+    vbox(S0, S1, bandBot, 0, -1.2, 0, vtoon('#e6c890', { sB: SB, slope: 0.6 }), false, true);
     // deck slab underside (overhang)
     vbox(S0, S1, bandBot - 0.15, bandBot + 0.4, -3.0, -0.6, concDark, false, true);
     vbox(S0, S1, bandBot - 0.6, bandBot + 0.4, -14, -3.0, concDark, false, false);
     // web wall (set back) — receives bracket shadows
-    vbox(S0, S1, wallBot, bandBot, -3.0, -2.2, concLit, false, false);
+    vbox(S0, S1, wallBot, bandBot, -3.0, -2.2, concLit, false, true);
     // brackets under overhang
-    const bracketMat = vtoon('#efe2c8', { sB: SB, slope: 0.6 });
+    const bracketMat = vtoon('#dccaa8', { sB: SB, slope: 0.6 });
     for (let s = -40; s < S1; s += 9.5) {
       const g = new THREE.Group();
       const sh = new THREE.Shape();
@@ -149,9 +154,10 @@ export default {
       g.add(m); g.position.set(s, bandBot, -2.2); via.add(g);
     }
     // lower girder (cross beam, ribbed) — mostly in shadow
-    const girdMat = vtoon('#c8d2de', { k: 1, sB: local(330, 590, 0)[0], slope: 0 });
+    const girdMat = vtoon('#bfc4cc', { k: 1, sB: local(330, 590, 0)[0], slope: 0 });
     vbox(S0, S1, girdBot, girdTop, -1.0, 0.6, girdMat);
-    for (let k = 1; k <= 3; k++) { const hh = lerp(girdBot, girdTop, k / 4); vbox(S0, S1, hh - 0.08, hh + 0.08, 0.6, 0.85, girdMat); }
+    const ribMat = vtoon('#e4e6ea', { k: 0 });
+    for (let k = 1; k <= 3; k++) { const hh = lerp(girdBot, girdTop, k / 4); vbox(S0, S1, hh - 0.1, hh + 0.06, 0.6, 0.85, ribMat); }
     // piers
     const pierMat = vtoon('#8a8088', { k: 0 });
     for (const s of [-6, 4.5, 16, 33, 45, 62, 80]) {
@@ -160,9 +166,15 @@ export default {
     }
     // railing posts on parapet + top rail
     const railMat = vtoon('#f0e6d4', { sB: SB + 2, slope: 0.6 });
-    for (let s = -40; s < S1; s += 10.5) vbox(s - 0.12, s + 0.12, 0, 1.6, -0.4, -0.2, railMat);
-    vbox(S0, S1, 1.5, 1.6, -0.4, -0.25, railMat, false, true);
-    vbox(S0, S1, 0.8, 0.86, -0.4, -0.25, railMat, false, true);
+    {
+      const ps = [360, 690, 800, 905, 1000].map(px => local(px, 300, 0.15)[0]);
+      const step = (ps[4] - ps[1]) / 3;
+      for (let k = -6; k < 0; k++) ps.push(ps[0] + k * step);
+      for (let k = 1; k < 12; k++) ps.push(ps[4] + k * step);
+      for (const sp of ps) vbox(sp - 0.14, sp + 0.14, bandBot + 0.2, 2.0, 0.05, 0.3, railMat, true, true);
+      vbox(S0, S1, 1.9, 2.0, 0.05, 0.25, railMat, false, true);
+      vbox(S0, S1, 1.15, 1.22, 0.05, 0.25, railMat, false, true);
+    }
     // hanging hooks (cable brackets) under the deck on the right part
     for (let s = 30; s < S1; s += 8) {
       const c = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.07, 6, 16, Math.PI * 0.6), railMat);
@@ -210,7 +222,7 @@ export default {
     const truss = (len, w, color = '#d8cfc0') => {
       const t = latticeTex.clone(); t.wrapS = THREE.RepeatWrapping; t.repeat.set(Math.max(1, Math.round(len / w)), 1); t.needsUpdate = true;
       const mat = toon({ color, alphaMap: t, alphaTest: 0.5, transparent: false, side: THREE.DoubleSide });
-      const m = new THREE.Mesh(new THREE.BoxGeometry(len, w, w), mat); m.castShadow = true; return m;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(len, w, w), mat); return m;
     };
     const gantry = (s, dFar, dNear, hTop, postW, beamW, color) => {
       const g = new THREE.Group();
@@ -220,7 +232,6 @@ export default {
     };
     const projPx = (v) => { const p = v.clone().project(camera); return [(p.x + 1) * 640, (1 - p.y) * 360]; };
     const fromLocal = (s, h, d) => A.clone().add(U.clone().multiplyScalar(s)).add(V3(0, h, 0)).add(N.clone().multiplyScalar(d));
-    { const s7 = local(700, 445, 0.6)[0]; console.warn("DBG2", bandBot.toFixed(2), wallBot.toFixed(2), girdTop.toFixed(2), girdBot.toFixed(2), JSON.stringify(projPx(fromLocal(s7, girdTop, 0.6))), JSON.stringify(projPx(fromLocal(local(420,470,-2.2)[0], wallBot, -2.2)))); }
     const solveBeam = (xf, yf, xn, yn) => {
       let best = null;
       for (let dF = -4; dF <= 3; dF += 0.25) {
@@ -241,9 +252,8 @@ export default {
       via.add(g); return b;
     };
     const g1 = gantryAt(488, 18, 300, 155, 0.9, 0.75, '#efdcb4', 480);
-    const g2 = gantryAt(812, 100, 545, 262, 1.1, 0.75, '#c8c0b4', 828);
-    const g3 = gantryAt(1040, 270, 855, 350, 0.9, 0.7, '#a8a8ae', 1003);
-    console.warn('DBG gantries', JSON.stringify([g1, g2, g3].map(b => [b.s, b.h, b.dF, b.dN, Math.sqrt(b.e)].map(v => +v.toFixed(2)))));
+    const g2 = gantryAt(812, 100, 545, 262, 1.1, 0.75, '#a8a49e', 828);
+    const g3 = gantryAt(1040, 270, 855, 350, 0.9, 0.7, '#8e8e96', 1003);
     // round catenary pole (near side, behind traffic light)
     { const sp = local(748, 300, -0.6)[0], ht = local(748, 112, -0.6)[1]; const p = cyl(0.16, 0.18, ht + 1, steel, sp, (ht - 1) / 2, -0.6); p.castShadow = true; via.add(p); via.add(cyl(0.22, 0.22, 0.25, steel, sp, ht, -0.6)); }
     // overhead wires along the line
@@ -258,7 +268,7 @@ export default {
       const Z = -95;
       const FL = 3.0;   // floor height (m) ; texture = 8 floors
       const towerTex = paintTexture('s1_tower', 512, 512, (g, w, h, r) => {
-        const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#f8dc92'); gr.addColorStop(1, '#f2c776');
+        const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#f8e0a0'); gr.addColorStop(1, '#f4d088');
         g.fillStyle = gr; g.fillRect(0, 0, w, h);
         const fl = 64;
         for (let y = 0; y < h; y += fl) {
@@ -267,8 +277,8 @@ export default {
           g.fillStyle = '#f9de96'; g.fillRect(64, y + 46, 84, 8);
           // windows pairs
           for (const x of [200, 300, 400]) {
-            g.fillStyle = '#a7652c'; g.fillRect(x, y + 14, 60, 34);
-            g.fillStyle = '#d08a40'; g.fillRect(x + 4, y + 18, 24, 26); g.fillStyle = '#bb7432'; g.fillRect(x + 32, y + 18, 24, 26);
+            g.fillStyle = '#b78048'; g.fillRect(x, y + 14, 60, 34);
+            g.fillStyle = '#d9a45c'; g.fillRect(x + 4, y + 18, 24, 26); g.fillStyle = '#c88e4c'; g.fillRect(x + 32, y + 18, 24, 26);
           }
           g.fillStyle = 'rgba(150,80,30,0.35)'; g.fillRect(0, y + 54, w, 4);
           g.fillStyle = 'rgba(255,240,190,0.5)'; g.fillRect(0, y + 58, w, 3);
@@ -406,9 +416,9 @@ export default {
       const dir = T1.clone().sub(T0); const len = dir.length(); dir.normalize();
       const ang = Math.atan2(-dir.z, dir.x);
       const g = new THREE.Group(); g.position.copy(T0); g.rotation.y = ang; fence.add(g);
-      const railM = toon({ color: '#b9b8c4', dapple: false });
+      const railM = toon({ color: '#9894a0', dapple: false });
       for (const yy of [0, -0.42, -0.9]) g.add(box(len + 4, 0.08, 0.08, railM, len / 2, yy, 0));
-      const postM = toon({ color: '#a8a8b4', dapple: false });
+      const postM = toon({ color: '#9a96a2', dapple: false });
       const glowM = new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff0a8').multiplyScalar(1.5) });
       const fplane = T0.clone(), fN = V3(-dir.z, 0, dir.x);
       for (const px of [487, 545, 610, 680, 770, 875, 990, 1135, 1272]) {
@@ -423,7 +433,7 @@ export default {
         g2.fillStyle = 'rgba(255,220,140,0.6)'; g2.fillRect(0, 0, w, 10);
       });
       const Q = atDist(1000, 690, FD + 4);
-      const wall = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.6), flat({ map: panelTex }));
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.6), flat({ map: panelTex }));
       wall.position.set(Q.x, Q.y - 0.3, Q.z); wall.rotation.y = ang; scene.add(wall);
       // left low railing + lit wall
       const lrM = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffc870').multiplyScalar(1.15) });
@@ -433,7 +443,7 @@ export default {
       lg.add(box(ll, 0.035, 0.035, lrM, ll / 2, 0, 0), box(ll, 0.035, 0.035, lrM, ll / 2, -0.2, 0));
       for (let i = 0; i <= 6; i++) lg.add(box(0.035, 1.0, 0.035, lrM, i * ll / 6, -0.5, 0));
       const lw = atDist(380, 705, 17);
-      const lowWall = box(8, 1.0, 0.3, flat({ color: '#f2bd68' }), lw.x, lw.y - 0.3, lw.z); lowWall.rotation.y = lg.rotation.y; scene.add(lowWall);
+      const lowWall = box(3.6, 1.0, 0.3, flat({ color: '#f2bd68' }), lw.x, lw.y - 0.3, lw.z); lowWall.rotation.y = lg.rotation.y; scene.add(lowWall);
       // bicycle leaning on the fence (centre ~ screen 778, wheels 690..865)
       const bike = new THREE.Group();
       const bc = onPlane(778, 650, T0, V3(-dir.z, 0, dir.x));
@@ -464,7 +474,7 @@ export default {
       const TD = 7.5;
       const clumps = [];
       // silhouette: right edge x(py)
-      const rightEdge = (py) => py < 40 ? 190 : py < 250 ? 215 : py < 560 ? 250 : 260;
+      const rightEdge = (py) => py < 40 ? 160 : py < 250 ? 190 : py < 560 ? 215 : 225;
       const leftEdge = (py) => py < 140 ? 130 - py * 0.9 : -80;
       for (let py = -40; py < 780; py += 34) {
         const re = rightEdge(py);
@@ -472,11 +482,11 @@ export default {
           const jx = px + (r() - 0.5) * 40, jy = py + (r() - 0.5) * 30;
           const edge = re - jx;
           const p = atDist(jx, jy, TD + (r() - 0.5) * 1.2 + (edge < 60 ? 0.4 : 0));
-          clumps.push([p.x, p.y, p.z, lerp(0.35, 0.6, r())]);
+          clumps.push([p.x, p.y, p.z, lerp(0.28, 0.45, r())]);
         }
       }
       const tree = makeFoliage({ clumps, density: 4, cardSize: 0.45, kind: 'round', seed: 3, texSeed: 2,
-        dark: '#1a210f', mid: '#283216', light: '#4b5e2c', highlight: '#7f9a4c', wind: 0.02, shell: 0.6, lightWrap: 0.25, terminator: -0.05, sizeJitter: 0.6 });
+        dark: '#1b220f', mid: '#2a3417', light: '#56702f', highlight: '#86a052', wind: 0.02, shell: 0.6, lightWrap: 0.35, terminator: -0.04, sizeJitter: 0.6 });
       scene.add(tree);
       // lower-left broad leaves (very close)
       const lc = [];
@@ -504,7 +514,7 @@ export default {
     }
 
     // train timing: front s position (viaduct local) vs time
-    const trainS = (t) => -60 + (t - 1.0) * 30;
+    const trainS = (t) => -4.3 + (t - 1.2) * 13.6;
 
     return {
       scene, camera,
@@ -512,7 +522,7 @@ export default {
         shared.uSunDir.value.copy(SUN);
         shared.uDapple.value = 0; shared.uFogMax.value = 0;
         train.position.x = trainS(t);
-        train.visible = t > 0.8;
+        train.visible = true;
       },
     };
   },
