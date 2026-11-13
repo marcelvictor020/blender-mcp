@@ -220,6 +220,7 @@ export default {
     };
     const projPx = (v) => { const p = v.clone().project(camera); return [(p.x + 1) * 640, (1 - p.y) * 360]; };
     const fromLocal = (s, h, d) => A.clone().add(U.clone().multiplyScalar(s)).add(V3(0, h, 0)).add(N.clone().multiplyScalar(d));
+    { const s7 = local(700, 445, 0.6)[0]; console.warn("DBG2", bandBot.toFixed(2), wallBot.toFixed(2), girdTop.toFixed(2), girdBot.toFixed(2), JSON.stringify(projPx(fromLocal(s7, girdTop, 0.6))), JSON.stringify(projPx(fromLocal(local(420,470,-2.2)[0], wallBot, -2.2)))); }
     const solveBeam = (xf, yf, xn, yn) => {
       let best = null;
       for (let dF = -4; dF <= 3; dF += 0.25) {

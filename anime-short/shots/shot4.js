@@ -49,15 +49,13 @@ export default {
     const cloudFromPx = (x0, y0, x1, y1, puffs, seed, extra = {}) => {
       const W = x1 - x0, H = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, D = 700;
       const pf = puffs.map(([px, py, pr]) => [(px - cx) / W, (cy - py) / H, pr / H]);
-      const c = makeCloud({ w: W * wpp(D), h: H * wpp(D), seed, puffs: pf, light: '#e2e5e8', mid: '#c3ccd2', shadow: '#97adba', lightDir: [0.35, 0.95], edge: 0.05, detail: 0.9, ...extra });
+      const c = makeCloud({ w: W * wpp(D), h: H * wpp(D), seed, puffs: pf, light: '#e2e5e8', mid: '#c3ccd2', shadow: '#97adba', lightDir: [0.35, 0.95], edge: 0.1, detail: 0.55, ...extra });
       c.position.copy(scr(cx, cy, D)); return facing(c);
     };
-    scene.add(cloudFromPx(160, 40, 820, 420, [
-      [235, 175, 38], [270, 150, 34], [300, 200, 44], [250, 240, 44], [230, 290, 38], [290, 285, 50], [340, 128, 42],
-      [372, 104, 40], [412, 110, 40], [432, 150, 44], [360, 190, 58], [420, 210, 60], [470, 168, 50], [520, 150, 48],
-      [565, 140, 48], [612, 148, 44], [660, 140, 38], [700, 128, 34], [732, 160, 34], [752, 200, 34], [700, 200, 48],
-      [640, 212, 54], [560, 222, 60], [480, 252, 60], [380, 272, 60], [320, 322, 46], [268, 332, 40], [742, 240, 34],
-      [600, 272, 60], [500, 302, 60], [420, 322, 60],
+    scene.add(cloudFromPx(150, 30, 830, 430, [
+      [250, 190, 55], [262, 285, 60], [330, 150, 55], [395, 115, 52], [450, 160, 60], [380, 230, 75], [300, 330, 55],
+      [520, 160, 60], [600, 165, 58], [670, 145, 48], [725, 175, 45], [700, 230, 60], [610, 250, 75], [500, 260, 80],
+      [420, 320, 70], [745, 255, 40], [560, 330, 70],
     ], 4));
     scene.add(cloudFromPx(-60, 170, 190, 400, [
       [10, 255, 36], [62, 248, 38], [100, 275, 34], [40, 298, 44], [-10, 240, 36], [112, 318, 30], [62, 322, 40], [140, 300, 26],
@@ -67,30 +65,30 @@ export default {
     const clumpsPx = (list, d) => list.map(([px, py, pr, dz = 0]) => { const p = scr(px, py, d + dz); return [p.x, p.y, p.z, pr * wpp(d + dz)]; });
     // big dark tree mass, centre-left (shadow side facing us)
     scene.add(makeFoliage({ clumps: clumpsPx([
-      [330, 330, 60], [320, 430, 60], [380, 270, 60], [430, 235, 65], [490, 210, 60], [545, 225, 60], [395, 380, 80],
+      [345, 340, 55], [335, 430, 55], [390, 295, 55], [440, 255, 60], [495, 228, 58], [545, 235, 58], [400, 385, 80],
       [470, 330, 80], [540, 320, 70], [440, 460, 80], [360, 480, 60], [520, 440, 70], [590, 400, 60], [300, 500, 40],
-    ], 42), density: 9, cardSize: 1.6, kind: 'round', seed: 21, texSeed: 3,
+    ], 42), density: 6, cardSize: 2.6, kind: 'round', seed: 21, texSeed: 3,
       dark: '#0f1718', mid: '#172625', light: '#22423a', highlight: '#346a54', lightWrap: 0.1, wind: 0.004, shell: 0.6 }));
     // lit teal right half of that mass
     scene.add(makeFoliage({ clumps: clumpsPx([
       [600, 250, 45], [655, 280, 50], [715, 305, 45], [765, 340, 42], [800, 390, 40], [820, 440, 35], [690, 360, 50],
       [630, 330, 45], [740, 410, 45], [660, 420, 40], [580, 300, 40],
-    ], 38), density: 10, cardSize: 1.4, kind: 'round', seed: 22, texSeed: 4,
+    ], 38), density: 7, cardSize: 2.2, kind: 'round', seed: 22, texSeed: 4,
       dark: '#15292a', mid: '#1f4642', light: '#2f6e5c', highlight: '#4f9a78', lightWrap: 0.3, wind: 0.004, shell: 0.6 }));
     // very dark navy tree behind the farmhouse
     scene.add(makeFoliage({ clumps: clumpsPx([
       [1000, 140, 50], [1060, 110, 50], [1115, 150, 50], [1040, 205, 60], [1100, 230, 55], [1150, 270, 45], [1190, 305, 50],
       [985, 255, 45], [1000, 330, 50], [1240, 330, 45], [1180, 200, 40], [1060, 300, 50], [960, 300, 30],
-    ], 48), density: 9, cardSize: 1.7, kind: 'round', seed: 23, texSeed: 5,
+    ], 48), density: 6, cardSize: 2.8, kind: 'round', seed: 23, texSeed: 5,
       dark: '#0a161b', mid: '#102329', light: '#173a3c', highlight: '#2a6458', lightWrap: 0.1, wind: 0.004, shell: 0.6 }));
     // lighter bushes in the middle distance
     scene.add(makeFoliage({ clumps: clumpsPx([
       [470, 470, 28], [505, 440, 26], [655, 445, 32], [705, 462, 36], [760, 440, 32], [805, 470, 32], [545, 500, 28],
       [690, 505, 34], [745, 500, 32], [825, 500, 26], [470, 515, 22], [630, 500, 26],
-    ], 26), density: 11, cardSize: 0.75, kind: 'round', seed: 24, texSeed: 6,
+    ], 26), density: 8, cardSize: 1.2, kind: 'round', seed: 24, texSeed: 6,
       dark: '#22483c', mid: '#3d7a58', light: '#6ea262', highlight: '#a2c87e', lightWrap: 0.35, wind: 0.008, shell: 0.6 }));
     scene.add(makeFoliage({ clumps: clumpsPx([[595, 478, 34], [575, 505, 26], [620, 515, 22]], 25.5),
-      density: 11, cardSize: 0.7, kind: 'round', seed: 25, texSeed: 7,
+      density: 8, cardSize: 1.1, kind: 'round', seed: 25, texSeed: 7,
       dark: '#5e8a40', mid: '#8eb658', light: '#b8d27a', highlight: '#dde8a2', lightWrap: 0.4, wind: 0.008, shell: 0.6 }));
 
     /* ---------------- farmhouse: painted card (lighting painted in) ---------------- */
@@ -329,11 +327,11 @@ export default {
       ig.setIndex(idx); ig.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); ig.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
       const aO = new Float32Array(N * 4), aS = new Float32Array(N * 4), aC = new Float32Array(N * 2);
       for (let i = 0; i < N; i++) {
-        const z = 1.25 * Math.pow(24 / 1.25, Math.pow(r(), 0.85));
+        const z = 1.4 * Math.pow(24 / 1.4, Math.pow(r(), 0.85));
         const px = lerp(-80, 1360, r());
         const p = scr(px, HORIZON, z);
-        const spike = r() < 0.07 ? 18 + r() * 30 : 0;
-        const tipY = 546 + (r() - 0.5) * 44 - spike + (px < 420 ? 10 : 0);
+        const spike = r() < 0.08 ? 15 + r() * 30 : 0;
+        const tipY = 560 + (r() - 0.5) * 40 - spike + (px < 420 ? 10 : 0) + Math.max(0, (px - 1000) * 0.03);
         const h = Math.max(0.12, CAM_H - (tipY - HORIZON) * z / F);
         const w = (0.032 + 0.0105 * z) * lerp(0.7, 1.35, r());
         aO.set([p.x, 0, p.z, (r() - 0.5) * 1.1], i * 4);
@@ -479,7 +477,7 @@ export default {
     spray(canopy, 101, canopyPoly, 260, { d: 5.2, dz: 0.6, size: [34, 52],
       tone: (x, y, r) => 0.02 + r() * 0.22, rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.4, variant: 0 });
     spray(canopy, 102, canopyPoly, 330, { d: 5.0, dz: 0.6, size: [36, 54],
-      tone: (x, y, r) => { const q = r(); return q < 0.5 ? 0.3 + r() * 0.15 : 0.52 + r() * 0.2 + (q > 0.88 ? 0.25 : 0); },
+      tone: (x, y, r) => { const q = r(); return q < 0.55 ? 0.3 + r() * 0.15 : 0.52 + r() * 0.2 + (q > 0.93 ? 0.25 : 0); },
       rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.2, variant: (r) => (r() < 0.8 ? 0 : 3) });
     // right-hand bright cluster
     const canopyR = [[995, -30], [1300, -30], [1300, 300], [1242, 302], [1196, 285], [1165, 258], [1146, 210], [1110, 168], [1068, 136], [1030, 104], [1004, 64]];
@@ -487,7 +485,7 @@ export default {
     spray(canopy, 104, canopyR, 230, { d: 4.4, dz: 0.5, size: [36, 54],
       tone: (x, y, r) => { const q = r(); return q < 0.2 ? 0.32 + r() * 0.12 : 0.55 + r() * 0.18 + (q > 0.6 ? 0.25 : 0); },
       rot: (x, y, r) => Math.PI * 0.85 + (r() - 0.5) * 2.4, variant: 0 });
-    scene.add(leafLayer(canopy, { pal: ['#0e1f1f', '#1d4134', '#3b7656', '#68a478'], wind: 0.015 }));
+    scene.add(leafLayer(canopy, { pal: ['#0c1b1b', '#1b3a30', '#33694c', '#5b946b'], wind: 0.015 }));
 
     // --- tall broad-leaf weed on the left edge (silhouetted against the sky)
     const plantPoly = [[-10, 60], [50, 66], [92, 120], [150, 130], [210, 140], [262, 250], [256, 300], [300, 360], [352, 460], [290, 480], [240, 520], [-10, 540]];

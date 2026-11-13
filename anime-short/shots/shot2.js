@@ -56,19 +56,23 @@ export default {
         g.clearRect(0, 0, w, h);
         const LD = [0.55, -0.83];
         g.filter = 'blur(2.2px)';
+        // build bumpy lobes once, then shade the merged silhouette in global passes (crisp painted bands)
+        const lobes = [];
         for (const [bx, by, br] of blobs) {
           const x = (bx - X0) * SC, y = (by - Y0) * SC, rr = br * SC;
-          // bumpy silhouette: main disc + sub-lobes on the upper rim
-          const subs = [[0, 0, 1]];
-          for (let k = 0; k < 3; k++) { const a = -Math.PI * (0.1 + 0.8 * r()); subs.push([Math.cos(a) * 0.72, Math.sin(a) * 0.72, 0.4 + r() * 0.2]); }
-          const disc = (col, ox, oy, sc) => { g.fillStyle = col; for (const [sx, sy, sr] of subs) { g.beginPath(); g.arc(x + (sx + ox) * rr, y + (sy + oy) * rr, sr * rr * sc, 0, Math.PI * 2); g.fill(); } };
-          disc('#76909a', 0, 0, 1.0);
-          g.save(); g.beginPath(); for (const [sx, sy, sr] of subs) { g.moveTo(x + sx * rr + sr * rr, y + sy * rr); g.arc(x + sx * rr, y + sy * rr, sr * rr, 0, Math.PI * 2); } g.clip();
-          disc('#93a0a0', LD[0] * 0.14, LD[1] * 0.14, 0.97);
-          disc('#aba79d', LD[0] * 0.3, LD[1] * 0.3, 0.9);
-          disc('#b5afa3', LD[0] * 0.55, LD[1] * 0.55, 0.62);
-          g.restore();
+          lobes.push([x, y, rr]);
+          for (let k = 0; k < 3; k++) { const a = -Math.PI * (0.1 + 0.8 * r()); lobes.push([x + Math.cos(a) * rr * 0.72, y + Math.sin(a) * rr * 0.72, rr * (0.4 + r() * 0.2)]); }
         }
+        const pass = (colr, off, sc) => { g.fillStyle = colr; g.beginPath(); for (const [x, y, rr] of lobes) { g.moveTo(x + LD[0] * off * rr + rr * sc, y + LD[1] * off * rr); g.arc(x + LD[0] * off * rr, y + LD[1] * off * rr, rr * sc, 0, Math.PI * 2); } g.fill(); };
+        pass('#7a929b', 0, 1.0);
+        g.save(); g.beginPath(); for (const [x, y, rr] of lobes) { g.moveTo(x + rr, y); g.arc(x, y, rr, 0, Math.PI * 2); } g.clip();
+        pass('#97a3a2', 0.18, 0.96);
+        pass('#aca89e', 0.34, 0.88);
+        pass('#b7b1a5', 0.6, 0.55);
+        // central shaded cleft between the tower and the left lobes
+        g.globalAlpha = 0.55; g.fillStyle = '#7690a0';
+        for (const [bx, by, br] of [[690, 205, 20], [665, 235, 18], [720, 250, 16], [645, 262, 12], [780, 232, 12]]) { g.beginPath(); g.arc((bx - X0) * SC, (by - Y0) * SC, br * SC, 0, Math.PI * 2); g.fill(); }
+        g.globalAlpha = 1; g.restore();
       });
       card(X0, Y0, X1, Y1, 900, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })).renderOrder = -5;
     }
@@ -79,7 +83,7 @@ export default {
 
     /* ---------------- overpass ---------------- */
     const H = 5.2;                         // fascia top height above camera
-    const P1 = hitY(150, 72, H), P2 = hitY(625, 338, H);
+    const P1 = hitY(150, 52, H), P2 = hitY(625, 336, H);
     const D = P2.clone().sub(P1).setY(0).normalize();
     let N = new THREE.Vector3(-D.z, 0, D.x); if (N.dot(P1.clone().sub(CAM).setY(0)) < 0) { N.negate(); D.negate(); }
     const opGroup = new THREE.Group(); scene.add(opGroup);
@@ -385,7 +389,7 @@ export default {
     }
 
     /* ---------------- framing foliage ---------------- */
-    const leafCols = { dark: '#14261c', mid: '#1f5a3e', light: '#3d8a5c', highlight: '#7fb87a' };
+    const leafCols = { dark: '#16291f', mid: '#24603f', light: '#3f8d5a', highlight: '#86c07a', terminator: 0.1 };
     const NOFOL = false;
     const fol = (pts, d, cardPx, opts) => { if (NOFOL) return;
       const k = pxScale(d);

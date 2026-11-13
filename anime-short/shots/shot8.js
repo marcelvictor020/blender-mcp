@@ -58,7 +58,7 @@ float patchField(vec2 s){
 
 // local strand angle (radians, math convention with y up) at pixel P
 float strandAngle(vec2 P, vec2 s){
-  return radians(133.0 - 26.0 * s.x + (vnoise(P * 0.006 + 11.0) - 0.5) * 14.0 + (vnoise(P * 0.03 + 3.0) - 0.5) * 8.0);
+  return radians(123.0 - 20.0 * smoothstep(0.4, 0.75, s.x) - 4.0 * s.x + (vnoise(P * 0.006 + 11.0) - 0.5) * 14.0 + (vnoise(P * 0.03 + 3.0) - 0.5) * 8.0);
 }
 float windAt(vec2 P){
   return sin(dot(P, vec2(0.009, -0.016)) - uT * 2.2 + vnoise(P * 0.004) * 5.0);
@@ -115,7 +115,7 @@ void main(){
   float nz2 = fbm(P * 0.02 + 7.7);
   float pvn = pv + (nz - 0.5) * 0.35 + (nz2 - 0.5) * 0.15;
 
-  float g0 = radians(120.0);
+  float g0 = radians(115.0);
   vec2 D = vec2(cos(g0), -sin(g0));
   vec2 N = vec2(-D.y, D.x);
 
@@ -134,7 +134,7 @@ void main(){
   // dense dark-stroke clumps live inside the dark patches
   float clump = smoothstep(0.35, 0.75, darkness + (mid - 0.5) * 1.1 + (streak - 0.5) * 0.3);
 
-  vec2 sc = strokes(P + vec2(3.3, 11.0), D, N, 4.0, 46.0, 3.0, 2.1);
+  vec2 sc = strokes(P + vec2(3.3, 11.0), D, N, 5.0, 28.0, 3.0, 3.0);
   vec2 sb = strokes(P + vec2(1.7, 5.0), D, N, 6.0, 32.0, 2.0, 3.0);
   vec2 sa = strokes(P, D, N, 7.0, 30.0, 1.0, 4.2);
 

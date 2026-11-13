@@ -210,21 +210,48 @@ export default {
 
     /* ---------------- ground: sidewalk + kerb + road ---------------- */
     shared.uDapple.value = 1;
-    const groundMat = toon({ color: '#8e868c' });
     const sidewalkD0 = groundD(655), sidewalkD1 = 12.6;
-    const sw = new THREE.Mesh(new THREE.PlaneGeometry(60, sidewalkD1 - sidewalkD0), groundMat);
+    // custom painted ground: shaded purple-grey with warm sun flecks drifting (leaf shadow dapple)
+    const groundShader = (shade, lit, opts = {}) => new THREE.ShaderMaterial({
+      uniforms: { uTime: shared.uTime, cS: { value: col(shade) }, cL: { value: col(lit) }, cK: { value: col(opts.kerb || shade) },
+        uK0: { value: opts.k0 || 0 }, uK1: { value: opts.k1 || 0 }, uCover: { value: opts.cover || 0.6 }, uSeed: { value: opts.seed || 0 } },
+      vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+      fragmentShader: `varying vec3 vW; uniform float uTime, uK0, uK1, uCover, uSeed; uniform vec3 cS, cL, cK; ${NOISE_GLSL}
+        void main(){
+          vec2 p = vW.xz;
+          vec2 dr = vec2(sin(uTime*0.45)*0.05 + uTime*0.012, cos(uTime*0.37)*0.035);
+          float n = fbm(p * vec2(2.6, 3.4) + dr + uSeed) + 0.16 * vnoise(p * vec2(14., 18.) + dr*3.);
+          float big = fbm(p * vec2(0.35, 0.6) + 7.3 + uSeed);
+          float th = uCover + (0.5 - big) * 0.35;
+          float lit = smoothstep(th - 0.012, th + 0.012, n);
+          float kerb = step(uK0, -p.y) * step(-p.y, uK1);
+          vec3 base = mix(cS, cK, kerb);
+          vec3 c = mix(base, cL * mix(1.0, 1.12, kerb), lit);
+          // low-frequency painterly variation
+          c *= 0.92 + 0.14 * vnoise(p * vec2(0.8, 1.5) + uSeed);
+          gl_FragColor = vec4(c, 1.);
+        }`,
+    });
+    const swMat = groundShader('#4a4652', '#b09888', { kerb: '#67646e', k0: sidewalkD0, k1: sidewalkD0 + 0.55, cover: 0.63, seed: 1 });
+    const sw = new THREE.Mesh(new THREE.PlaneGeometry(60, sidewalkD1 - sidewalkD0), swMat);
     sw.rotation.x = -Math.PI / 2; sw.position.set(0, 0, -(sidewalkD0 + sidewalkD1) / 2); scene.add(sw);
     // kerb face (step down to road)
-    const kerbMat = toon({ color: '#8a8590' });
-    const kH = 0.06;
-    const kerb = new THREE.Mesh(new THREE.PlaneGeometry(60, kH), kerbMat);
+    const kH = 0.07;
+    const kerb = new THREE.Mesh(new THREE.PlaneGeometry(60, kH), new THREE.MeshBasicMaterial({ color: col('#2a2a34') }));
     kerb.position.set(0, -kH / 2, -sidewalkD0); scene.add(kerb);
-    const roadMat = toon({ color: '#625e66' });
+    const roadMat = groundShader('#2f303c', '#86766e', { cover: 0.6, seed: 5 });
     const road = new THREE.Mesh(new THREE.PlaneGeometry(60, sidewalkD0 - 3), roadMat);
     road.rotation.x = -Math.PI / 2; road.position.set(0, -kH, -(sidewalkD0 + 3) / 2); scene.add(road);
-    // gutter line
-    const gl = new THREE.Mesh(new THREE.PlaneGeometry(60, 0.12), toon({ color: '#3a3843' }));
-    gl.rotation.x = -Math.PI / 2; gl.position.set(0, -kH + 0.002, -(sidewalkD0 - 0.35)); scene.add(gl);
+    // contact shadows under the vending machines / props (soft dark strips just in front of their bases)
+    const cShadow = (x0, x1, pyBase, depthM = 0.35) => {
+      const d = groundD(pyBase); const a0 = P(x0, pyBase, d), b0 = P(x1, pyBase, d);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(b0.x - a0.x, depthM),
+        new THREE.ShaderMaterial({ transparent: true, depthWrite: false,
+          vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
+          fragmentShader: `varying vec2 vUv; void main(){ float a = smoothstep(0.0, 0.8, vUv.y) * smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.92, vUv.x); gl_FragColor = vec4(0.03,0.03,0.06, a*0.75); }` }));
+      m.rotation.x = -Math.PI / 2; m.position.set((a0.x + b0.x) / 2, 0.003, -d + depthM / 2); scene.add(m);
+    };
+    cShadow(362, 495, 632); cShadow(503, 632, 626); cShadow(634, 790, 640); cShadow(290, 365, 622); cShadow(785, 955, 623);
 
     /* ---------------- fence ---------------- */
     const fenceD = 12.2;

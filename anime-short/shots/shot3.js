@@ -232,7 +232,7 @@ export default {
     /* ---------------- 6. foreground framing leaves ---------------- */
     foliage([[40, 400, 4.6, 110], [150, 470, 4.6, 90], [60, 290, 4.8, 60]],
       { density: 3, cardSize: PX(60, 4.6), kind: 'broad', seed: 44, texSeed: 5, dark: '#12261a', mid: '#20432a', light: '#3f7240', highlight: '#6a9a4a', wind: 0.025, lightWrap: 0.25, shell: 0.5 });
-    foliage([[90, 640, 2.6, 140], [200, 705, 2.2, 90], [20, 690, 2.2, 100], [150, 600, 2.8, 60], [80, 730, 2.1, 100]],
+    foliage([[80, 670, 2.6, 120], [200, 710, 2.2, 85], [20, 690, 2.2, 100], [170, 625, 2.8, 50], [80, 730, 2.1, 100]],
       { density: 3.2, cardSize: PX(70, 3.2), kind: 'broad', seed: 41, texSeed: 2, dark: '#0c1d12', mid: '#17331f', light: '#2f5a33', highlight: '#5a8a4a', wind: 0.025, lightWrap: 0.25, shell: 0.5 });
     foliage([[1210, 520, 3.4, 150], [1180, 650, 2.6, 120], [1270, 380, 3.6, 100], [1090, 690, 2.3, 60], [1250, 680, 2.3, 90], [1180, 730, 2.1, 80], [1270, 730, 2.1, 80]],
       { density: 3.2, cardSize: PX(70, 3.3), kind: 'broad', seed: 42, texSeed: 3, dark: '#0f2316', mid: '#21452b', light: '#4b7f4a', highlight: '#86b36c', wind: 0.025, lightWrap: 0.3, shell: 0.5 });
@@ -352,7 +352,7 @@ function makeRock(core, { w, h, seed, base, light, dark }) {
         vec3 q = vO * vec3(1.0, 1.6, 1.0) + fbm(vO.xy*2.0+uSeed)*0.25;
         vec2 v1 = vor(q * 3.2 + uSeed);
         vec2 v2 = vor(q * 6.5 + uSeed*1.7);
-        float l = ndl*0.45 + 0.5 + (v1.y-0.5)*0.5 + (v2.y-0.5)*0.22;
+        float l = ndl*0.45 + 0.5 + (v1.y-0.5)*0.3 + (v2.y-0.5)*0.16;
         l -= smoothstep(0.1, -0.3, vO.y) * 0.25;
         vec3 c = mix(cD, cB, smoothstep(0.30, 0.42, l));
         c = mix(c, cL, smoothstep(0.72, 0.82, l));
