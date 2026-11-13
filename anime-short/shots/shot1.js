@@ -8,8 +8,8 @@ export default {
   credit: { role: 'CREATED BY', cx: 0.744, ry: 0.6875, ny: 0.736 },
   post: {
     bloom: 0.45, bloomRadius: 0.55, bloomThreshold: 0.78,
-    exposure: 0.88, contrast: 1.1, saturation: 1.0,
-    lift: [0.03, 0.015, 0.0], gamma: [1.02, 1.0, 0.98], gain: [1.03, 1.0, 0.95],
+    exposure: 0.85, contrast: 1.1, saturation: 1.02,
+    lift: [0.02, 0.015, 0.01], gamma: [1.0, 1.0, 0.99], gain: [1.0, 1.0, 0.96],
     vignette: 0.2, grain: 0.03, ca: 0.0012, soft: 0.12,
   },
   build(core) {
@@ -34,8 +34,8 @@ export default {
     /* ---------------- sky + light ---------------- */
     scene.add(makeSky({ zenith: '#3c6c98', mid: '#5996b8', horizon: '#8cbcc4', haze: 0.4, horizonY: 0.0 }));
     const SUN = V3(-0.3, 0.3, 0.9).normalize();
-    const rig = lightRig(scene, { sunDir: SUN.toArray(), sunColor: '#ffcf6e', sunIntensity: 3.6, sky: '#8aa8cc', ground: '#6a7088', hemiIntensity: 0.9,
-      ambient: '#7a8aa8', ambientIntensity: 0.8, shadows: true, shadowBox: 45, shadowRes: 2048, target: [5, 10, -40] });
+    const rig = lightRig(scene, { sunDir: SUN.toArray(), sunColor: '#ffcc58', sunIntensity: 3.9, sky: '#8aa8cc', ground: '#6a7088', hemiIntensity: 0.9,
+      ambient: '#6a88bc', ambientIntensity: 0.85, shadows: true, shadowBox: 45, shadowRes: 2048, target: [5, 10, -40] });
     rig.sun.shadow.camera.far = 400; rig.sun.shadow.bias = -0.0008; rig.sun.shadow.normalBias = 0.04;
     rig.sun.shadow.camera.updateProjectionMatrix();
 
@@ -75,7 +75,15 @@ export default {
           const shade = Math.min(1, Math.max(0, v * 0.6 + 0.45 + (r() - 0.5) * 0.3));
           const col = shade < 0.5 ? mix(LIT, MID, shade * 2) : mix(MID, SH, (shade - 0.5) * 2);
           const len = rx * lerp(0.28, 0.55, r()) * (1 - 0.5 * Math.abs(u));
-          stroke(px, py, len, len * lerp(0.18, 0.35, r()), rot + (r() - 0.5) * 0.35, col, a * (1 - 0.4 * Math.abs(u)));
+          const puffy = ry > 15;
+          const hole = Math.sin(px * 0.09 + py * 0.05) * Math.sin(py * 0.13 - px * 0.04);
+          if (puffy && hole > 0.25) continue;
+          if (puffy) {
+            const rr = len * lerp(0.35, 0.6, r());
+            stroke(px + rr * 0.25, py + rr * 0.3, rr, rr * 0.7, rot, SH.join(','), a * 0.7);
+            if (shade < 0.4) stroke(px - rr * 0.2, py - rr * 0.25, rr * 0.7, rr * 0.45, rot, LIT.join(','), a * 0.9);
+            else stroke(px - rr * 0.1, py - rr * 0.1, rr * 0.7, rr * 0.5, rot, MID.join(','), a * 0.5);
+          } else stroke(px, py, len, len * lerp(0.18, 0.35, r()), rot + (r() - 0.5) * 0.35, col, a * (1 - 0.4 * Math.abs(u)));
         }
         // lit crest along the upper edge
         for (let i = 0; i < n / 4; i++) {
@@ -126,22 +134,22 @@ export default {
       return m;
     };
     const SB = local(805, 380, 0)[0];
-    const concLit = vtoon('#efe2c8', { sB: SB, slope: 0.6 });
-    const concDark = vtoon('#9a8a88', { sB: SB, slope: 0.6 });
+    const concLit = vtoon('#ece6dc', { sB: SB, slope: 0.6 });
+    const concDark = vtoon('#948c94', { sB: SB, slope: 0.6 });
     const S0 = -90, S1 = 260;
     const bandBot = local(420, 312, 0)[1];
     const wallBot = local(420, 470, -2.2)[1];
     const girdTop = local(450, 464, 0.6)[1];
     const girdBot = local(700, 612, 0.6)[1];
     // parapet / edge beam (lit band)
-    vbox(S0, S1, bandBot, 0, -1.2, 0, vtoon('#e6c890', { sB: SB, slope: 0.6 }), false, true);
+    vbox(S0, S1, bandBot, 0, -1.2, 0, vtoon('#e0d4c0', { sB: SB, slope: 0.6 }), false, true);
     // deck slab underside (overhang)
     vbox(S0, S1, bandBot - 0.15, bandBot + 0.4, -3.0, -0.6, concDark, false, true);
     vbox(S0, S1, bandBot - 0.6, bandBot + 0.4, -14, -3.0, concDark, false, false);
     // web wall (set back) — receives bracket shadows
     vbox(S0, S1, wallBot, bandBot, -3.0, -2.2, concLit, false, true);
     // brackets under overhang
-    const bracketMat = vtoon('#dccaa8', { sB: SB, slope: 0.6 });
+    const bracketMat = vtoon('#c8bcac', { sB: SB, slope: 0.6 });
     for (let s = -40; s < S1; s += 9.5) {
       const g = new THREE.Group();
       const sh = new THREE.Shape();
@@ -265,8 +273,8 @@ export default {
       via.add(g); return b;
     };
     const g1 = gantryAt(488, 18, 300, 155, 0.9, 0.75, '#efdcb4', 480);
-    const g2 = gantryAt(812, 100, 545, 262, 1.1, 0.75, '#a8a49e', 828);
-    const g3 = gantryAt(1040, 270, 855, 350, 0.9, 0.7, '#8e8e96', 1003);
+    const g2 = gantryAt(812, 100, 545, 262, 1.1, 0.75, '#8a8580', 828);
+    const g3 = gantryAt(1040, 270, 855, 350, 0.9, 0.7, '#76767e', 1003);
     // round catenary pole (near side, behind traffic light)
     { const sp = local(748, 300, -0.6)[0], ht = local(748, 112, -0.6)[1]; const p = cyl(0.16, 0.18, ht + 1, steel, sp, (ht - 1) / 2, -0.6); p.castShadow = true; via.add(p); via.add(cyl(0.22, 0.22, 0.25, steel, sp, ht, -0.6)); }
     // overhead wires along the line
@@ -286,12 +294,12 @@ export default {
         const fl = 64;
         for (let y = 0; y < h; y += fl) {
           // left balcony column (recessed, dark)
-          g.fillStyle = '#9a5a28'; g.fillRect(70, y + 8, 70, 42); g.fillStyle = '#c27a36'; g.fillRect(74, y + 12, 28, 34);
+          g.fillStyle = '#7a3a1e'; g.fillRect(40, y + 6, 110, 44); g.fillStyle = '#a85e2c'; g.fillRect(46, y + 10, 30, 36);
           g.fillStyle = '#f9de96'; g.fillRect(64, y + 46, 84, 8);
           // windows pairs
           for (const x of [200, 300, 400]) {
-            g.fillStyle = '#b78048'; g.fillRect(x, y + 14, 60, 34);
-            g.fillStyle = '#d9a45c'; g.fillRect(x + 4, y + 18, 24, 26); g.fillStyle = '#c88e4c'; g.fillRect(x + 32, y + 18, 24, 26);
+            g.fillStyle = '#8e4c22'; g.fillRect(x, y + 12, 66, 38);
+            g.fillStyle = '#c47a3a'; g.fillRect(x + 4, y + 16, 26, 30); g.fillStyle = '#a8602c'; g.fillRect(x + 35, y + 16, 26, 30);
           }
           g.fillStyle = 'rgba(150,80,30,0.35)'; g.fillRect(0, y + 54, w, 4);
           g.fillStyle = 'rgba(255,240,190,0.5)'; g.fillRect(0, y + 58, w, 3);
@@ -367,7 +375,7 @@ export default {
       const mid = lampC.clone().add(V3(poleBase.x, armY, poleBase.z)).multiplyScalar(0.5); arm.position.copy(mid);
       arm.quaternion.setFromUnitVectors(V3(0, 1, 0), lampC.clone().sub(V3(poleBase.x, armY, poleBase.z)).normalize()); sig.add(arm);
       const head = new THREE.Group(); head.position.copy(lampC); head.lookAt(CP.clone().add(V3(-8, -4, 0))); sig.add(head);
-      const hous = toon({ color: '#a89080', dapple: false });
+      const hous = toon({ color: '#7a6660', dapple: false });
       const housDark = toon({ color: '#4a3c44', dapple: false });
       head.add(box(0.72, 0.36, 0.26, hous, 0, 0, 0));
       for (const sx of [-1, 1]) { const c = cyl(0.18, 0.18, 0.26, hous, sx * 0.36, 0, 0, 20); c.rotation.x = Math.PI / 2; head.add(c); }
@@ -376,9 +384,9 @@ export default {
         const x = (i - 1) * 0.36;
         const L = new THREE.Mesh(new THREE.CircleGeometry(0.135, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(lampCols[i]).multiplyScalar(glow[i]) }));
         L.position.set(x, 0, 0.135); head.add(L);
-        const visor = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.155, 0.22, 20, 1, true, -Math.PI * 0.5, Math.PI * 1.0), housDark);
+        const visor = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.155, 0.1, 20, 1, true, Math.PI * 0.5, Math.PI * 1.0), housDark);
         visor.material.side = THREE.DoubleSide;
-        visor.rotation.x = Math.PI / 2; visor.position.set(x, 0.0, 0.24); head.add(visor);
+        visor.rotation.x = Math.PI / 2; visor.position.set(x, 0.0, 0.19); head.add(visor);
       }
       head.add(box(0.95, 0.12, 0.2, hous, 0, -0.24, -0.05));
       // small box on pole
