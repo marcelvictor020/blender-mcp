@@ -26,7 +26,7 @@ export default {
     const hitPlane = (px, py, plane) => { const r = new THREE.Ray(CAM.clone(), ray(px, py)); const o = new THREE.Vector3(); return r.intersectPlane(plane, o) || at(px, py, 50); };
     const V = (a) => new THREE.Vector3(...a);
 
-    const GROUND = -1.1;
+    const GROUND = -0.6;
     const sunDir = new THREE.Vector3(...SUN).normalize();
 
     /* ---------------- sky + cloud ---------------- */
@@ -168,8 +168,8 @@ export default {
       const pts = [[1000, 150, 1.4], [1080, 70, 1.6], [1180, 40, 1.8], [1260, 120, 1.8], [1240, 300, 2.0], [1120, 260, 1.8], [1010, 300, 1.5],
         [960, 420, 1.3], [1060, 450, 1.7], [1180, 470, 1.9], [1260, 560, 1.8], [1100, 620, 1.8], [1000, 600, 1.5], [980, 700, 1.4], [1200, 700, 1.6], [940, 290, 1.0]];
       for (const [px, py, rr] of pts) { const p = at(px, py, 11 + r() * 2); clumps.push([p.x, p.y, p.z, rr]); }
-      scene.add(makeFoliage({ clumps, density: 9, cardSize: 0.75, kind: 'round', seed: 31, texSeed: 3,
-        dark: '#1b2a22', mid: '#244636', light: '#3a6444', highlight: '#5f8a52', wind: 0.02, lightWrap: 0.5, shell: 0.6 }));
+      scene.add(makeFoliage({ clumps, density: 7, cardSize: 1.1, kind: 'round', seed: 31, texSeed: 3,
+        dark: '#18241e', mid: '#21402f', light: '#335a3c', highlight: '#4f7a4a', wind: 0.02, lightWrap: 0.45, shell: 0.6 }));
     }
 
     /* ---------------- chain-link fences ---------------- */
@@ -182,18 +182,18 @@ export default {
         g.beginPath(); g.moveTo(o + w, 0); g.bezierCurveTo(o + w * 0.7, h * 0.22, o + w * 0.8, h * 0.78, o, h); g.stroke();
       }
     }, { srgb: false, repeat: true });
-    const fenceMat = (rep) => {
+    const fenceMat = (rep, dark = '#3a2a24', lit = '#e8d6bc', cov = 0.6) => {
       const t = linkTex;
       return new THREE.ShaderMaterial({
         uniforms: { tLink: { value: t }, uRep: { value: new THREE.Vector2(...rep) }, uTime: shared.uTime, uSun: { value: sunDir },
-          cDark: { value: col('#3a2a24') }, cLit: { value: col('#e8d6bc') } },
+          cDark: { value: col(dark) }, cLit: { value: col(lit) }, uCov: { value: cov } },
         vertexShader: `varying vec2 vUv; varying vec3 vW; void main(){ vUv = uv; vec4 w = modelMatrix*vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`,
-        fragmentShader: `uniform sampler2D tLink; uniform vec2 uRep; uniform float uTime; uniform vec3 uSun, cDark, cLit; varying vec2 vUv; varying vec3 vW;
+        fragmentShader: `uniform sampler2D tLink; uniform vec2 uRep; uniform float uTime; uniform vec3 uSun, cDark, cLit; uniform float uCov; varying vec2 vUv; varying vec3 vW;
           ${NOISE_GLSL}
           void main(){ float a = texture2D(tLink, vUv*uRep).a; if (a < 0.05) discard;
             vec3 L = normalize(uSun); vec3 t1 = normalize(cross(L, vec3(0.,1.,0.))); vec3 t2 = cross(L, t1);
             vec2 q = vec2(dot(vW,t1), dot(vW,t2))*1.3 + vec2(sin(uTime*0.6), cos(uTime*0.5))*0.08;
-            float m = smoothstep(0.56, 0.6, fbm(q));
+            float m = smoothstep(uCov, uCov + 0.04, fbm(q));
             gl_FragColor = vec4(mix(cDark, cLit, m), smoothstep(0.05, 0.6, a)); }`,
         side: THREE.DoubleSide, transparent: true, depthWrite: false,
       });
@@ -216,7 +216,7 @@ export default {
       const Hf = 1.05;
       const A = hitY(60, 568, Hf), B = hitY(600, 400, Hf);
       const len = A.distanceTo(B);
-      const f = quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), fenceMat([len / 0.26, (Hf - GROUND) / 0.26]));
+      const f = quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), fenceMat([len / 0.2, (Hf - GROUND) / 0.2], '#6a4c42', '#e6b88c', 0.5));
       scene.add(f);
       tube(hitY(-40, 600, Hf), B, 0.035, railMat);
       // posts
@@ -227,66 +227,79 @@ export default {
       const Hr = 1.5;
       const A = hitY(860, 258, Hr), B = hitY(1330, 62, Hr);
       const len = A.distanceTo(B);
-      scene.add(quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), fenceMat([len / 0.24, (Hr - GROUND) / 0.24])));
+      scene.add(quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), fenceMat([len / 0.12, (Hr - GROUND) / 0.12], '#2e2420', '#d8c8b0', 0.6)));
       tube(A, B, 0.03, darkRailMat);
       // diagonal brace / lower rail
       tube(at(975, 395, A.distanceTo(CAM) * 1.0), at(1300, 512, 2.6), 0.022, darkRailMat);
     }
 
     /* ---------------- vending machine (hero) ---------------- */
-    const TOP = 0.92;
+    const TOP = 1.2;
     const MA = hitY(582, 356, TOP), MB = hitY(866, 262, TOP), MC = hitY(978, 298, TOP);
-    const vmDraw = (shade) => (g, w, h, r) => {
-      const R = shade ? '#6c0c12' : '#e8473f';
-      const R2 = shade ? '#5a0a10' : '#d23a34';
-      const WH = shade ? '#9a7a74' : '#f6e8d6';
-      g.fillStyle = R; g.fillRect(0, 0, w, h);
-      // header band
-      g.fillStyle = R2; g.fillRect(0, 0, w, h * 0.025);
-      // glass display
-      const gx0 = w * 0.05, gx1 = w * 0.84, gy0 = h * 0.04, gy1 = h * 0.47;
-      g.fillStyle = shade ? '#3e2c28' : '#a89884'; g.fillRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
-      const rows = 4, rh = (gy1 - gy0) / rows;
+    const vmDraw = (shade) => (g, w, h) => {
       const pr = rng(5);
-      const cols = shade ? ['#8a6a5a', '#6a5040', '#7a3a34', '#5a5a4a', '#8a7a6a', '#4a4a5a', '#7a6040'] : ['#f2e6d8', '#e8c8b8', '#d84a40', '#a8c0a0', '#f0d8a0', '#7890c0', '#e0a050'];
+      const R = shade ? '#6e0c14' : '#ec4f50';
+      const WH = shade ? '#8a6a66' : '#f8eedc';
+      g.fillStyle = R; g.fillRect(0, 0, w, h);
+      // subtle painted variation
+      for (let i = 0; i < 60; i++) { g.fillStyle = shade ? `rgba(40,0,5,${pr() * 0.12})` : `rgba(255,140,130,${pr() * 0.1})`; g.beginPath(); g.arc(pr() * w, pr() * h, 10 + pr() * 40, 0, 7); g.fill(); }
+      g.fillStyle = shade ? '#5a0810' : '#d43a3c'; g.fillRect(0, 0, w, h * 0.018);
+      // glass display
+      const gx0 = w * 0.045, gx1 = w * 0.86, gy0 = h * 0.03, gy1 = h * 0.6;
+      g.fillStyle = shade ? '#4a3a34' : '#e2d6be'; g.fillRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
+      const rows = 5, rh = (gy1 - gy0) / rows;
+      const cols = shade ? ['#8a7a6c', '#7a6458', '#86504a', '#6a6a5a', '#9a8a74', '#5a5a6a', '#8a6a4a', '#a09080'] :
+        ['#f4ece0', '#efe0d0', '#f0c8b8', '#e4e8d4', '#f6e6c4', '#d8dce8', '#f2d8b0', '#fbf6ec'];
       for (let k = 0; k < rows; k++) {
         const y0 = gy0 + k * rh;
-        g.fillStyle = shade ? '#2a1e1c' : '#6a5a50'; g.fillRect(gx0, y0, gx1 - gx0, rh * 0.15);
-        const n = 8;
+        g.fillStyle = shade ? '#2e2220' : '#cbbca4'; g.fillRect(gx0, y0, gx1 - gx0, rh * 0.12);
+        const n = 9;
         for (let i = 0; i < n; i++) {
-          const bx = gx0 + (i + 0.5) * (gx1 - gx0) / n, bw = (gx1 - gx0) / n * 0.62, bh = rh * (0.5 + pr() * 0.12);
+          const bx = gx0 + (i + 0.5) * (gx1 - gx0) / n, bw = (gx1 - gx0) / n * 0.6, bh = rh * (0.5 + pr() * 0.12);
           g.fillStyle = cols[Math.floor(pr() * cols.length)];
-          g.fillRect(bx - bw / 2, y0 + rh * 0.8 - bh, bw, bh);
-          g.fillStyle = shade ? '#cfbfb0' : '#fffaf0'; g.fillRect(bx - bw * 0.25, y0 + rh * 0.8 - bh - rh * 0.07, bw * 0.5, rh * 0.07);
-          // price tag + button
-          g.fillStyle = WH; g.fillRect(bx - bw * 0.4, y0 + rh * 0.84, bw * 0.8, rh * 0.06);
-          g.fillStyle = shade ? '#6a5a20' : '#f0d040'; g.fillRect(bx - bw * 0.15, y0 + rh * 0.92, bw * 0.3, rh * 0.05);
+          const by = y0 + rh * 0.78 - bh;
+          g.fillRect(bx - bw / 2, by + bh * 0.25, bw, bh * 0.75);
+          g.fillRect(bx - bw * 0.3, by + bh * 0.08, bw * 0.6, bh * 0.2);
+          g.fillStyle = shade ? '#b8a898' : '#ffffff'; g.fillRect(bx - bw * 0.2, by, bw * 0.4, bh * 0.08);
+          g.fillStyle = shade ? '#9a8a7a' : '#fff8ec'; g.fillRect(bx - bw * 0.45, y0 + rh * 0.82, bw * 0.9, rh * 0.06);
+          g.fillStyle = shade ? '#2a2a2a' : '#7a7068'; g.fillRect(bx - bw * 0.18, y0 + rh * 0.9, bw * 0.36, rh * 0.05);
         }
       }
-      g.strokeStyle = shade ? '#4a0810' : '#b82a28'; g.lineWidth = 6; g.strokeRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
+      // glass reflection streaks
+      g.fillStyle = shade ? 'rgba(160,140,130,0.10)' : 'rgba(255,255,255,0.15)'; g.beginPath(); g.moveTo(gx0, gy1); g.lineTo(gx0 + w * 0.2, gy0); g.lineTo(gx0 + w * 0.32, gy0); g.lineTo(gx0 + w * 0.12, gy1); g.fill();
+      g.strokeStyle = shade ? '#4a0810' : '#c43030'; g.lineWidth = 5; g.strokeRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
+      // ledge under glass
+      g.fillStyle = shade ? '#580a10' : '#d84040'; g.fillRect(gx0, gy1, gx1 - gx0, h * 0.012);
       // right control column
-      const cx0 = w * 0.87;
-      g.fillStyle = WH; g.fillRect(cx0, h * 0.12, w * 0.09, h * 0.035); g.fillRect(cx0, h * 0.19, w * 0.09, h * 0.05);
-      g.fillStyle = shade ? '#2a1a1a' : '#3a2a2a'; g.fillRect(cx0 + w * 0.02, h * 0.205, w * 0.05, h * 0.02);
-      g.fillStyle = WH; g.fillRect(cx0, h * 0.29, w * 0.09, h * 0.07);
+      const cx0 = w * 0.885, cw = w * 0.085;
+      g.fillStyle = WH; g.fillRect(cx0, h * 0.08, cw, h * 0.04); g.fillRect(cx0, h * 0.2, cw, h * 0.06);
+      g.fillStyle = shade ? '#2a1a1a' : '#4a3a3a'; g.fillRect(cx0 + cw * 0.25, h * 0.215, cw * 0.5, h * 0.025);
+      g.fillStyle = WH; g.fillRect(cx0, h * 0.33, cw, h * 0.08);
+      g.fillStyle = shade ? '#3a2a2a' : '#5a4a4a'; g.fillRect(cx0 + cw * 0.2, h * 0.35, cw * 0.6, h * 0.035);
+      // price/coin display strip under glass (right)
+      g.fillStyle = WH; g.fillRect(w * 0.6, h * 0.625, w * 0.22, h * 0.018);
+      g.fillStyle = shade ? '#5a5050' : '#d8d0c8'; g.beginPath(); g.arc(w * 0.74, h * 0.665, w * 0.04, 0, 7); g.fill();
+      g.fillStyle = WH; g.fillRect(w * 0.58, h * 0.7, w * 0.12, h * 0.022);
       // lower panel: white wave + dragon scales
       g.save();
-      g.strokeStyle = WH; g.lineWidth = w * 0.05; g.lineCap = 'round';
-      g.beginPath(); g.moveTo(w * 0.3, h * 0.5); g.bezierCurveTo(w * 0.35, h * 0.62, w * 0.55, h * 0.6, w * 0.62, h * 0.72); g.bezierCurveTo(w * 0.7, h * 0.84, w * 0.9, h * 0.82, w * 0.98, h * 0.95); g.stroke();
-      g.lineWidth = w * 0.02;
-      g.beginPath(); g.moveTo(w * 0.05, h * 0.62); g.bezierCurveTo(w * 0.2, h * 0.7, w * 0.3, h * 0.8, w * 0.25, h * 0.98); g.stroke();
-      // dragon body (dark scales)
-      g.fillStyle = shade ? '#1a0a0a' : '#3a1414';
-      for (let i = 0; i < 160; i++) {
-        const t = i / 160; const x = w * (0.5 + 0.35 * t + 0.05 * Math.sin(t * 9)), y = h * (0.6 + 0.3 * t + 0.03 * Math.cos(t * 7));
-        g.beginPath(); g.arc(x + (pr() - 0.5) * w * 0.06, y + (pr() - 0.5) * h * 0.03, w * 0.012, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = WH; g.lineCap = 'round';
+      g.lineWidth = w * 0.035;
+      g.beginPath(); g.moveTo(w * 0.42, h * 0.62); g.bezierCurveTo(w * 0.44, h * 0.68, w * 0.5, h * 0.72, w * 0.6, h * 0.76); g.bezierCurveTo(w * 0.72, h * 0.8, w * 0.85, h * 0.86, w * 0.95, h * 0.95); g.stroke();
+      g.lineWidth = w * 0.012;
+      g.beginPath(); g.moveTo(w * 0.47, h * 0.62); g.bezierCurveTo(w * 0.5, h * 0.67, w * 0.56, h * 0.7, w * 0.66, h * 0.73); g.stroke();
+      // dragon body: dark scaled band
+      for (let i = 0; i < 220; i++) {
+        const t = pr(); const x = w * (0.55 + 0.32 * t + 0.03 * Math.sin(t * 12)), y = h * (0.78 + 0.14 * t) + (pr() - 0.5) * h * 0.04;
+        g.fillStyle = shade ? '#140606' : '#2a0e0e'; g.beginPath(); g.arc(x, y, w * 0.016, 0, 7); g.fill();
+        g.strokeStyle = shade ? '#4a2020' : '#c08070'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, w * 0.012, 0.2, 2.8); g.stroke();
       }
       g.restore();
       // product outlet
-      g.fillStyle = shade ? '#1a0808' : '#2a1010'; g.fillRect(w * 0.1, h * 0.86, w * 0.7, h * 0.08);
-      // stickers
-      g.fillStyle = WH; g.fillRect(w * 0.06, h * 0.56, w * 0.11, h * 0.08);
-      g.fillStyle = shade ? '#3a3a6a' : '#5a6ac0'; g.fillRect(w * 0.08, h * 0.575, w * 0.07, h * 0.012);
+      g.fillStyle = shade ? '#1c0808' : '#2c1010'; g.fillRect(w * 0.2, h * 0.9, w * 0.62, h * 0.06);
+      // stickers left
+      g.fillStyle = WH; g.fillRect(w * 0.06, h * 0.7, w * 0.12, h * 0.08);
+      g.fillStyle = shade ? '#3a3a6a' : '#6a7ac8'; g.fillRect(w * 0.08, h * 0.72, w * 0.08, h * 0.01); g.fillRect(w * 0.08, h * 0.74, w * 0.06, h * 0.01);
+      g.fillStyle = WH; g.fillRect(w * 0.06, h * 0.8, w * 0.1, h * 0.04);
     };
     const sideDraw = (shade) => (g, w, h, r) => {
       const R = shade ? '#650c10' : '#e0443c';
@@ -308,8 +321,8 @@ export default {
         void main(){
           vec3 L = normalize(uSun); vec3 t1 = normalize(cross(L, vec3(0.,1.,0.))); vec3 t2 = cross(L, t1);
           vec2 q = vec2(dot(vW,t1), dot(vW,t2)) * uScale;
-          q += vec2(sin(uTime*0.55 + q.y*0.35), cos(uTime*0.42 + q.x*0.3)) * 0.18 + vec2(uTime*0.05, -uTime*0.02);
-          float n = fbm(q) + 0.16*(vnoise(q*4.0 + uTime*0.25) - 0.5);
+          q += vec2(sin(uTime*0.55 + q.y*0.35), cos(uTime*0.42 + q.x*0.3)) * 0.12 + vec2(uTime*0.06, -uTime*0.025);
+          float n = 0.8*fbm(q) + 0.2*vnoise(q*2.7 + vec2(3.1, uTime*0.12)) + 0.08*(vnoise(q*7.0 + uTime*0.3) - 0.5);
           float m = smoothstep(uCover - 0.015, uCover + 0.015, n);
           vec3 c = mix(texture2D(tS, vUv).rgb, texture2D(tL, vUv).rgb, m);
           gl_FragColor = vec4(c, 1.);
@@ -317,8 +330,8 @@ export default {
     });
     {
       const A0 = MA.clone().setY(GROUND), B0 = MB.clone().setY(GROUND), C0 = MC.clone().setY(GROUND);
-      scene.add(quad(MA, MB, B0, A0, dappleMat(vmLit, vmSh, 0.5, 4.5)));
-      scene.add(quad(MB, MC, C0, B0, dappleMat(sdLit, sdSh, 0.62, 4.5)));
+      scene.add(quad(MA, MB, B0, A0, dappleMat(vmLit, vmSh, 0.53, 6.5)));
+      scene.add(quad(MB, MC, C0, B0, dappleMat(sdLit, sdSh, 0.74, 6.5)));
       // top lid (dark) + small vent box
       const Dp = MA.clone().add(MC).sub(MB);
       const lid = new THREE.BufferGeometry();
@@ -350,8 +363,8 @@ export default {
     };
     const bulbs = [];
     {
-      const c1 = ribbon([at(-20, 700, 3.2), at(120, 680, 3.4), at(260, 668, 3.6), at(380, 645, 3.8), at(470, 612, 4.0), at(540, 565, 4.2), at(590, 530, 4.4)], 0.09, 18);
-      const c2 = ribbon([at(980, 492, 4.0), at(1100, 482, 3.6), at(1220, 466, 3.2), at(1320, 455, 3.0)], 0.1, 10);
+      const c1 = ribbon([at(-20, 700, 3.2), at(120, 680, 3.4), at(260, 668, 3.6), at(380, 645, 3.8), at(470, 612, 4.0), at(540, 565, 4.2), at(590, 530, 4.4)], 0.065, 16);
+      const c2 = ribbon([at(980, 492, 4.0), at(1100, 482, 3.6), at(1220, 466, 3.2), at(1320, 455, 3.0)], 0.075, 10);
       for (let i = 0; i < 9; i++) bulbs.push(c1.getPoint((i + 0.4) / 9));
       for (let i = 0; i < 4; i++) bulbs.push(c2.getPoint((i + 0.3) / 4));
       const bg = new THREE.BufferGeometry().setFromPoints(bulbs);
@@ -365,24 +378,25 @@ export default {
         g.fillStyle = '#e8712c'; g.fillRect(0, 0, w, h);
         g.fillStyle = '#f2ece4'; g.fillRect(0, h * 0.18, w, h * 0.12); g.fillRect(0, h * 0.45, w, h * 0.14);
       });
-      const cp = hitY(1205, 560, 0.0);
-      const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.2, 1.0, 16, 1, true), toon({ color: '#ffffff', map: coneTex, dapple: true }));
-      cone.position.copy(cp).setY(cp.y - 0.45); scene.add(cone);
+      const cp = hitY(1196, 545, 0.25);
+      const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.16, 0.85, 16, 1, true), toon({ color: '#ffffff', map: coneTex, dapple: true }));
+      cone.position.copy(cp).setY(cp.y - 0.425); scene.add(cone);
     }
 
     /* ---------------- framing foliage ---------------- */
     const leafCols = { dark: '#14261c', mid: '#1f5a3e', light: '#3d8a5c', highlight: '#7fb87a' };
-    const NOFOL = true;
-    const fol = (pts, opts) => { if (NOFOL) return;
-      const clumps = pts.map(([px, py, d, rr]) => { const p = at(px, py, d); return [p.x, p.y, p.z, rr]; });
-      const m = makeFoliage({ clumps, kind: 'broad', ...leafCols, wind: 0.05, lightWrap: 0.4, shell: 0.5, ...opts });
+    const NOFOL = false;
+    const fol = (pts, d, cardPx, opts) => { if (NOFOL) return;
+      const k = pxScale(d);
+      const clumps = pts.map(([px, py, rpx]) => { const p = atZ(px, py, d); return [p.x, p.y, p.z, rpx * k]; });
+      const m = makeFoliage({ clumps, kind: 'broad', ...leafCols, wind: 0.05, lightWrap: 0.4, shell: 0.55, cardSize: cardPx * k, density: 2.2, ...opts });
       scene.add(m); return m;
     };
     // top-left mass + left edge column
-    fol([[60, 60, 2.2, 0.55], [200, 20, 2.4, 0.5], [320, 10, 2.6, 0.4], [30, 220, 2.2, 0.5], [90, 300, 2.3, 0.4], [20, 420, 2.2, 0.45], [60, 540, 2.0, 0.4],
-      [140, 620, 2.0, 0.35], [40, 680, 1.9, 0.4], [230, 690, 2.2, 0.3]], { density: 3.5, cardSize: 0.32, seed: 41, texSeed: 2 });
+    fol([[60, 40, 90], [180, 20, 70], [300, 5, 45], [20, 180, 80], [70, 260, 55], [10, 380, 60], [30, 480, 50], [120, 470, 35],
+      [150, 560, 35], [40, 620, 55], [200, 650, 35], [100, 700, 45]], 2.2, 120, { seed: 41, texSeed: 2 });
     // top-centre hanging cluster
-    fol([[470, 30, 3.2, 0.5], [560, 70, 3.3, 0.45], [640, 30, 3.4, 0.4], [420, 10, 3.2, 0.35]], { density: 3.0, cardSize: 0.38, seed: 43, texSeed: 4,
+    fol([[470, 30, 55], [540, 60, 50], [600, 100, 40], [630, 40, 45], [430, 15, 40]], 3.2, 100, { seed: 43, texSeed: 4,
       dark: '#0f2018', mid: '#1b4a36', light: '#2f7050', highlight: '#5f9a6a' });
 
     /* ---------------- butterflies + motes ---------------- */

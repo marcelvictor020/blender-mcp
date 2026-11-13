@@ -20,9 +20,9 @@ export default {
     const S = (pxLen, d) => pxLen * d / F;                // pixel length -> world length at depth d
     const groundD = (py) => CAMY * F / (py - 360);        // depth at which ground (y=0) appears at row py
 
-    const SUN = new THREE.Vector3(-0.45, 0.75, 0.55).normalize();
-    lightRig(scene, { sunDir: SUN.toArray(), sunColor: '#fff0d8', sunIntensity: 2.3, sky: '#a9c6e6', ground: '#6d7a5e',
-      hemiIntensity: 0.95, ambient: '#4a5486', ambientIntensity: 0.45 });
+    const SUN = new THREE.Vector3(-0.35, 0.6, 0.75).normalize();
+    lightRig(scene, { sunDir: SUN.toArray(), sunColor: '#ffe9cc', sunIntensity: 1.9, sky: '#a4b8e0', ground: '#6a6878',
+      hemiIntensity: 1.05, ambient: '#5a64a0', ambientIntensity: 0.5 });
 
     /* ---------------- sky (painted in reference-pixel space) ---------------- */
     const skyMat = new THREE.ShaderMaterial({
@@ -43,7 +43,7 @@ export default {
           vec2 px = vec2(640. + d.x / z * uF, 360. - d.y / z * uF);
           float yy = px.y / 720.;
           // base gradient
-          vec3 c = mix(hx(70.,128.,166.), hx(98.,150.,178.), smoothstep(0.0, 0.32, yy));
+          vec3 c = mix(hx(82.,136.,170.), hx(108.,152.,178.), smoothstep(0.0, 0.32, yy));
           c = mix(c, hx(150.,182.,196.), smoothstep(0.30, 0.56, yy));
           // high diagonal cirrus streaks (upper sky)
           float ci = layer(px, -0.45, vec2(0.004, 0.022), 3.0);
@@ -148,28 +148,37 @@ export default {
     // right tree mass (px 1000-1280, py 210-470)
     fol({ clumps: fillPoly([[1000, 470], [1010, 330], [1050, 280], [1110, 240], [1180, 215], [1300, 205], [1300, 470]], 70, 18, 34, 60, 41, 4),
       density: 7, cardSize: S(16, 60), kind: 'round', seed: 4, texSeed: 3,
-      dark: '#163a38', mid: '#215848', light: '#347a5c', highlight: '#5a9c6e', wind: 0.008, shell: 0.55, lightWrap: 0.45, flatten: 0.8 }, [-0.7, 0.6, 0.5]);
+      dark: '#112e2c', mid: '#1a4a3e', light: '#2a6a52', highlight: '#4f9068', wind: 0.008, shell: 0.55, lightWrap: 0.45, flatten: 0.8 }, [-0.7, 0.6, 0.5]);
     // left mass behind fence (px 120-510, py 230-560)
     fol({ clumps: fillPoly([[110, 560], [130, 330], [260, 300], [380, 250], [440, 235], [500, 260], [515, 320], [505, 430], [500, 560]], 80, 20, 38, 40, 43, 4),
       density: 7, cardSize: S(16, 40), kind: 'round', seed: 6, texSeed: 5,
       dark: '#0f3029', mid: '#1b5a44', light: '#2f8a62', highlight: '#6cbc7c', wind: 0.01, shell: 0.55, lightWrap: 0.4, flatten: 0.85 }, [0.5, 0.6, 0.6]);
+    // dark backdrop so no sky leaks through the left woods
+    {
+      const a0 = P(60, 300, 45), b0 = P(520, 600, 45);
+      const bd = new THREE.Mesh(new THREE.PlaneGeometry(b0.x - a0.x, a0.y - b0.y), new THREE.MeshBasicMaterial({ color: col('#0f2a26') }));
+      bd.position.set((a0.x + b0.x) / 2, (a0.y + b0.y) / 2, -45); scene.add(bd);
+    }
+    fol({ clumps: fillPoly([[60, 600], [70, 330], [200, 320], [300, 300], [400, 330], [400, 600]], 40, 22, 40, 44, 49, 2),
+      density: 6, cardSize: S(16, 44), kind: 'round', seed: 10, texSeed: 11,
+      dark: '#0c2622', mid: '#143c34', light: '#1f5a48', highlight: '#3f8060', wind: 0.008, shell: 0.6, lightWrap: 0.3 }, [0.5, 0.6, 0.6]);
     // low bushes behind left fence (px 120-360, py 440-540)
     fol({ clumps: fillPoly([[120, 540], [140, 470], [220, 450], [300, 440], [380, 460], [380, 545]], 22, 16, 26, 20, 47),
       density: 8, cardSize: S(14, 20), kind: 'round', seed: 8, texSeed: 7,
       dark: '#163f30', mid: '#286a46', light: '#4a9a58', highlight: '#94cf74', wind: 0.012, shell: 0.6 }, [0.3, 0.8, 0.5]);
 
     // grass field
-    grassBank({ x0: 500, x1: 1300, yTop: 412, yBot: 640, d: 70, top: '#8acb5a', mid: '#66ad47', bot: '#4d9440', dark: '#3c7d36', tipAmp: 16, seed: 2 });
-    grassBank({ x0: -20, x1: 600, yTop: 515, yBot: 640, d: 30, top: '#90cf62', mid: '#6db24c', bot: '#4c9140', dark: '#3a7a36', tipAmp: 20, seed: 4 });
-    grassBank({ x0: 760, x1: 1300, yTop: 490, yBot: 640, d: 30, top: '#7bbd50', mid: '#5ea043', bot: '#4a8d3c', dark: '#376f33', tipAmp: 22, seed: 6,
+    grassBank({ x0: 500, x1: 1300, yTop: 412, yBot: 640, d: 70, top: '#78b450', mid: '#5a9a42', bot: '#4a8a3c', dark: '#3a7034', tipAmp: 16, seed: 2 });
+    grassBank({ x0: -20, x1: 600, yTop: 515, yBot: 640, d: 30, top: '#7ab650', mid: '#5c9c44', bot: '#467f3a', dark: '#346a32', tipAmp: 20, seed: 4 });
+    grassBank({ x0: 760, x1: 1300, yTop: 490, yBot: 640, d: 30, top: '#6cab48', mid: '#55923f', bot: '#467f38', dark: '#336530', tipAmp: 22, seed: 6,
       edgeFn: '(fbm(vec2(px*0.004, 7.)) - 0.5) * 50.0' });
-    grassBank({ x0: 760, x1: 1300, yTop: 560, yBot: 640, d: 16, top: '#6fb04a', mid: '#559640', bot: '#457f38', dark: '#336a30', tipAmp: 18, seed: 8 });
+    grassBank({ x0: 760, x1: 1300, yTop: 560, yBot: 640, d: 16, top: '#62a044', mid: '#4f8a3c', bot: '#427636', dark: '#305f2e', tipAmp: 18, seed: 8 });
 
     /* ---------------- utility pole + wires ---------------- */
     const poleD = 17.3;
-    const poleMat = toon({ color: '#6d5f55', dapple: false });
+    const poleMat = toon({ color: '#8a7462', dapple: false });
     const poleTop = P(882, 88, poleD), poleBot = P(882, 560, poleD);
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(S(6, poleD), S(8, poleD), poleTop.y - poleBot.y, 10), poleMat);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(S(7, poleD), S(9, poleD), poleTop.y - poleBot.y, 10), poleMat);
     pole.position.set(poleTop.x, (poleTop.y + poleBot.y) / 2, -poleD); scene.add(pole);
     // transformer / box + crossarm details
     const darkMetal = toon({ color: '#3a3f4a', dapple: false });
@@ -179,8 +188,8 @@ export default {
       const q = P(884, py, poleD - 0.1); scene.add(core.box(S(w, poleD), S(4, poleD), S(6, poleD), darkMetal, q.x, q.y, q.z));
     }
     // wires: [px_left, py_left, px_right(at pole), py_right, sag px]
-    const wireMat = new THREE.MeshBasicMaterial({ color: col('#1c1f2a') });
-    const wire = (x0, y0, x1, y1, sagPx, d, rad = 1.2) => {
+    const wireMat = new THREE.MeshBasicMaterial({ color: col('#15171f') });
+    const wire = (x0, y0, x1, y1, sagPx, d, rad = 1.2) => { rad *= 1.5;
       const A = P(x0, y0, d), B = P(x1, y1, d);
       const pts = [];
       for (let i = 0; i <= 40; i++) { const t = i / 40; const p = A.clone().lerp(B, t); p.y -= S(sagPx, d) * 4 * t * (1 - t); pts.push(p); }
@@ -201,12 +210,12 @@ export default {
 
     /* ---------------- ground: sidewalk + kerb + road ---------------- */
     shared.uDapple.value = 1;
-    const groundMat = toon({ color: '#77727a' });
+    const groundMat = toon({ color: '#8e868c' });
     const sidewalkD0 = groundD(655), sidewalkD1 = 12.6;
     const sw = new THREE.Mesh(new THREE.PlaneGeometry(60, sidewalkD1 - sidewalkD0), groundMat);
     sw.rotation.x = -Math.PI / 2; sw.position.set(0, 0, -(sidewalkD0 + sidewalkD1) / 2); scene.add(sw);
     // kerb face (step down to road)
-    const kerbMat = toon({ color: '#5b5763' });
+    const kerbMat = toon({ color: '#8a8590' });
     const kH = 0.06;
     const kerb = new THREE.Mesh(new THREE.PlaneGeometry(60, kH), kerbMat);
     kerb.position.set(0, -kH / 2, -sidewalkD0); scene.add(kerb);
@@ -219,8 +228,8 @@ export default {
 
     /* ---------------- fence ---------------- */
     const fenceD = 12.2;
-    const steel = toon({ color: '#9aa7b4', dapple: true });
-    const steelDark = toon({ color: '#7d8a99', dapple: true });
+    const steel = toon({ color: '#8f9cab', dapple: false });
+    const steelDark = toon({ color: '#76839a', dapple: false });
     const rod = (p1, p2, rad, mat) => {
       const a = p1, b = p2; const len = a.distanceTo(b);
       const m = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, len, 8), mat);
@@ -249,7 +258,7 @@ export default {
       const wpx = x1 - x0, hpx = y1 - y0;
       tex.repeat.set(wpx / 100, hpx / 100);
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(S(wpx, fenceD), S(hpx, fenceD)),
-        new THREE.MeshBasicMaterial({ color: col('#8b99a8'), alphaMap: tex, transparent: true, opacity: 0.75, depthWrite: false }));
+        new THREE.MeshBasicMaterial({ color: col('#8b99a8'), alphaMap: tex, transparent: true, opacity: 0.5, depthWrite: false }));
       const c = P((x0 + x1) / 2, (y0 + y1) / 2, fenceD + 0.03); mesh.position.copy(c); scene.add(mesh);
     }
     // gate hinge clamps on the posts
@@ -260,15 +269,22 @@ export default {
     /* ---------------- vending machines ---------------- */
     const bottleRow = (g, x0, x1, y, h, r, palette) => {
       let x = x0;
-      while (x < x1 - 4) {
-        const bw = lerp(9, 13, r()); const c = palette[Math.floor(r() * palette.length)];
-        g.fillStyle = c; g.fillRect(x, y - h * lerp(0.8, 1, r()), bw - 3, h);
-        g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(x + 1, y - h * 0.8, 2, h * 0.6);
+      while (x < x1 - 6) {
+        const bw = lerp(10, 14, r()); const c = palette[Math.floor(r() * palette.length)];
+        const bh = h * lerp(0.75, 1, r()); const top = y - bh; const body = bw - 3;
+        // body + shoulder + neck + cap
+        g.fillStyle = c; g.fillRect(x, top + bh * 0.3, body, bh * 0.7);
+        g.beginPath(); g.moveTo(x, top + bh * 0.32); g.quadraticCurveTo(x + body / 2, top + bh * 0.05, x + body, top + bh * 0.32); g.fill();
+        g.fillRect(x + body * 0.3, top + bh * 0.06, body * 0.4, bh * 0.2);
+        g.fillStyle = r() < 0.5 ? '#f4f4f4' : palette[Math.floor(r() * palette.length)]; g.fillRect(x + body * 0.25, top, body * 0.5, bh * 0.08);
+        // label band
+        g.fillStyle = palette[Math.floor(r() * palette.length)]; g.fillRect(x, top + bh * 0.5, body, bh * 0.22);
+        g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillRect(x + 1, top + bh * 0.34, 2, bh * 0.55);
         x += bw;
       }
     };
     const vmWhiteTex = paintTexture('s6_vm_white', 256, 512, (g, w, h, r) => {
-      g.fillStyle = '#d9dcdf'; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#cdd2d8'; g.fillRect(0, 0, w, h);
       g.fillStyle = '#c4c8ce'; g.fillRect(0, 0, w, 20);
       // display window
       g.fillStyle = '#9fb0bf'; g.fillRect(16, 26, 200, 230);
@@ -394,8 +410,8 @@ export default {
     crate(172, 230, 565, 615, groundD(615), 0.4, cardMatDark, -0.05);
 
     /* ---------------- cones ---------------- */
-    const coneMat = toon({ color: '#e8562c' });
-    const coneBand = toon({ color: '#f0ece6' });
+    const coneMat = toon({ color: '#e24a26' });
+    const coneBand = toon({ color: '#f0b49a' });
     const coneBase = toon({ color: '#c8401f' });
     const cone = (px, pyBase, hpx) => {
       const d = groundD(pyBase);
@@ -421,7 +437,7 @@ export default {
     const tapeTex = paintTexture('s6_tape', 256, 16, (g, w, h) => {
       g.fillStyle = '#f0c63a'; g.fillRect(0, 0, w, h);
       g.fillStyle = '#23232b';
-      for (let x = -16; x < w + 16; x += 22) { g.beginPath(); g.moveTo(x, h); g.lineTo(x + 11, h); g.lineTo(x + 19, 0); g.lineTo(x + 8, 0); g.closePath(); g.fill(); }
+      for (let x = -16; x < w + 16; x += 32) { g.beginPath(); g.moveTo(x, h); g.lineTo(x + 15, h); g.lineTo(x + 23, 0); g.lineTo(x + 8, 0); g.closePath(); g.fill(); }
     }, { repeat: true });
     const tapeMat = toon({ color: '#ffffff', map: tapeTex, side: THREE.DoubleSide });
     const tape = (pts, widthPx = 7) => {
@@ -433,7 +449,7 @@ export default {
         const t = i / N; const p = curve.getPoint(t); if (prev) L += p.distanceTo(prev); prev = p;
         const d = -p.z; const hw = S(widthPx, d) / 2;
         pos.push(p.x, p.y + hw, p.z, p.x, p.y - hw, p.z);
-        uv.push(L / S(widthPx * 6, d), 1, L / S(widthPx * 6, d), 0);
+        uv.push(L / S(widthPx * 9, d), 1, L / S(widthPx * 9, d), 0);
         if (i < N) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
       }
       const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -442,9 +458,9 @@ export default {
     };
     const dC = (py) => groundD(py) - 0.02;
     tape([[380, 640, dC(650)], [440, 640, dC(652)], [503, 634, dC(650)]], 6);
-    tape([[503, 600, dC(650)], [560, 628, dC(652)], [620, 622, dC(653)], [668, 598, dC(655)]], 8);
-    tape([[668, 598, dC(655)], [720, 605, dC(656)], [770, 620, dC(656)], [820, 610, dC(655)]], 8);
-    tape([[820, 610, dC(655)], [880, 618, dC(656)], [940, 610, dC(657)], [996, 596, dC(658)]], 8);
+    tape([[503, 600, dC(650)], [560, 628, dC(652)], [620, 622, dC(653)], [668, 598, dC(655)]], 10);
+    tape([[668, 598, dC(655)], [720, 605, dC(656)], [770, 620, dC(656)], [820, 610, dC(655)]], 10);
+    tape([[820, 610, dC(655)], [880, 618, dC(656)], [940, 610, dC(657)], [996, 596, dC(658)]], 10);
     tape([[996, 600, dC(658)], [1010, 625, dC(658)]], 6);
 
     /* ---------------- crates + pallets ---------------- */
@@ -495,38 +511,143 @@ export default {
       rod(p(1040, 585), p(1046, 600), R * 0.6, steel);
     }
 
-    /* ---------------- overhanging canopy (top corners) ---------------- */
-    // top-left: dark mass, lit leaves toward the sky opening (lower-right edge)
-    const tlPoly = [[-40, -40], [540, -40], [520, 60], [470, 140], [420, 200], [360, 255], [300, 300], [200, 300], [100, 310], [-40, 320]];
-    fol({ clumps: fillPoly(tlPoly, 160, 34, 60, 7, 77, 1.0), density: 9, cardSize: S(24, 7), kind: 'small', seed: 12, texSeed: 2,
-      dark: '#0a1c15', mid: '#0000ff', light: '#ff0000', highlight: '#ffff00', wind: 0.018, shell: 0.5, lightWrap: 0.05, terminator: -0.05, flatten: 0.7, maxCards: 20000 },
-      [0.8, -0.35, -0.45]);
-    // lighter leafy fringe of the top-left canopy
-    fol({ clumps: fillPoly([[330, -20], [540, -20], [520, 70], [470, 140], [420, 200], [360, 250], [300, 290], [270, 200], [300, 80]], 40, 16, 30, 6.5, 79, 0.5),
-      density: 5, cardSize: S(22, 6.5), kind: 'small', seed: 14, texSeed: 4,
-      dark: '#163e24', mid: '#2a6434', light: '#4d9346', highlight: '#94c868', wind: 0.03, shell: 0.45, lightWrap: 0.3, flatten: 0.8 }, [0.6, 0.1, 0.8]);
-    // top-right: dark core at the right
-    const trPoly = [[960, -40], [1320, -40], [1320, 210], [1230, 215], [1160, 200], [1080, 170], [1020, 120], [980, 60]];
-    fol({ clumps: fillPoly(trPoly, 120, 34, 60, 7, 81, 1.0), density: 9, cardSize: S(24, 7), kind: 'small', seed: 16, texSeed: 6,
-      dark: '#0c241b', mid: '#163a28', light: '#2c5e38', highlight: '#5f9a50', wind: 0.018, shell: 0.5, lightWrap: 0.05, terminator: -0.05, flatten: 0.7 },
-      [-0.8, -0.3, -0.45]);
-    // top-right: bright lime fringe leaves on the left / lower side (sky shows through)
-    fol({ clumps: fillPoly([[690, -20], [1000, -20], [1010, 120], [1060, 180], [1000, 230], [940, 270], [900, 220], [860, 140], [760, 90], [700, 70]], 55, 14, 26, 6.5, 83, 0.5),
-      density: 4.5, cardSize: S(22, 6.5), kind: 'small', seed: 18, texSeed: 8,
-      dark: '#2a5c34', mid: '#4b8c48', light: '#78b85a', highlight: '#b8de86', wind: 0.035, shell: 0.4, lightWrap: 0.5, flatten: 0.8 }, [-0.5, 0.5, 0.7]);
+    /* ---------------- painterly leaf sprays (pixel-authored, fixed camera) ---------------- */
+    const leafAtlas = paintTexture('s6_leafatlas', 512, 512, (g, w, h, r) => {
+      g.clearRect(0, 0, w, h);
+      const leaf = (cx, cy, len, wid, rot, v = 1, serr = 0) => {
+        g.save(); g.translate(cx, cy); g.rotate(rot);
+        g.beginPath(); g.moveTo(0, -len / 2);
+        const N = 14;
+        for (let i = 0; i <= N; i++) { const t = i / N; const y = -len / 2 + t * len; const ww = wid * Math.sin(Math.PI * Math.pow(t, 0.8)) * (1 + (i % 2) * serr); g.lineTo(ww, y); }
+        for (let i = N; i >= 0; i--) { const t = i / N; const y = -len / 2 + t * len; const ww = wid * Math.sin(Math.PI * Math.pow(t, 0.8)) * (1 + (i % 2) * serr); g.lineTo(-ww, y); }
+        g.closePath();
+        const c = Math.round(255 * v); g.fillStyle = `rgb(${c},${c},${c})`; g.fill();
+        g.lineWidth = 3; g.strokeStyle = 'rgba(120,120,120,1)'; g.stroke();
+        // lit half
+        g.beginPath(); g.moveTo(0, -len / 2); g.quadraticCurveTo(wid * 0.9, 0, 0, len / 2); g.closePath();
+        g.fillStyle = 'rgba(255,255,255,0.0)'; g.fill();
+        g.beginPath(); g.moveTo(0, -len * 0.45); g.lineTo(0, len * 0.45); g.lineWidth = 2; g.strokeStyle = 'rgba(160,160,160,0.9)'; g.stroke();
+        g.restore();
+      };
+      // cell 0 (0,0): single leaf
+      leaf(128, 128, 220, 70, 0, 1, 0.04);
+      // cell 1 (256,0): 3-leaf spray
+      leaf(256 + 128, 70, 110, 38, 0.1, 0.95, 0.05); leaf(256 + 70, 150, 110, 38, -1.0, 0.9, 0.05); leaf(256 + 186, 160, 110, 38, 1.1, 1, 0.05);
+      // cell 2 (0,256): cluster of small leaves
+      for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2 + r(); const d = 40 + r() * 40; leaf(128 + Math.cos(a) * d, 384 + Math.sin(a) * d, 80, 30, a + Math.PI / 2 + (r() - 0.5), 0.8 + r() * 0.2, 0.06); }
+      leaf(128, 384, 80, 30, r() * 3, 1, 0.06);
+      // cell 3 (256,256): broad ovate leaf (foreground plant)
+      leaf(384, 384, 236, 72, 0, 1, 0.02);
+    }, { srgb: false });
+    leafAtlas.generateMipmaps = true;
 
-    /* ---------------- foreground broad leaves (lower-left) ---------------- */
-    fol({ clumps: fillPoly([[-40, 270], [60, 280], [140, 320], [200, 420], [230, 520], [330, 600], [380, 720], [-40, 740]], 26, 40, 70, 4, 85, 0.6),
-      density: 2.2, cardSize: S(62, 4), kind: 'broad', seed: 20, texSeed: 9,
-      dark: '#0f2a1c', mid: '#25603a', light: '#4f9a4a', highlight: '#9fd06c', wind: 0.035, shell: 0.45, lightWrap: 0.35, flatten: 0.9 }, [0.4, 0.7, 0.6]);
+    const hashJ = (x, y) => { const s0 = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s0 - Math.floor(s0); };
+    const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi; const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+      return lerp(lerp(hashJ(xi, yi), hashJ(xi + 1, yi), u), lerp(hashJ(xi, yi + 1), hashJ(xi + 1, yi + 1), u), v); };
+    const smooth01 = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+    // leafSpray: leaves = [{px,py,size,rot,tone,cell}], depth d
+    const leafSpray = (leaves, d, ramp, wind = 1) => {
+      const n = leaves.length;
+      const geo = new THREE.InstancedBufferGeometry();
+      const base = new THREE.PlaneGeometry(1, 1);
+      geo.index = base.index; geo.attributes.position = base.attributes.position; geo.attributes.uv = base.attributes.uv;
+      const aP = new Float32Array(n * 4), aQ = new Float32Array(n * 4);
+      leaves.forEach((L, i) => {
+        const dd = d - L.tone * 0.25 - (L.dz || 0);
+        const p = P(L.px, L.py, dd);
+        aP.set([p.x, p.y, p.z, S(L.size, dd)], i * 4);
+        aQ.set([L.rot, L.tone, L.cell, L.ph], i * 4);
+      });
+      geo.setAttribute('aP', new THREE.InstancedBufferAttribute(aP, 4));
+      geo.setAttribute('aQ', new THREE.InstancedBufferAttribute(aQ, 4));
+      geo.instanceCount = n;
+      const mat = new THREE.ShaderMaterial({
+        uniforms: { tA: { value: leafAtlas }, uTime: shared.uTime, uWind: { value: wind },
+          c0: { value: col(ramp[0]) }, c1: { value: col(ramp[1]) }, c2: { value: col(ramp[2]) }, c3: { value: col(ramp[3]) } },
+        vertexShader: `attribute vec4 aP; attribute vec4 aQ; uniform float uTime, uWind; varying vec2 vUv; varying float vT;
+          void main(){
+            float cell = aQ.z; vec2 co = vec2(mod(cell, 2.0), floor(cell / 2.0));
+            vUv = (uv + co) * 0.5; vUv.y = 1.0 - ((1.0 - uv.y) + co.y) * 0.5;
+            vT = aQ.y;
+            float sw = sin(uTime * 1.3 + aQ.w) * 0.6 + sin(uTime * 2.3 + aQ.w * 1.7) * 0.4;
+            float ang = aQ.x + sw * 0.06 * uWind;
+            vec2 cs = vec2(cos(ang), sin(ang));
+            vec2 o = mat2(cs.x, cs.y, -cs.y, cs.x) * position.xy * aP.w;
+            vec3 c = aP.xyz + vec3(sw * 0.04 * uWind * aP.w, sw * 0.02 * uWind * aP.w, 0.);
+            gl_Position = projectionMatrix * viewMatrix * vec4(c + vec3(o, 0.), 1.0);
+          }`,
+        fragmentShader: `uniform sampler2D tA; uniform vec3 c0, c1, c2, c3; varying vec2 vUv; varying float vT;
+          void main(){
+            vec4 t = texture2D(tA, vUv);
+            if (t.a < 0.5) discard;
+            vec3 c = mix(c0, c1, smoothstep(0.24, 0.30, vT));
+            c = mix(c, c2, smoothstep(0.49, 0.55, vT));
+            c = mix(c, c3, smoothstep(0.76, 0.82, vT));
+            c *= mix(0.62, 1.0, smoothstep(0.5, 0.9, t.r));
+            gl_FragColor = vec4(c, 1.0);
+          }`,
+        side: THREE.DoubleSide,
+      });
+      const m = new THREE.Mesh(geo, mat); m.frustumCulled = false; scene.add(m); return m;
+    };
+    const sprayPoly = (poly, n, seed, fn) => {
+      const r = rng(seed); const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
+      const bx = [Math.min(...xs), Math.max(...xs)], by = [Math.min(...ys), Math.max(...ys)];
+      const out = []; let guard = 0;
+      while (out.length < n && guard++ < n * 60) {
+        const x = lerp(bx[0], bx[1], r()), y = lerp(by[0], by[1], r());
+        if (!inPoly(x, y, poly)) continue;
+        const L = fn(x, y, r); if (L) out.push({ px: x, py: y, ph: r() * 6.28, ...L });
+      }
+      out.sort((A, B) => A.tone - B.tone);
+      return out;
+    };
+
+    /* ---------------- overhanging canopy (top corners) ---------------- */
+    // top-left: near-black mass; lit leaves toward the sky opening (lower-right edge)
+    const tlPoly = [[-40, -40], [545, -40], [530, 40], [500, 110], [455, 170], [420, 215], [370, 260], [310, 300], [200, 296], [100, 300], [-40, 310]];
+    const tlTone = (x, y, r) => {
+      const edge = smooth01(0.45, 0.95, (x + 0.85 * y) / 560);
+      const patch = vn(x / 90, y / 90);
+      return Math.min(1, Math.max(0, 0.02 + edge * 0.6 + (patch - 0.5) * 0.3 + (r() - 0.5) * 0.22));
+    };
+    leafSpray(sprayPoly(tlPoly, 260, 101, (x, y, r) => ({ size: lerp(70, 110, r()), rot: r() * 6.28, cell: 2, tone: tlTone(x, y, r) * 0.6 })), 7.2,
+      ['#08160f', '#10281a', '#24502e', '#4f8a48'], 0.6);
+    leafSpray(sprayPoly(tlPoly, 1600, 103, (x, y, r) => ({ size: lerp(20, 34, r()), rot: r() * 6.28, cell: r() < 0.6 ? 0 : 1, tone: tlTone(x, y, r) })), 7.0,
+      ['#0a1a12', '#153424', '#2c6040', '#5e9a5a'], 1.0);
+    // top-right: dark core at right, bright lime leaves toward the left / bottom
+    const trPoly = [[690, -40], [1320, -40], [1320, 205], [1230, 215], [1160, 200], [1090, 180], [1040, 200], [990, 250], [940, 275], [910, 230], [880, 160], [800, 110], [720, 90], [690, 50]];
+    const trTone = (x, y, r) => {
+      const lit = smooth01(1080, 860, x + (y - 100) * 0.3);
+      const patch = vn(x / 80, y / 80);
+      return Math.min(1, Math.max(0, 0.04 + lit * 0.62 + (patch - 0.5) * 0.35 + (r() - 0.5) * 0.25));
+    };
+    const trCore = [[960, -40], [1320, -40], [1320, 205], [1230, 215], [1160, 200], [1090, 180], [1030, 140], [990, 80]];
+    leafSpray(sprayPoly(trCore, 200, 105, (x, y, r) => ({ size: lerp(70, 110, r()), rot: r() * 6.28, cell: 2, tone: trTone(x, y, r) * 0.6 })), 7.2,
+      ['#0a1d15', '#132f22', '#285634', '#4f8a48'], 0.6);
+    leafSpray(sprayPoly(trPoly, 1700, 107, (x, y, r) => {
+      const t = trTone(x, y, r);
+      if (x < 1000 && r() < 0.35) return null;    // sparse fringe with sky gaps
+      return { size: lerp(20, 34, r()), rot: r() * 6.28, cell: r() < 0.6 ? 0 : 1, tone: t };
+    }), 7.0, ['#0d241a', '#1d4630', '#46845a', '#7cb46a'], 1.0);
+
+    /* ---------------- foreground broad leaves (lower-left plant) ---------------- */
+    const plPoly = [[-40, 270], [60, 275], [140, 310], [190, 400], [230, 500], [330, 590], [390, 700], [380, 740], [-40, 740]];
+    leafSpray(sprayPoly(plPoly, 230, 109, (x, y, r) => {
+      if (x > 200 && r() < 0.5) return null;
+      const patch = vn(x / 120, y / 120);
+      return { size: lerp(36, 62, r()), rot: (r() - 0.5) * 2.6 + (x > 150 ? 0.6 : -0.3), cell: 3,
+        tone: Math.min(1, Math.max(0, 0.38 + (patch - 0.5) * 0.8 + (r() - 0.5) * 0.5 - smooth01(560, 720, y) * 0.3)) };
+    }), 4.0, ['#0f2419', '#2a6a40', '#4f9a4c', '#8cc86a'], 1.2);
 
     return {
       scene, camera,
       update(t) {
         shared.uSunDir.value.copy(SUN);
         shared.uDapple.value = 1.0;
-        shared.uDappleScale.value = 1.6;
-        shared.uDappleCover.value = 0.5;
+        shared.uDappleScale.value = 5.0;
+        shared.uDappleCover.value = 0.69;
         shared.uDappleSpeed.value = 0.25;
         shared.uFogMax.value = 0.0;
       },

@@ -7,7 +7,7 @@
 // Vertical planes are defined by a horizontal direction + a point; pixel rays are intersected with them, and
 // canvas textures are painted in "pixel space" (mapped through the plane) so perspective is exact.
 
-const W0 = 1280, H0 = 720, F = 900, CX = 640, CY = 575;
+const W0 = 1280, H0 = 720, F = 900, CX = 640, CY = 575, GROUND = -0.95;
 
 export default {
   duration: 3.042,
@@ -36,9 +36,10 @@ export default {
     const at = (px, py, d) => ray(px, py).multiplyScalar(d);
     const dirTo = (vpx) => V((vpx - CX) / F, 0, -1).normalize();
 
-    function plane(origin, dir) {
-      const n = new THREE.Vector3().crossVectors(dir, UP).normalize();
-      if (n.dot(origin) > 0) n.negate();             // face the camera
+    function plane(origin, dir0) {
+      const dir = dir0.clone();
+      let n = new THREE.Vector3().crossVectors(dir, UP).normalize();
+      if (n.dot(origin) > 0) { dir.negate(); n.negate(); }   // face the camera, keep the basis right-handed
       const P = {
         o: origin.clone(), d: dir.clone(), n,
         hit(px, py) { const r = ray(px, py); const t = origin.dot(n) / r.dot(n); return r.multiplyScalar(t); },
@@ -94,7 +95,8 @@ export default {
     }
 
     /* surface: rectangle on a plane, given by pixel extents on that plane; textures painted in pixel space */
-    function surface(key, P, [xL, yT, xR, yB], o = {}) {
+    function surface(key, P0, [xL, yT, xR, yB], o0 = {}) {
+      const P = o0.off ? P0.shift(o0.off) : P0, o = { ...o0, off: 0 };
       const cs = [P.uv(xL, yT), P.uv(xR, yT), P.uv(xL, yB), P.uv(xR, yB)];
       const ua = Math.min(...cs.map(c => c[0])), ub = Math.max(...cs.map(c => c[0])), va = Math.min(...cs.map(c => c[1])), vb = Math.max(...cs.map(c => c[1]));
       const [tw, th] = o.res || [512, 512];
@@ -129,7 +131,7 @@ export default {
 
     // left building (lantern facade): px 0..270
     surface('lfac', PA, [-40, -60, 300, 760], {
-      res: [512, 1024], shade: '#2a2a36', lit: '#ffffff', cover: 0.52, scale: 2.6, seed: 3,
+      res: [512, 1024], shade: '#2a2a36', lit: '#b09080', cover: 0.5, scale: 4.0, seed: 3,
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#6a4c3a'; g.fillRect(0, 0, w, h);
         for (let y = -60; y < 760; y += 13) fillPoly(g, poly, [[-40, y], [300, y], [300, y + 1.6], [-40, y + 1.6]], 'rgba(25,12,6,0.45)');
@@ -144,7 +146,7 @@ export default {
 
     // corrugated metal wall section px 262..540
     surface('corr', PA, [262, -60, 548, 760], {
-      res: [512, 1024], shade: '#1c1e2a', lit: '#ffffff', cover: 0.5, scale: 2.6, seed: 7, off: 0.02,
+      res: [512, 1024], shade: '#1c1e2a', lit: '#e8dcd8', cover: 0.52, scale: 4.5, seed: 7, off: 0.02,
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#d8c4bc'; g.fillRect(0, 0, w, h);
         for (let x = 0; x < w; x += 7) { g.fillStyle = 'rgba(40,30,40,0.45)'; g.fillRect(x, 0, 2.5, h); g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(x + 3.5, 0, 1.2, h); }
@@ -166,9 +168,9 @@ export default {
 
     // balcony house wall px 540..950 (first floor windows etc.)
     surface('hwall', PA, [532, -60, 960, 760], {
-      res: [768, 1024], shade: '#24263a', lit: '#ffffff', cover: 0.54, scale: 2.4, seed: 11, off: -0.15,
+      res: [768, 1024], shade: '#2a2c40', lit: '#e0c4b4', cover: 0.52, scale: 4.5, seed: 11, off: -0.15,
       paint(g, C, poly, w, h, r) {
-        g.fillStyle = '#6a6474'; g.fillRect(0, 0, w, h);
+        g.fillStyle = '#5a5262'; g.fillRect(0, 0, w, h);
         // vertical boards
         for (let x = 535; x < 960; x += 14) fillPoly(g, poly, [[x, -60], [x + 2, -60], [x + 2, 760], [x, 760]], 'rgba(20,20,30,0.4)');
         // corner post (light)
@@ -187,6 +189,8 @@ export default {
       },
       maskPaint(g, C, poly) {
         g.fillStyle = 'rgba(255,0,0,0.7)'; g.fillRect(0, 0, g.canvas.width, g.canvas.height);
+        fillPoly(g, poly, [[532, -60], [960, -60], [960, 420], [532, 270]], 'rgb(90,0,0)');
+        fillPoly(g, poly, [[562, 316], [805, 392], [805, 584], [562, 584]], 'rgb(255,0,70)');
         fillPoly(g, poly, [[575, 356], [688, 388], [688, 574], [575, 576]], '#00f');
         fillPoly(g, poly, [[700, 392], [794, 418], [794, 570], [700, 572]], '#00f');
         fillPoly(g, poly, [[532, -60], [566, -60], [566, 760], [532, 760]], '#f00');
@@ -195,7 +199,7 @@ export default {
 
     // first-floor eave: sloped thin roof (underside + lit front rim)
     {
-      const out = 0.85, drop = 0.28, PE = PA.shift(out);
+      const out = 0.5, drop = 0.3, PE = PA.shift(out);
       const [ua, ve] = PE.uv(552, 262), [ub] = PE.uv(1010, 434);
       const f0 = PE.pt(ua, ve), f1 = PE.pt(ub, ve), b0 = PA.pt(ua, ve + drop), b1 = PA.pt(ub, ve + drop);
       const quad = (a, b, c, d, mat) => {
@@ -211,8 +215,8 @@ export default {
 
     // balcony (2nd floor), protruding
     const PB = PA.shift(0.9);
-    surface('balc', PB, [530, -80, 960, 360], {
-      res: [1024, 768], shade: '#3a2c30', lit: '#ffffff', cover: 0.6, scale: 2.4, seed: 21, emit: '#e8784a',
+    surface('balc', PB, [530, -80, 960, 350], {
+      res: [1024, 768], shade: '#3a2c30', lit: '#ffffff', cover: 0.52, scale: 4.5, seed: 21, emit: '#e8784a',
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#8a5c40'; g.fillRect(0, 0, w, h);
         // vertical slats with dark gaps
@@ -225,7 +229,8 @@ export default {
         for (const x of [548, 668, 768, 846, 900]) fillPoly(g, poly, [[x, -80], [x + 9, -80], [x + 9, 360], [x, 360]], '#4a2e20');
         // bottom beam (lit warm) and dark fascia below
         fillPoly(g, poly, [[530, 118], [960, 262], [960, 292], [530, 146]], '#b8684a');
-        fillPoly(g, poly, [[530, 146], [960, 292], [960, 360], [530, 360]], '#3a2a2c');
+        fillPoly(g, poly, [[530, 146], [960, 292], [960, 322], [530, 172]], '#3a2a2c');
+        g.globalCompositeOperation = 'destination-out'; fillPoly(g, poly, [[530, 172], [960, 322], [960, 400], [530, 400]], '#000'); g.globalCompositeOperation = 'source-over';
         // roof soffit (dark) top right
         fillPoly(g, poly, [[700, -80], [960, -80], [960, 70], [890, 88], [760, 20]], '#1a1210');
       },
@@ -241,18 +246,15 @@ export default {
       g.fillStyle = '#f2ece6'; g.fillRect(0, 0, w, h);
       for (let y = 0; y < h; y += 12) { g.fillStyle = 'rgba(120,110,110,0.25)'; g.fillRect(0, y, w, 2); }
       g.fillStyle = '#6a1410'; g.fillRect(0, 0, w, 22); g.fillRect(0, h - 22, w, 22);
-      // brush kanji-ish strokes (front centre is u=0.25 .. 0.75 band)
-      g.strokeStyle = '#8a1a14'; g.lineCap = 'round'; g.lineJoin = 'round';
-      const S = (pts, lw) => { g.lineWidth = lw; g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x * w, y * h) : g.moveTo(x * w, y * h)); g.stroke(); };
-      S([[0.42, 0.14], [0.6, 0.12]], 9); S([[0.5, 0.08], [0.5, 0.36]], 9); S([[0.4, 0.22], [0.62, 0.2], [0.58, 0.3]], 8); S([[0.38, 0.33], [0.64, 0.31]], 9);
-      S([[0.44, 0.46], [0.4, 0.62], [0.46, 0.7]], 9); S([[0.4, 0.52], [0.5, 0.5]], 7); S([[0.52, 0.44], [0.62, 0.48], [0.58, 0.58], [0.66, 0.74]], 9);
-      S([[0.54, 0.6], [0.66, 0.56]], 7); S([[0.5, 0.78], [0.64, 0.86]], 8);
-      g.lineWidth = 3; S([[0.68, 0.2], [0.68, 0.34]], 3); S([[0.71, 0.22], [0.71, 0.3]], 3);
+      // brush kanji (front of the lantern is the u = 0.5 band after rotation)
+      g.fillStyle = '#7a1612'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = 'bold 118px serif'; g.fillText('串', w * 0.5, h * 0.3); g.fillText('焼', w * 0.5, h * 0.66);
+      g.font = 'bold 22px serif'; g.fillText('や', w * 0.75, h * 0.25); g.fillText('き', w * 0.75, h * 0.33); g.fillText('と', w * 0.75, h * 0.41); g.fillText('り', w * 0.75, h * 0.49);
     });
-    const lantern = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), pmat({ map: lanTex, shade: '#8a8090', lit: '#fff8f0', cover: 0.52, scale: 2.0, seed: 4 }));
+    const lantern = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), pmat({ map: lanTex, shade: '#585060', lit: '#d8d0c8', cover: 0.5, scale: 4.0, seed: 4 }));
     lantern.scale.set(0.22, 0.32, 0.22);
     lantern.position.copy(at(152, 226, 4.5));
-    lantern.rotation.y = -0.5;
+    lantern.rotation.y = -Math.PI / 2 + 0.45;
     scene.add(lantern);
 
     /* ---------------- stop sign + pole ---------------- */
@@ -276,23 +278,28 @@ export default {
     /* ---------------- overpass ---------------- */
     const PO = plane(at(1100, 470, 24), dirTo(250));
     surface('over', PO, [930, 250, 1300, 800], {
-      res: [768, 768], shade: '#262830', lit: '#fff2dc', cover: 0.5, scale: 0.35, seed: 31, order: 1,
+      res: [768, 768], shade: '#62606a', lit: '#fff2dc', cover: 0.4, scale: 1.6, seed: 31, order: 1,
       paint(g, C, poly, w, h, r) {
         g.clearRect(0, 0, w, h);
-        // parapet (lit concrete face)
-        poly(g, [[930, 380], [1300, 320], [1300, 430], [930, 470]]); g.fillStyle = '#a8a088'; g.fill();
-        // dark underside beams
-        poly(g, [[930, 470], [1300, 430], [1300, 720], [930, 720]]); g.fillStyle = '#20242a'; g.fill();
-        for (let k = 0; k < 5; k++) { const y = 500 + k * 26; poly(g, [[930, y], [1300, y - 60], [1300, y - 56], [930, y + 4]]); g.fillStyle = '#5a5e66'; g.fill(); }
-        // wooden panel
-        poly(g, [[1055, 585], [1210, 570], [1210, 622], [1055, 628]]); g.fillStyle = '#a07450'; g.fill();
-        // pillar right
-        poly(g, [[1195, 470], [1300, 455], [1300, 720], [1195, 720]]); g.fillStyle = '#9a9078'; g.fill();
+        const F_ = (pts, c) => fillPoly(g, poly, pts, c);
+        F_([[930, 382], [1300, 328], [1300, 425], [930, 482]], '#b8b096');          // parapet face (lit concrete)
+        for (let i = 0; i < 40; i++) { const x = 930 + r() * 370, y = 380 + r() * 90 - (x - 930) * 0.15; F_([[x, y], [x + 20, y - 3], [x + 20, y + 6], [x, y + 9]], `rgba(${r() < 0.5 ? '90,84,70' : '210,200,180'},0.25)`); }
+        F_([[930, 482], [1300, 425], [1300, 800], [930, 800]], '#1c1e24');          // underside
+        F_([[930, 478], [1300, 420], [1300, 428], [930, 487]], '#c8c4bc');          // slab edge
+        for (const [x0, y0, x1, y1] of [[945, 517], [960, 553], [1030, 573]].map(([x, y], k) => [x, y, 1195, [483, 523, 560][k]])) F_([[x0, y0], [x1, y1], [x1, y1 + 4], [x0, y0 + 5]], '#6a6e78');
+        for (let k = 0; k < 4; k++) { const y = 492 + k * 12; F_([[930, y + 30], [1195, y - 8], [1195, y - 6], [930, y + 32]], '#2c2f38'); }
+        F_([[1062, 582], [1208, 574], [1208, 622], [1062, 628]], '#b0805a');          // wooden panel
+        for (let x = 1066; x < 1208; x += 9) F_([[x, 576], [x + 1.5, 576], [x + 1.5, 628], [x, 628]], '#5a3a28');
+        F_([[1192, 462], [1300, 450], [1300, 695], [1192, 695]], '#a89e86');          // pillar
+        F_([[1192, 462], [1215, 460], [1215, 695], [1192, 695]], '#4a4640');
+        F_([[1150, 695], [1300, 695], [1300, 800], [1150, 800]], '#16161a');
       },
       maskPaint(g, C, poly) {
-        poly(g, [[930, 380], [1300, 320], [1300, 430], [930, 470]]); g.fillStyle = '#f00'; g.fill();
-        poly(g, [[1195, 470], [1300, 455], [1300, 720], [1195, 720]]); g.fillStyle = '#e00'; g.fill();
-        poly(g, [[1055, 585], [1210, 570], [1210, 622], [1055, 628]]); g.fillStyle = '#f00'; g.fill();
+        fillPoly(g, poly, [[930, 382], [1300, 328], [1300, 425], [930, 482]], '#f00');
+        fillPoly(g, poly, [[930, 478], [1300, 420], [1300, 428], [930, 487]], '#f0f');
+        fillPoly(g, poly, [[1192, 462], [1300, 450], [1300, 695], [1192, 695]], '#f00');
+        fillPoly(g, poly, [[1062, 582], [1208, 574], [1208, 622], [1062, 628]], '#f00');
+        fillPoly(g, poly, [[930, 482], [1300, 425], [1300, 800], [930, 800]], 'rgba(0,0,255,0.0)');
       },
     });
     // railing on top of the overpass
@@ -316,45 +323,48 @@ export default {
     /* ---------------- car (AE86-like hatchback) ---------------- */
     const car = new THREE.Group();
     {
-      const fwd = D1.clone(), side = new THREE.Vector3().crossVectors(fwd, UP).normalize(); // side = car's right
-      const Lc = 4.2, Wc = 1.63;
-      const white = pmat({ color: '#e8e8ec', shade: '#4c5266', lit: '#ffffff', cover: 0.42, scale: 1.3, seed: 41 });
-      const black = pmat({ color: '#1a1a20', shade: '#9098b0', lit: '#ffffff', cover: 0.42, scale: 1.3, seed: 41 });
-      const glassTex = paintTexture('s5_glass', 128, 128, (g, w, h) => { g.fillStyle = '#e8e8ec'; g.fillRect(0, 0, w, h); g.fillStyle = '#0c0e18'; g.fillRect(10, 10, w - 20, h - 18); });
-      const glass = pmat({ map: glassTex, shade: '#4c5266', lit: '#ffffff', cover: 0.42, scale: 1.3, seed: 41 });
+      const fwd = dirTo(1700), side = new THREE.Vector3().crossVectors(fwd, UP).normalize();
+      const Lc = 4.18, Wc = 1.63;
+      const cw = { shade: '#5a6278', lit: '#ffffff', cover: 0.47, scale: 4.0, seed: 41 };
+      const white = pmat({ color: '#dcdad6', ...cw });
+      const black = pmat({ color: '#141418', ...cw, shade: '#ffffff', lit: '#b0b0b8' });
+      const glassTex = paintTexture('s5_glass', 128, 128, (g, w, h) => { g.fillStyle = '#e0dedc'; g.fillRect(0, 0, w, h); g.fillStyle = '#10131e'; g.fillRect(9, 8, w - 18, h - 14); });
+      const glass = pmat({ map: glassTex, ...cw });
       const tail = paintTexture('s5_tail', 256, 64, (g, w, h) => {
-        g.fillStyle = '#121216'; g.fillRect(0, 0, w, h);
-        g.fillStyle = '#5a1418'; g.fillRect(6, 8, 70, 40); g.fillRect(w - 76, 8, 70, 40);
-        g.fillStyle = '#2a2a30'; g.fillRect(84, 8, w - 168, 40);
+        g.fillStyle = '#101014'; g.fillRect(0, 0, w, h);
+        g.fillStyle = '#4a1216'; g.fillRect(4, 10, 64, 40); g.fillRect(w - 68, 10, 64, 40);
+        g.fillStyle = '#5a1a1e'; g.fillRect(70, 10, 22, 40); g.fillRect(w - 92, 10, 22, 40);
+        g.fillStyle = '#1e1e24'; g.fillRect(96, 12, w - 192, 36);
       });
       const tailM = pmat({ map: tail, shade: '#ffffff', lit: '#ffffff', cover: 2 });
       const plateTex = paintTexture('s5_plate', 128, 64, (g, w, h) => {
-        g.fillStyle = '#f4f0e6'; g.fillRect(0, 0, w, h); g.strokeStyle = '#333'; g.lineWidth = 3; g.strokeRect(2, 2, w - 4, h - 4);
-        g.fillStyle = '#222'; g.font = 'bold 34px sans-serif'; g.textAlign = 'center'; g.fillText('13954', w / 2, 50);
-        g.font = '12px sans-serif'; g.fillText('群馬 50', w / 2, 15);
+        g.fillStyle = '#f6f2e8'; g.fillRect(0, 0, w, h); g.strokeStyle = '#555'; g.lineWidth = 3; g.strokeRect(2, 2, w - 4, h - 4);
+        g.fillStyle = '#222'; g.font = 'bold 36px sans-serif'; g.textAlign = 'center'; g.fillText('13954', w / 2, 54);
+        g.font = '13px sans-serif'; g.fillText('群馬 50 ら', w / 2, 16);
       });
       const plateM = pmat({ map: plateTex, shade: '#ffffff', lit: '#ffffff', emit: '#000000', cover: 2 });
       const add = (geo, mat, f, s, y) => { const m = new THREE.Mesh(geo, mat); m.position.set(s, y, -f); car.add(m); return m; };
-      // in car-local: x = right, y = up, -z = forward
-      add(new THREE.BoxGeometry(Wc, 0.32, Lc), black, Lc / 2, 0, 0.34);          // lower body
-      add(new THREE.BoxGeometry(Wc, 0.36, Lc), white, Lc / 2, 0, 0.68);          // upper body
-      add(new THREE.BoxGeometry(Wc + 0.01, 0.035, Lc + 0.01), black, Lc / 2, 0, 0.55); // side stripe
-      // cabin: tapered box
-      const cab = new THREE.BoxGeometry(Wc * 0.92, 0.42, 2.4);
-      const p = cab.attributes.position;
-      for (let i = 0; i < p.count; i++) if (p.getY(i) > 0) { p.setX(i, p.getX(i) * 0.86); p.setZ(i, p.getZ(i) * 0.7 - (p.getZ(i) > 0 ? 0.25 : 0)); }
-      cab.computeVertexNormals();
-      add(cab, [glass, glass, white, white, glass, glass], Lc * 0.55, 0, 1.07);
-      add(new THREE.PlaneGeometry(Wc * 0.98, 0.2), tailM, -0.005, 0, 0.66);      // tail light bar
-      add(new THREE.PlaneGeometry(0.33, 0.16), plateM, -0.01, -0.0, 0.44);
-      add(new THREE.BoxGeometry(Wc + 0.04, 0.12, 0.12), black, 0.03, 0, 0.25);   // bumper
-      const wheel = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16); wheel.rotateZ(Math.PI / 2);
-      const wm = pmat({ color: '#0e0e12', shade: '#ffffff', lit: '#ffffff', cover: 2 });
-      for (const [f, s] of [[0.75, -0.75], [0.75, 0.75], [3.3, -0.75], [3.3, 0.75]]) add(wheel, wm, f, s, 0.3);
-      // mirror
-      add(new THREE.BoxGeometry(0.12, 0.1, 0.06), white, 2.55, -Wc / 2 - 0.08, 0.95);
+      const taper = (w, h, l, kx, zTopBack, zTopFront) => {   // box whose top face is narrowed / shifted (car-local z: + = back)
+        const g = new THREE.BoxGeometry(w, h, l); const p = g.attributes.position;
+        for (let i = 0; i < p.count; i++) if (p.getY(i) > 0) { p.setX(i, p.getX(i) * kx); p.setZ(i, p.getZ(i) > 0 ? zTopBack : zTopFront); }
+        g.computeVertexNormals(); return g;
+      };
+      // car-local: x = right, y = up, -z = forward. Origin = rear centre on the ground.
+      add(taper(Wc, 0.3, Lc - 0.1, 1, (Lc - 0.1) / 2, -(Lc - 0.1) / 2), black, Lc / 2, 0, 0.3);         // lower (black)
+      add(taper(Wc, 0.38, Lc, 0.98, Lc / 2 - 0.06, -Lc / 2 + 0.25), white, Lc / 2, 0, 0.64);             // upper body
+      add(new THREE.BoxGeometry(Wc + 0.012, 0.03, Lc - 0.3), black, Lc / 2 + 0.05, 0, 0.5);             // side stripe
+      // cabin: rear hatch slopes from the tail to the roof
+      add(taper(Wc * 0.94, 0.39, 2.35, 0.84, 0.475, -0.525), [glass, glass, white, white, glass, glass], 1.475, 0, 1.025);
+      add(new THREE.PlaneGeometry(Wc * 0.99, 0.19), tailM, 0.0 - 0.064, 0, 0.66);                          // tail light bar
+      add(new THREE.PlaneGeometry(0.34, 0.17), plateM, -0.075, -0.1, 0.42);
+      add(new THREE.BoxGeometry(Wc + 0.05, 0.16, 0.14), black, 0.04, 0, 0.3);                               // bumper
+      const wheel = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 18); wheel.rotateZ(Math.PI / 2);
+      const wm = pmat({ color: '#0a0a0e', shade: '#ffffff', lit: '#ffffff', cover: 2 });
+      for (const [f, s] of [[0.85, -0.72], [0.85, 0.72], [3.25, -0.72], [3.25, 0.72]]) add(wheel, wm, f, s, 0.3);
+      add(new THREE.BoxGeometry(0.1, 0.09, 0.16), white, 2.75, -Wc / 2 - 0.06, 0.92);                       // mirrors
+      add(new THREE.BoxGeometry(0.1, 0.09, 0.16), white, 2.75, Wc / 2 + 0.06, 0.92);
       car.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(side, UP, fwd.clone().negate()));
-      const rear = at(722, 700, 6.0); rear.y = -1.0;
+      const rear = at(700, 700, 4.2); rear.y = GROUND;
       car.position.copy(rear);
       scene.add(car);
     }
@@ -368,8 +378,8 @@ export default {
         [1200, 150, 70], [1260, 250, 70], [1180, 270, 50], [1250, 360, 50], [920, 100, 40], [1120, 90, 55], [1010, 230, 35], [1140, 200, 45]];
       for (const [x, y, rr] of pts) treeClumps.push(pxClump(x + (r() - 0.5) * 20, y, 7, rr));
     }
-    const tree = makeFoliage({ clumps: treeClumps, density: 2.2, cardSize: 0.5, kind: 'round', seed: 8, texSeed: 3,
-      dark: '#1d4a36', mid: '#3a7a4c', light: '#5f9e62', highlight: '#9cc884', wind: 0.04, shell: 0.6, lightWrap: 0.6, sizeJitter: 0.5 });
+    const tree = makeFoliage({ clumps: treeClumps, density: 1.8, cardSize: 0.55, kind: 'round', seed: 8, texSeed: 3,
+      dark: '#1e4c44', mid: '#367250', light: '#5a9a62', highlight: '#94c682', wind: 0.04, shell: 0.85, lightWrap: 0.7, sizeJitter: 0.5 });
     scene.add(tree);
 
     const bushClumps = [];
@@ -377,13 +387,13 @@ export default {
       const pts = [[40, 420, 60], [120, 470, 70], [60, 560, 90], [180, 560, 70], [230, 650, 70], [100, 680, 90], [20, 640, 60], [200, 470, 40], [10, 360, 40]];
       for (const [x, y, rr] of pts) bushClumps.push(pxClump(x, y, 3.0, rr));
     }
-    const bush = makeFoliage({ clumps: bushClumps, density: 1.0, cardSize: 0.28, kind: 'broad', seed: 12, texSeed: 2,
+    const bush = makeFoliage({ clumps: bushClumps, density: 0.8, cardSize: 0.4, kind: 'broad', seed: 12, texSeed: 2,
       dark: '#0e2a20', mid: '#1f4e36', light: '#3f7a50', highlight: '#7aae6a', wind: 0.03, shell: 0.5, lightWrap: 0.3, sizeJitter: 0.5 });
     scene.add(bush);
 
     /* ---------------- butterflies + motes ---------------- */
     const b0 = at(30, 700, 2.8), b1 = at(470, 480, 3.4);
-    const bflies = makeButterflies({ count: 18, box: [[b0.x, b0.y, -3.2], [b1.x, b1.y, -2.6]], size: 0.06, color: '#ffbe48', seed: 7, speed: 0.9, glow: 1.8 });
+    const bflies = makeButterflies({ count: 28, box: [[b0.x, b0.y, -3.2], [b1.x, b1.y, -2.6]], size: 0.06, color: '#ffbe48', seed: 7, speed: 0.9, glow: 1.8 });
     scene.add(bflies);
     const m0 = at(300, 100, 4), m1 = at(1100, 700, 6);
     scene.add(makeMotes({ count: 40, box: [[m0.x, m1.y, -6], [m1.x, m0.y, -3.5]], size: 0.012, color: '#fff2d8', opacity: 0.6, seed: 13, speed: 0.1 }));
@@ -392,7 +402,7 @@ export default {
     return {
       scene, camera,
       update(t) {
-        shared.uSunDir.value.copy(V(0.3, 0.2, -0.9).normalize());
+        shared.uSunDir.value.copy(V(-0.45, -0.1, 0.9).normalize());
         shared.uDapple.value = 0;
       },
     };

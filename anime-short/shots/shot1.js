@@ -32,10 +32,10 @@ export default {
     const atDist = (px, py, D) => { const d = ray(px, py); const h = Math.hypot(d.x, d.z); return CP.clone().add(d.multiplyScalar(D / h)); }; // horizontal distance D
 
     /* ---------------- sky + light ---------------- */
-    scene.add(makeSky({ zenith: '#2f5f92', mid: '#4f8cbc', horizon: '#8cc0d8', haze: 0.4, horizonY: 0.0 }));
-    const SUN = V3(-0.55, 0.30, 0.78).normalize();
-    const rig = lightRig(scene, { sunDir: SUN.toArray(), sunColor: '#ffd57e', sunIntensity: 2.7, sky: '#8fb4dc', ground: '#55607a', hemiIntensity: 1.0,
-      ambient: '#5a78a8', ambientIntensity: 0.45, shadows: true, shadowBox: 45, shadowRes: 2048, target: [5, 10, -40] });
+    scene.add(makeSky({ zenith: '#3c6c98', mid: '#5996b8', horizon: '#8cbcc4', haze: 0.4, horizonY: 0.0 }));
+    const SUN = V3(-0.3, 0.3, 0.9).normalize();
+    const rig = lightRig(scene, { sunDir: SUN.toArray(), sunColor: '#ffcf6e', sunIntensity: 3.6, sky: '#86acd8', ground: '#5a6a8a', hemiIntensity: 0.9,
+      ambient: '#4a6aa0', ambientIntensity: 0.4, shadows: true, shadowBox: 45, shadowRes: 2048, target: [5, 10, -40] });
     rig.sun.shadow.camera.far = 400; rig.sun.shadow.bias = -0.0008; rig.sun.shadow.normalBias = 0.04;
     rig.sun.shadow.camera.updateProjectionMatrix();
 
@@ -84,8 +84,6 @@ export default {
     const cloudCard = camCard(CX0, CY0, CX1, CY1, 800, cloudMat); cloudCard.renderOrder = -5;
 
     /* ---------------- materials ---------------- */
-    const concLit = toon({ color: '#ece2d2' });
-    const concDark = toon({ color: '#c8c0b8' });
     const steel = toon({ color: '#cfc8bb' });
     const poleMat = toon({ color: '#e0b070' });
 
@@ -101,11 +99,30 @@ export default {
     via.position.copy(A);
     via.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(U, UP, N));
     scene.add(via);
+    console.warn('DBG A', A.toArray().map(v=>v.toFixed(2)).join(','), 'B', B.toArray().map(v=>v.toFixed(2)).join(','), 'N', N.toArray().map(v=>v.toFixed(2)).join(','), 'NdotL', N.dot(SUN).toFixed(2));
     const local = (px, py, d) => { const p = onPlane(px, py, A.clone().add(N.clone().multiplyScalar(d)), N).sub(A); return [p.dot(U), p.y]; };
     const vbox = (s0, s1, h0, h1, d0, d1, mat, cast = true, recv = true) => {
       const m = box(s1 - s0, h1 - h0, d1 - d0, mat, (s0 + s1) / 2, (h0 + h1) / 2, (d0 + d1) / 2);
       m.castShadow = cast; m.receiveShadow = recv; via.add(m); return m;
     };
+    // viaduct toon material with a painted sun mask: direct light *= k * (s + slope*h < sB)
+    const vtoon = (color, { k = 1, sB = 1e4, slope = 0, soft = 0.4 } = {}) => {
+      const m = toon({ color });
+      const ob = m.onBeforeCompile;
+      m.onBeforeCompile = (sh, r) => {
+        ob(sh, r);
+        sh.uniforms.vA = { value: A }; sh.uniforms.vU = { value: U };
+        sh.fragmentShader = sh.fragmentShader.replace('varying vec3 vWPos;', 'varying vec3 vWPos; uniform vec3 vA, vU;')
+          .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+            { vec3 q = vWPos - vA; float ss = dot(q, vU) + ${slope.toFixed(3)} * q.y;
+              reflectedLight.directDiffuse *= ${k.toFixed(3)} * (1.0 - smoothstep(${(sB - soft).toFixed(3)}, ${(sB + soft).toFixed(3)}, ss)); }`);
+      };
+      m.customProgramCacheKey = () => 'vtoon' + [k, sB, slope, soft].join('_');
+      return m;
+    };
+    const SB = local(805, 380, 0)[0];
+    const concLit = vtoon('#efe2c8', { sB: SB, slope: 0.6 });
+    const concDark = vtoon('#c8c0b8', { sB: SB, slope: 0.6 });
     const S0 = -90, S1 = 260;
     const bandBot = local(420, 312, 0)[1];
     const wallBot = local(420, 470, -2.2)[1];
@@ -119,7 +136,7 @@ export default {
     // web wall (set back) — receives bracket shadows
     vbox(S0, S1, wallBot, bandBot, -3.0, -2.2, concLit);
     // brackets under overhang
-    const bracketMat = toon({ color: '#ece2d2' });
+    const bracketMat = vtoon('#efe2c8', { sB: SB, slope: 0.6 });
     for (let s = -40; s < S1; s += 9.5) {
       const g = new THREE.Group();
       const sh = new THREE.Shape();
@@ -132,17 +149,17 @@ export default {
       g.add(m); g.position.set(s, bandBot, -2.2); via.add(g);
     }
     // lower girder (cross beam, ribbed) — mostly in shadow
-    const girdMat = toon({ color: '#b9c2cc' });
+    const girdMat = vtoon('#c4ccd6', { k: 1, sB: local(330, 590, 0)[0], slope: 0 });
     vbox(S0, S1, girdBot, girdTop, -1.0, 0.6, girdMat);
     for (let k = 1; k <= 3; k++) { const hh = lerp(girdBot, girdTop, k / 4); vbox(S0, S1, hh - 0.08, hh + 0.08, 0.6, 0.85, girdMat); }
     // piers
-    const pierMat = toon({ color: '#7d6f74' });
+    const pierMat = vtoon('#8a8088', { k: 0 });
     for (const s of [-6, 4.5, 16, 33, 45, 62, 80]) {
       vbox(s - 1.0, s + 1.0, -14.5, girdBot, -1.6, 0.2, pierMat);
       vbox(s - 1.3, s + 1.3, girdBot - 0.6, girdBot, -1.8, 0.5, pierMat);
     }
     // railing posts on parapet + top rail
-    const railMat = toon({ color: '#f0e6d4' });
+    const railMat = vtoon('#f0e6d4', { sB: SB + 2, slope: 0.6 });
     for (let s = -40; s < S1; s += 10.5) vbox(s - 0.12, s + 0.12, 0, 1.6, -0.4, -0.2, railMat);
     vbox(S0, S1, 1.5, 1.6, -0.4, -0.25, railMat, false, true);
     vbox(S0, S1, 0.8, 0.86, -0.4, -0.25, railMat, false, true);
@@ -171,7 +188,7 @@ export default {
     const trainMat = toon({ color: '#ffffff', map: trainTex, dapple: false });
     const trainRoof = toon({ color: '#9a9590' });
     const train = new THREE.Group(); via.add(train);
-    const CAR = 20, NCARS = 10, TD = -4.0, TH0 = -1.2, TH1 = 2.6;
+    const CAR = 20, NCARS = 10, TD = -2.9, TH0 = -1.2, TH1 = 3.0;
     for (let i = 0; i < NCARS; i++) {
       const s = -i * (CAR + 0.6) - CAR / 2;
       const body = box(CAR, TH1 - TH0, 2.9, [trainMat, trainMat, trainRoof, trainRoof, trainMat, trainMat], s, (TH0 + TH1) / 2, TD);
@@ -201,11 +218,33 @@ export default {
       const beam = truss(dNear - dFar + 1, beamW, color); beam.rotation.y = Math.PI / 2; beam.position.set(s, hTop - beamW / 2, (dFar + dNear) / 2); g.add(beam);
       via.add(g); return g;
     };
-    gantry(10.5, -12, 1.5, 10.5, 1.0, 0.8, '#e3d2b0');
-    gantry(46, -12, 1.5, 10.5, 1.2, 0.8, '#b8b4ae');
-    gantry(110, -12, 1.5, 7.5, 1.0, 0.8, '#a9aab0');
-    // round catenary poles
-    for (const s of [38, 92]) { const p = cyl(0.22, 0.25, 9.5, steel, s, 4.75, -1.0); p.castShadow = true; via.add(p); via.add(cyl(0.3, 0.3, 0.3, steel, s, 9.5, -1.0)); }
+    const projPx = (v) => { const p = v.clone().project(camera); return [(p.x + 1) * 640, (1 - p.y) * 360]; };
+    const fromLocal = (s, h, d) => A.clone().add(U.clone().multiplyScalar(s)).add(V3(0, h, 0)).add(N.clone().multiplyScalar(d));
+    const solveBeam = (xf, yf, xn, yn) => {
+      let best = null;
+      for (let dF = -4; dF <= 3; dF += 0.25) {
+        const [s, h] = local(xf, yf, dF);
+        for (let dN = dF - 30; dN <= dF - 2; dN += 0.25) {
+          const [px, py] = projPx(fromLocal(s, h, dN)); const e = (px - xn) ** 2 + (py - yn) ** 2;
+          if (!best || e < best.e) best = { e, s, h, dF, dN };
+        }
+      }
+      return best;
+    };
+    const gantryAt = (xf, yf, xn, yn, postW, beamW, color, postX = null) => {
+      const b = solveBeam(xf, yf, xn, yn);
+      const sp = postX !== null ? local(postX, 300, b.dF)[0] : b.s;
+      const g = new THREE.Group();
+      const post = truss(b.h + 1.5, postW, color); post.rotation.z = Math.PI / 2; post.position.set(sp, (b.h + 1.5) / 2 - 1.5, b.dF); g.add(post);
+      const beam = truss(b.dF - b.dN + 0.6, beamW, color); beam.rotation.y = Math.PI / 2; beam.position.set(b.s, b.h - beamW / 2, (b.dF + b.dN) / 2); g.add(beam);
+      via.add(g); return b;
+    };
+    const g1 = gantryAt(488, 18, 300, 155, 0.9, 0.75, '#efdcb4', 480);
+    const g2 = gantryAt(812, 100, 545, 262, 1.1, 0.75, '#c8c0b4', 828);
+    const g3 = gantryAt(1040, 270, 855, 350, 0.9, 0.7, '#a8a8ae', 1003);
+    console.warn('DBG gantries', JSON.stringify([g1, g2, g3].map(b => [b.s, b.h, b.dF, b.dN, Math.sqrt(b.e)].map(v => +v.toFixed(2)))));
+    // round catenary pole (near side, behind traffic light)
+    { const sp = local(748, 300, -0.6)[0], ht = local(748, 112, -0.6)[1]; const p = cyl(0.16, 0.18, ht + 1, steel, sp, (ht - 1) / 2, -0.6); p.castShadow = true; via.add(p); via.add(cyl(0.22, 0.22, 0.25, steel, sp, ht, -0.6)); }
     // overhead wires along the line
     const wireMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#57524e') });
     for (const [hh, dd] of [[6.0, -3.5], [6.8, -3.5], [6.0, -8], [6.8, -8], [9.6, -1.0]]) {
@@ -288,7 +327,7 @@ export default {
       hrTex.offset.set(0.0, 0.0);
       const front = flat({ map: hrTex });
       const side = flat({ color: '#a7aaa8' });
-      const hr = box(W, H, 20, [side, side, side, side, front, side], L.x + W / 2, H / 2 - 2, Z - 10);
+      const hr = box(W, H, 3, [side, side, side, side, front, side], L.x + W / 2, H / 2 - 2, Z - 1.5);
       scene.add(hr);
     }
 
@@ -303,19 +342,21 @@ export default {
       const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, lampC.distanceTo(V3(poleBase.x, armY, poleBase.z)), 6), poleMat);
       const mid = lampC.clone().add(V3(poleBase.x, armY, poleBase.z)).multiplyScalar(0.5); arm.position.copy(mid);
       arm.quaternion.setFromUnitVectors(V3(0, 1, 0), lampC.clone().sub(V3(poleBase.x, armY, poleBase.z)).normalize()); sig.add(arm);
-      const head = new THREE.Group(); head.position.copy(lampC); head.lookAt(CP.clone().add(V3(-6, -3, 0))); sig.add(head);
-      const hous = toon({ color: '#e2c08e' });
-      head.add(box(1.35, 0.42, 0.3, hous, 0, 0, 0));
-      const lampCols = ['#7fb8a4', '#ffb030', '#ff3a20'], glow = [0.15, 1.6, 1.4];
+      const head = new THREE.Group(); head.position.copy(lampC); head.lookAt(CP.clone().add(V3(-8, -4, 0))); sig.add(head);
+      const hous = toon({ color: '#a89080', dapple: false });
+      const housDark = toon({ color: '#4a3c44', dapple: false });
+      head.add(box(0.72, 0.36, 0.26, hous, 0, 0, 0));
+      for (const sx of [-1, 1]) { const c = cyl(0.18, 0.18, 0.26, hous, sx * 0.36, 0, 0, 20); c.rotation.x = Math.PI / 2; head.add(c); }
+      const lampCols = ['#86c4ae', '#ffb43c', '#ff4428'], glow = [0.35, 1.7, 1.5];
       for (let i = 0; i < 3; i++) {
-        const x = (i - 1) * 0.42;
-        const L = new THREE.Mesh(new THREE.CircleGeometry(0.15, 20), new THREE.MeshBasicMaterial({ color: new THREE.Color(lampCols[i]).multiplyScalar(glow[i] + 0.6) }));
-        L.position.set(x, 0, 0.16); head.add(L);
-        const visor = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.25, 16, 1, true, -Math.PI * 0.5, Math.PI * 1.0), toon({ color: '#3a3238', side: THREE.DoubleSide }));
-        visor.rotation.x = Math.PI / 2; visor.position.set(x, 0.0, 0.28); visor.rotation.y = 0; head.add(visor);
+        const x = (i - 1) * 0.36;
+        const L = new THREE.Mesh(new THREE.CircleGeometry(0.135, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(lampCols[i]).multiplyScalar(glow[i]) }));
+        L.position.set(x, 0, 0.135); head.add(L);
+        const visor = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.155, 0.22, 20, 1, true, -Math.PI * 0.5, Math.PI * 1.0), housDark);
+        visor.material.side = THREE.DoubleSide;
+        visor.rotation.x = Math.PI / 2; visor.position.set(x, 0.0, 0.24); head.add(visor);
       }
-      // back plate box behind
-      head.add(box(1.2, 0.28, 0.3, toon({ color: '#9c8270' }), 0.05, -0.32, -0.12));
+      head.add(box(0.95, 0.12, 0.2, hous, 0, -0.24, -0.05));
       // small box on pole
       sig.add(box(0.22, 0.45, 0.22, poleMat, poleBase.x + 0.15, atDist(520, 155, SD).y, poleBase.z));
       sig.add(cyl(0.17, 0.17, 0.12, poleMat, poleBase.x, atDist(520, 70, SD).y, poleBase.z));
@@ -358,21 +399,21 @@ export default {
     const fence = new THREE.Group(); scene.add(fence);
     {
       // fence ~10 m away on a raised ledge; top rail from screen (470,602) to (1280,545)
-      const FD = 10.5;
-      const T0 = atDist(470, 602, FD + 1.5), T1 = atDist(1280, 545, FD - 2.5);
-      const FY = (T0.y + T1.y) / 2; T0.y = FY; T1.y = FY;
+      const FD = 17;
+      const T0 = atDist(470, 602, FD), T1 = onY(1280, 545, T0.y);
+      const FY = T0.y;
       const dir = T1.clone().sub(T0); const len = dir.length(); dir.normalize();
       const ang = Math.atan2(-dir.z, dir.x);
       const g = new THREE.Group(); g.position.copy(T0); g.rotation.y = ang; fence.add(g);
       const railM = toon({ color: '#b9b8c4', dapple: false });
-      for (const yy of [0, -0.3, -0.62]) g.add(box(len + 4, 0.05, 0.05, railM, len / 2, yy, 0));
+      for (const yy of [0, -0.42, -0.9]) g.add(box(len + 4, 0.08, 0.08, railM, len / 2, yy, 0));
       const postM = toon({ color: '#a8a8b4', dapple: false });
       const glowM = new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff0a8').multiplyScalar(1.5) });
-      let x = 0.0, k = 0;
-      while (x < len + 3) {
-        g.add(box(0.07, 1.6, 0.07, postM, x, -0.75, 0));
-        g.add(box(0.025, 1.45, 0.075, glowM, x - 0.03, -0.72, 0.003));
-        x += 0.42 + k * 0.0; k++;
+      const fplane = T0.clone(), fN = V3(-dir.z, 0, dir.x);
+      for (const px of [487, 545, 610, 680, 770, 875, 990, 1135, 1272]) {
+        const P = onPlane(px, 600, fplane, fN).sub(T0); const x = P.dot(dir);
+        g.add(box(0.13, 2.4, 0.13, postM, x, -1.1, 0));
+        g.add(box(0.045, 2.2, 0.135, glowM, x - 0.05, -1.05, 0.003));
       }
       // warm lit panels behind fence (low building wall)
       const panelTex = paintTexture('s1_panels', 256, 128, (g2, w, h) => {
@@ -394,8 +435,8 @@ export default {
       const lowWall = box(8, 1.0, 0.3, flat({ color: '#f2bd68' }), lw.x, lw.y - 0.3, lw.z); lowWall.rotation.y = lg.rotation.y; scene.add(lowWall);
       // bicycle leaning on the fence (centre ~ screen 778, wheels 690..865)
       const bike = new THREE.Group();
-      const bc = atDist(778, 650, FD - 0.2);
-      bike.position.set(bc.x, FY - 0.95, bc.z + 0.15); bike.rotation.y = ang; scene.add(bike);
+      const bc = onPlane(778, 650, T0, V3(-dir.z, 0, dir.x));
+      bike.position.set(bc.x, FY - 1.25, bc.z); bike.scale.setScalar(1.25); bike.rotation.y = ang; scene.add(bike);
       const bm = toon({ color: '#d4542c', dapple: false });
       const tire = toon({ color: '#3a3842', dapple: false });
       const wheelR = 0.34;
@@ -422,7 +463,7 @@ export default {
       const TD = 7.5;
       const clumps = [];
       // silhouette: right edge x(py)
-      const rightEdge = (py) => py < 40 ? 250 : py < 250 ? 290 : py < 560 ? 335 : 345;
+      const rightEdge = (py) => py < 40 ? 190 : py < 250 ? 225 : py < 560 ? 265 : 275;
       for (let py = -40; py < 780; py += 34) {
         const re = rightEdge(py);
         for (let px = -80; px < re; px += 60) {

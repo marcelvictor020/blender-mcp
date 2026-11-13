@@ -21,8 +21,8 @@ const BLOBS = [
 
 // Bird screen paths (pixels in a 1280x720 frame) fitted to the reference: cubic in t, plus log-size slope.
 const PATH = {
-  white: { x: [-1.716, 7.654, 86.588, 297.833], y: [0.796, 10.65, -241.007, 668.3], s0: 1.0, k: -0.106, phase: 0.0 },
-  black: { x: [1.472, -15.932, 151.558, 174.258], y: [2.507, -9.651, -212.176, 817.865], s0: 0.87, k: -0.115, phase: 0.0 },
+  white: { x: [-1.716, 7.654, 86.588, 297.833], y: [0.796, 10.65, -241.007, 668.3], s0: 1.08, k: -0.106, phase: 0.0 },
+  black: { x: [1.472, -15.932, 151.558, 174.258], y: [2.507, -9.651, -212.176, 817.865], s0: 1.0, k: -0.115, phase: -0.075 },
 };
 const poly = (c, t) => ((c[0] * t + c[1]) * t + c[2]) * t + c[3];
 
@@ -180,8 +180,8 @@ function buildBird(THREE, color) {
   const body = new THREE.Shape();
   const pts = [];
   // body outline (counter-clockwise) — from tail around the back to chest, neck, head, beak, back down.
-  pts.push([-20, 0], [-16, 5], [-6, 7.5], [6, 6.5], [12, 4.5], [16, 3.5], [21, 4.2], [26, 6.2], [31, 7.8], [35, 8.2], [37.5, 8.6],
-    [42, 8.4], [37.6, 6.9], [34.5, 5.6], [30.5, 4.6], [25.5, 2.4], [20, 0.4], [15, -1], [10, -4.5], [0, -7.5], [-10, -6.5], [-16, -4.5]);
+  pts.push([-20, 0], [-16, 6], [-6, 8.5], [5, 7.5], [10, 5.5], [14, 3.6], [18, 3.0], [22, 2.8], [25.5, 2.2], [28.5, 1.4], [30.5, 0.2],
+    [35.5, -2.4], [30.5, -1.8], [27.5, -1.6], [24, -0.9], [20, -0.7], [16, -1.4], [12, -3.5], [8, -6.5], [0, -8.5], [-10, -7.5], [-16, -5]);
   body.moveTo(pts[0][0], pts[0][1]);
   for (let i = 1; i < pts.length; i++) body.lineTo(pts[i][0], pts[i][1]);
   body.closePath();
@@ -189,10 +189,10 @@ function buildBird(THREE, color) {
   // legs: two thin trailing strips
   const leg = (y0, y1, x1) => {
     const s = new THREE.Shape();
-    s.moveTo(-14, y0 + 1.2); s.lineTo(x1, y1 + 0.8); s.lineTo(x1 - 3, y1 + 1.2); s.lineTo(x1 - 3.5, y1 - 0.4); s.lineTo(x1, y1 - 0.8); s.lineTo(-14, y0 - 1.2); s.closePath();
+    s.moveTo(-14, y0 + 1.6); s.lineTo(x1, y1 + 1.1); s.lineTo(x1 - 3.5, y1 + 1.4); s.lineTo(x1 - 4, y1 - 0.6); s.lineTo(x1, y1 - 1.1); s.lineTo(-14, y0 - 1.6); s.closePath();
     return new THREE.ShapeGeometry(s);
   };
-  geos.push(leg(-1.2, -3.2, -52), leg(1.0, 0.2, -50));
+  geos.push(leg(-1.6, -4.2, -48), leg(1.4, 0.4, -46));
   for (const ge of geos) g.add(new THREE.Mesh(ge, mat));
   // wings: dynamic strips
   const NW = 14;
@@ -213,16 +213,18 @@ function buildBird(THREE, color) {
   return { root, g, wings, NW, mat };
 }
 
-// flap pose keys: phase -> [angleL(deg, from +x), angleR, length, chord, curl, sweep]
+// flap pose keys (from the reference, period 1.333 s):
+// phase, upper wing [angle rel. to heading (deg), length px, chord, curl], lower wing [angle, length, chord, curl]
 const KEYS = [
-  [0.00, 100, -78, 56, 1.00, 0.00],
-  [0.22, 104, -80, 54, 1.05, 0.10],
-  [0.36, 112, -92, 40, 1.15, 1.00],
-  [0.48, 100, -82, 40, 1.00, 0.70],
-  [0.58, 80, -55, 56, 0.70, 0.10],
-  [0.70, 72, -46, 63, 0.58, -0.10],
-  [0.92, 76, -50, 62, 0.62, -0.10],
-  [1.00, 100, -78, 56, 1.00, 0.00],
+  [0.000, 103, 40, 1.30, 0.0, -75, 64, 1.35, 0.0],
+  [0.125, 105, 33, 1.50, 0.1, -89, 56, 1.35, 0.15],
+  [0.250, 94, 40, 1.40, 0.4, -92, 56, 1.30, 0.6],
+  [0.375, 70, 56, 1.0, 1.0, -84, 60, 1.0, 1.0],
+  [0.500, 72, 54, 1.15, 0.3, -64, 60, 1.05, 0.3],
+  [0.570, 64, 60, 1.15, 0.12, -55, 62, 0.68, 0.05],
+  [0.900, 64, 60, 1.12, 0.12, -54, 61, 0.65, 0.05],
+  [0.940, 70, 55, 1.15, 0.1, -60, 57, 0.8, 0.05],
+  [1.000, 103, 40, 1.30, 0.0, -75, 64, 1.35, 0.0],
 ];
 function pose(ph) {
   ph = ((ph % 1) + 1) % 1;
@@ -233,18 +235,19 @@ function pose(ph) {
 }
 
 function updateWing(bird, geo, side, P) {
-  const [aL, aR, len, chord, curl] = P;
-  const ang = (side > 0 ? aL : aR) * Math.PI / 180;
+  const o = side > 0 ? 0 : 4;
+  const len = P[o + 1], chord = P[o + 2], curl = P[o + 3];
+  const ang = P[o] * Math.PI / 180;
   const NW = bird.NW;
   const pos = geo.attributes.position.array;
   // centreline from root, bending backwards (toward the tail, -x) by curl over the outer half
-  let x = 2, y = side * 4, a = ang;
+  let x = 5, y = side * 4, a = ang;
   const step = len / NW;
   const cl = [];
   for (let i = 0; i <= NW; i++) {
     const u = i / NW;
     cl.push([x, y, a, u]);
-    const bend = curl * 2.4 * Math.max(0, u - 0.35) / NW * Math.PI / 2;
+    const bend = curl * 4.8 * Math.max(0, u - 0.35) / NW * Math.PI / 2;
     // rotate direction toward the tail (-x): for left wing (pointing +y) rotate CCW, right wing CW
     a += side > 0 ? bend : -bend;
     x += Math.cos(a) * step; y += Math.sin(a) * step;
@@ -252,7 +255,7 @@ function updateWing(bird, geo, side, P) {
   for (let i = 0; i <= NW; i++) {
     const [cx, cy, ca, u] = cl[i];
     // chord profile: wide inner wing, gently tapering to rounded tip
-    const w = chord * (u < 0.15 ? 13 + u * 20 : 16 * Math.pow(Math.max(0, 1 - Math.pow((u - 0.15) / 0.85, 2.2)), 0.55) + 2.5 * (1 - u));
+    const w = 0.82 * chord * (u < 0.15 ? 11 + u * 30 : 16 * Math.pow(Math.max(0, 1 - Math.pow((u - 0.15) / 0.85, 2.2)), 0.55) + 2.5 * (1 - u));
     const lx = side * Math.sin(ca), ly = -side * Math.cos(ca);   // leading-edge normal (toward the head side)
     const lead = 0.35 * w, trail = 0.65 * w;
     pos.set([cx + lx * lead, cy + ly * lead, 0, cx - lx * trail, cy - ly * trail, 0], i * 6);
@@ -277,7 +280,7 @@ export default {
   duration: 6.125,
   credit: null,
   post: { bloom: 0.0, bloomThreshold: 1.0, exposure: 1.0, contrast: 1.0, saturation: 1.0, lift: [0, 0, 0], gamma: [1, 1, 1], gain: [1, 1, 1],
-    vignette: 0.0, grain: 0.02, ca: 0.0, leak: 0, soft: 0.6 },
+    vignette: 0.0, grain: 0.02, ca: 0.0, leak: 0, soft: 0.25 },
   build(core) {
     const { THREE, NOISE_GLSL, shared } = core;
     const scene = new THREE.Scene();
@@ -350,7 +353,7 @@ export default {
           b.root.position.z = (sy / REF_H - 0.5) * vb;
           const sc = P.s0 * Math.exp(P.k * t) * pxToWorld;
           b.root.scale.set(sc, sc, sc);
-          b.g.rotation.z = 45 * Math.PI / 180;
+          b.g.rotation.z = 47 * Math.PI / 180;
           const ph = pose(t / 1.333 + P.phase);
           updateWing(b, b.wings[0], 1, ph);
           updateWing(b, b.wings[1], -1, ph);

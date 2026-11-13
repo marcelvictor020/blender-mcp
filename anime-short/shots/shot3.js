@@ -129,7 +129,7 @@ export default {
       const m = makeFoliage({ clumps, ...opts }); scene.add(m); return m;
     };
     // top-left canopy: near-black mass broken by mid-green leaf sprays
-    foliage([[40, 30, 14, 90], [170, 60, 14, 80], [60, 170, 14, 80], [230, 170, 14, 50], [120, 250, 14, 40]],
+    foliage([[40, 30, 14, 90], [170, 60, 14, 80], [50, 160, 14, 75], [220, 160, 14, 50], [260, 60, 14, 50]],
       { density: 4.5, cardSize: PX(46, 14), kind: 'small', seed: 11, texSeed: 3, dark: '#0b120e', mid: '#121d16', light: '#22382a', highlight: '#3a5e40', wind: 0.02, lightWrap: 0.2, shell: 0.2 });
     foliage([[150, 120, 13, 60], [60, 90, 13, 40], [280, 120, 13, 40], [250, 40, 13, 50], [20, 230, 13, 30]],
       { density: 0.7, cardSize: PX(40, 13), kind: 'small', seed: 16, texSeed: 11, dark: '#1f3a28', mid: '#2f5a3a', light: '#4a7a50', highlight: '#6a9a68', wind: 0.03, shell: 0.1 });
@@ -137,7 +137,7 @@ export default {
     foliage([[420, 110, 16, 50], [470, 210, 16, 40], [600, 280, 16, 45], [560, 170, 16, 30], [700, 120, 16, 30], [840, 250, 16, 30]],
       { density: 0.9, cardSize: PX(40, 16), kind: 'small', seed: 12, texSeed: 5, dark: '#2c5a3a', mid: '#467f50', light: '#6f9f6c', highlight: '#90bd86', wind: 0.03, shell: 0.1 });
     // top-right overhang: dark crisp broad leaves
-    foliage([[900, 50, 11, 70], [1000, 80, 11, 60], [900, 150, 11, 40], [850, 20, 11, 40], [1080, 30, 11, 60]],
+    foliage([[950, 50, 11, 70], [1040, 80, 11, 60], [900, 140, 11, 30], [1100, 30, 11, 60], [880, 60, 11, 35]],
       { density: 1.2, cardSize: PX(80, 11), kind: 'broad', seed: 13, texSeed: 7, dark: '#0c1812', mid: '#11221a', light: '#1d3a2a', highlight: '#2f5a40', wind: 0.02, lightWrap: 0.1, shell: 0.25 });
     // right tree mass (teal-green, clearly lit leaves)
     foliage([[1250, 110, 10, 110], [1250, 270, 10, 100], [1270, 420, 10, 90], [1180, 60, 10, 50]],
@@ -161,9 +161,9 @@ export default {
     /* ---------------- 4. boulders ---------------- */
     const rockDefs = [
       // [px centre, py bottom, width px, height px, base colour, light colour, dark colour, seed]
-      [260, 612, 172, 112, '#6f6c68', '#8e8a84', '#4c4a48', 1],
-      [414, 636, 186, 95, '#7a6a52', '#9c8a6c', '#544838', 2],
-      [606, 592, 222, 116, '#67655f', '#8c8983', '#45433f', 3],
+      [260, 612, 172, 112, '#625f5a', '#8c8a84', '#46443f', 1],
+      [414, 636, 186, 95, '#6a5c45', '#928268', '#4a3f30', 2],
+      [606, 592, 222, 116, '#62605d', '#8d8c87', '#44423f', 3],
       [905, 645, 250, 112, '#433f3a', '#5c5650', '#2e2b28', 4],
     ];
     for (const [px, pyb, wpx, hpx, cb, cl, cd, sd] of rockDefs) {
@@ -205,7 +205,7 @@ export default {
     greenBush([[700, 445, 7.9, 85], [760, 470, 7.8, 50], [640, 470, 7.8, 50]], { cardSize: PX(24, 7.9), seed: 33, texSeed: 8 });
     greenBush([[910, 380, 8.4, 95], [900, 460, 8.3, 90], [960, 330, 8.4, 60], [850, 330, 8.4, 50]], { cardSize: PX(24, 8.4), seed: 34, texSeed: 10, dark: '#1a3420', mid: '#2c5a2e', light: '#4a8040' });
     greenBush([[1060, 190, 7.0, 30], [1100, 250, 7.0, 35], [1130, 310, 7.0, 35], [1170, 360, 7.0, 30], [1090, 330, 7.0, 25]], { density: 1.6, shell: 0.2, cardSize: PX(30, 7.0), seed: 35, texSeed: 12, dark: '#2a4a30', mid: '#4a7a50', light: '#7aa070', highlight: '#a6c79a' });
-    greenBush([[940, 520, 5.6, 110], [1040, 470, 5.6, 80], [820, 560, 5.6, 70]], { cardSize: PX(28, 5.6), seed: 36, texSeed: 14, dark: '#1d3524', mid: '#2f5a36', light: '#4a7c48' });
+    greenBush([[870, 540, 3.6, 70], [1020, 460, 3.7, 70], [800, 580, 3.4, 40]], { density: 3.5, cardSize: PX(26, 3.6), seed: 36, texSeed: 14, dark: '#1d3524', mid: '#2f5a36', light: '#4a7c48' });
 
     bush(345, 455, 7.3, 88, 80, 300, PINK, 101);
     bush(515, 440, 7.6, 90, 100, 45, YEL, 102);
@@ -216,9 +216,10 @@ export default {
     bush(930, 450, 8.3, 90, 55, 180, RED, 113);
     bush(975, 270, 8.3, 30, 20, 30, RED, 116);
     for (let k = 0; k < 7; k++) { const t = k / 6; bush(lerp(1050, 1195, t) + (k % 2) * 20, lerp(165, 370, t), 6.9, 42, 34, 10, WHI, 120 + k); }
-    bush(935, 505, 5.5, 175, 100, 270, PUR, 106);
-    bush(1080, 410, 5.4, 60, 50, 60, PUR, 107);
-    bush(780, 585, 5.2, 40, 35, 30, PUR, 112);
+    bush(860, 535, 3.5, 95, 70, 85, PUR, 106);
+    bush(1010, 450, 3.6, 100, 70, 85, PUR, 117);
+    bush(1080, 410, 3.6, 60, 50, 60, PUR, 107);
+    bush(790, 585, 3.3, 45, 35, 35, PUR, 112);
     // orange day-lilies (left), yellow sprinkles and small red flowers
     bush(115, 410, 3.7, 95, 140, 55, ORA, 108);
     bush(50, 420, 3.8, 55, 60, 30, [{ t: 1, s: 16, c: '#f2d02a', cc: '#d8a414' }], 109);
@@ -229,11 +230,11 @@ export default {
     /* ---------------- 6. foreground framing leaves ---------------- */
     foliage([[40, 400, 4.6, 110], [150, 470, 4.6, 90], [60, 290, 4.8, 60]],
       { density: 3, cardSize: PX(60, 4.6), kind: 'broad', seed: 44, texSeed: 5, dark: '#0c1d12', mid: '#17331f', light: '#2f5a33', highlight: '#5a8a4a', wind: 0.025, lightWrap: 0.25, shell: 0.5 });
-    foliage([[90, 640, 3.0, 140], [230, 690, 2.9, 110], [20, 690, 2.9, 100], [200, 600, 3.2, 70]],
+    foliage([[90, 640, 2.6, 140], [200, 705, 2.2, 90], [20, 690, 2.2, 100], [150, 600, 2.8, 60], [80, 730, 2.1, 100]],
       { density: 3.2, cardSize: PX(70, 3.2), kind: 'broad', seed: 41, texSeed: 2, dark: '#0c1d12', mid: '#17331f', light: '#2f5a33', highlight: '#5a8a4a', wind: 0.025, lightWrap: 0.25, shell: 0.5 });
-    foliage([[1210, 520, 3.4, 150], [1180, 650, 3.0, 120], [1270, 380, 3.6, 100], [1090, 690, 3.0, 60], [1250, 680, 3.0, 90]],
+    foliage([[1210, 520, 3.4, 150], [1180, 650, 2.6, 120], [1270, 380, 3.6, 100], [1090, 690, 2.3, 60], [1250, 680, 2.3, 90], [1180, 730, 2.1, 80], [1270, 730, 2.1, 80]],
       { density: 3.2, cardSize: PX(70, 3.3), kind: 'broad', seed: 42, texSeed: 3, dark: '#0f2316', mid: '#21452b', light: '#4b7f4a', highlight: '#86b36c', wind: 0.025, lightWrap: 0.3, shell: 0.5 });
-    foliage([[820, 712, 2.9, 25], [965, 712, 2.9, 30]],
+    foliage([[820, 715, 2.1, 25], [965, 715, 2.1, 30]],
       { density: 3, cardSize: PX(50, 2.9), kind: 'broad', seed: 43, texSeed: 4, dark: '#0b1a10', mid: '#132a19', light: '#24452a', highlight: '#3a6640', wind: 0.02 });
 
     /* ---------------- 7. butterflies & pollen ---------------- */
@@ -336,7 +337,7 @@ function makeRock(core, { w, h, seed, base, light, dark }) {
   }
   geo.computeVertexNormals();
   const mat = new THREE.ShaderMaterial({
-    uniforms: { cB: { value: col(base) }, cL: { value: col(light) }, cD: { value: col(dark) }, uSun: shared.uSunDir, uSeed: { value: seed * 3.7 } },
+    uniforms: { cB: { value: col(base) }, cL: { value: col(light) }, cD: { value: col(dark) }, uSun: { value: new THREE.Vector3(0.55, 0.65, 0.5).normalize() }, uSeed: { value: seed * 3.7 } },
     vertexShader: `varying vec3 vN, vO; void main(){ vO = position; vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
     fragmentShader: `uniform vec3 cB, cL, cD, uSun; uniform float uSeed; varying vec3 vN, vO; ${NOISE_GLSL}
       vec2 vor(vec3 p){ vec3 i = floor(p), f = fract(p); float md = 9.; float id = 0.;
@@ -352,7 +353,7 @@ function makeRock(core, { w, h, seed, base, light, dark }) {
         float l = ndl*0.45 + 0.5 + (v1.y-0.5)*0.5 + (v2.y-0.5)*0.22;
         l -= smoothstep(0.1, -0.3, vO.y) * 0.25;
         vec3 c = mix(cD, cB, smoothstep(0.30, 0.42, l));
-        c = mix(c, cL, smoothstep(0.62, 0.72, l));
+        c = mix(c, cL, smoothstep(0.72, 0.82, l));
         c *= 0.94 + 0.12 * hash13(floor(q*9.0) + uSeed);
         c = mix(c, c*vec3(0.8,0.95,0.75), smoothstep(0.0, -0.3, vO.y)); // grass bounce at the base
         gl_FragColor = vec4(c, 1.); }`,
@@ -392,7 +393,7 @@ function makeStrokeGrass(core, o) {
   ig.instanceCount = count;
   const mat = new THREE.ShaderMaterial({
     uniforms: { uTime: shared.uTime, cDk: { value: col(dk) }, cMd: { value: col(md) }, cLt: { value: col(lt) }, cHi: { value: col(hi) } },
-    vertexShader: `attribute vec4 aO; attribute vec4 aS; uniform float uTime; varying float vT, vR, vPool, vP; ${NOISE_GLSL}
+    vertexShader: `attribute vec4 aO; attribute vec4 aS; uniform float uTime; varying float vT, vR, vPool, vP, vFar; ${NOISE_GLSL}
       void main(){
         float t = position.y; vT = t; vR = aS.z;
         vec3 p = vec3(position.x * aS.y, t * aS.x, 0.);
@@ -403,13 +404,13 @@ function makeStrokeGrass(core, o) {
         p.xz += dir * t * t * aS.x; p.y -= length(dir) * t * t * aS.x * 0.25;
         vec3 wp = aO.xyz + p;
         vPool = smoothstep(3.2, 0.4, length((aO.xz - vec2(0.0, -3.0))*vec2(0.7,1.0)));
-        vP = fbm(aO.xz*0.9);
+        vP = fbm(aO.xz*0.9); vFar = smoothstep(3.2, 7.0, -aO.z);
         gl_Position = projectionMatrix * modelViewMatrix * vec4(wp, 1.);
       }`,
-    fragmentShader: `varying float vT, vR, vPool, vP; uniform vec3 cDk, cMd, cLt, cHi;
+    fragmentShader: `varying float vT, vR, vPool, vP, vFar; uniform vec3 cDk, cMd, cLt, cHi;
       void main(){
         vec3 dk = cDk, md = cMd, lt = cLt, hi = cHi;
-        float l = vT*0.7 + (vR-0.5)*0.4 + (vPool-0.5)*0.5 + (vP-0.5)*0.5;
+        float l = vT*0.7 + (vR-0.5)*0.4 + (vPool-0.5)*0.5 + (vP-0.5)*0.5 - vFar*0.22;
         vec3 c = mix(dk, md, smoothstep(-0.05, 0.25, l));
         c = mix(c, lt, smoothstep(0.35, 0.6, l));
         c = mix(c, hi, smoothstep(0.85, 1.05, l));
