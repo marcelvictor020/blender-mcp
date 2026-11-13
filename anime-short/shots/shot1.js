@@ -8,7 +8,7 @@ export default {
   credit: { role: 'CREATED BY', cx: 0.744, ry: 0.6875, ny: 0.736 },
   post: {
     bloom: 0.45, bloomRadius: 0.55, bloomThreshold: 0.78,
-    exposure: 0.93, contrast: 1.06, saturation: 1.0,
+    exposure: 0.88, contrast: 1.1, saturation: 1.0,
     lift: [0.03, 0.015, 0.0], gamma: [1.02, 1.0, 0.98], gain: [1.03, 1.0, 0.95],
     vignette: 0.2, grain: 0.03, ca: 0.0012, soft: 0.12,
   },
@@ -61,7 +61,7 @@ export default {
       const LIT = [246, 247, 242], MID = [200, 214, 224], SH = [128, 156, 186];
       // [cx, cy, rx, ry, rot, n, alpha]
       const regions = [
-        [905, 78, 125, 50, -0.42, 320, 0.26], [985, 18, 70, 30, -0.3, 150, 0.26], [865, 128, 62, 22, -0.25, 110, 0.2],
+        [905, 78, 125, 50, -0.42, 420, 0.4], [985, 18, 70, 30, -0.3, 200, 0.4], [865, 128, 62, 22, -0.25, 140, 0.3],
         [800, 112, 40, 16, -0.3, 50, 0.12], [738, 82, 52, 20, -0.5, 80, 0.13], [716, 124, 30, 7, -0.25, 30, 0.12],
         [785, 196, 75, 6, -0.15, 50, 0.1], [930, 176, 50, 7, -0.2, 40, 0.1], [960, 246, 52, 6, -0.05, 40, 0.1],
         [1012, 236, 30, 7, -0.1, 30, 0.12], [956, 190, 16, 8, -0.2, 25, 0.14], [1050, 60, 30, 14, -0.4, 40, 0.12],
@@ -74,7 +74,7 @@ export default {
           const px = cx + u * rx * c - v * ry * s, py = cy + u * rx * s + v * ry * c;
           const shade = Math.min(1, Math.max(0, v * 0.6 + 0.45 + (r() - 0.5) * 0.3));
           const col = shade < 0.5 ? mix(LIT, MID, shade * 2) : mix(MID, SH, (shade - 0.5) * 2);
-          const len = rx * lerp(0.18, 0.4, r()) * (1 - 0.5 * Math.abs(u));
+          const len = rx * lerp(0.28, 0.55, r()) * (1 - 0.5 * Math.abs(u));
           stroke(px, py, len, len * lerp(0.18, 0.35, r()), rot + (r() - 0.5) * 0.35, col, a * (1 - 0.4 * Math.abs(u)));
         }
         // lit crest along the upper edge
@@ -91,7 +91,7 @@ export default {
 
     /* ---------------- materials ---------------- */
     const steel = toon({ color: '#cfc8bb' });
-    const poleMat = toon({ color: '#e0b070' });
+    const poleMat = toon({ color: '#b8946c' });
 
     /* ---------------- viaduct frame ---------------- */
     const YTOP = 14.5;                       // parapet top (world y)
@@ -131,7 +131,7 @@ export default {
     const S0 = -90, S1 = 260;
     const bandBot = local(420, 312, 0)[1];
     const wallBot = local(420, 470, -2.2)[1];
-    const girdTop = local(700, 445, 0.6)[1];
+    const girdTop = local(450, 464, 0.6)[1];
     const girdBot = local(700, 612, 0.6)[1];
     // parapet / edge beam (lit band)
     vbox(S0, S1, bandBot, 0, -1.2, 0, vtoon('#e6c890', { sB: SB, slope: 0.6 }), false, true);
@@ -270,7 +270,7 @@ export default {
     // round catenary pole (near side, behind traffic light)
     { const sp = local(748, 300, -0.6)[0], ht = local(748, 112, -0.6)[1]; const p = cyl(0.16, 0.18, ht + 1, steel, sp, (ht - 1) / 2, -0.6); p.castShadow = true; via.add(p); via.add(cyl(0.22, 0.22, 0.25, steel, sp, ht, -0.6)); }
     // overhead wires along the line
-    const wireMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#57524e') });
+    const wireMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#7d7672') });
     for (const [hh, dd] of [[6.0, -3.5], [6.8, -3.5], [6.0, -8], [6.8, -8], [9.6, -1.0]]) {
       const w = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, S1 - S0, 4), wireMat);
       w.rotation.z = Math.PI / 2; w.position.set((S0 + S1) / 2, hh, dd); via.add(w);
@@ -329,21 +329,21 @@ export default {
       const L = onPlane(1062, 360, V3(0, 0, Z), V3(0, 0, 1));
       const dist = Math.hypot(L.x, L.z);
       const pxPerM = 1661 / dist;
-      const floorM = 85 / pxPerM, colM = 75 / pxPerM;      // floor height & balcony bay width matching screen sizes
-      const hrTex = paintTexture('s1_highrise', 384, 512, (g, w, h) => {
-        // 3 bays x 4 floors ; bay = 128 px, floor = 128 px
-        g.fillStyle = '#7a6a5c'; g.fillRect(0, 0, w, h);
+      const floorM = 108 / pxPerM, colM = 108 / pxPerM;      // floor height & balcony bay width matching screen sizes
+      const hrTex = paintTexture('s1_highrise2', 384, 512, (g, w, h) => {
+        // 3 bays x 4 floors ; bay = 128 px, floor = 128 px ; alternate bays offset half a floor
+        g.fillStyle = '#76675a'; g.fillRect(0, 0, w, h);
         for (let f = 0; f < 4; f++) for (let b = 0; b < 3; b++) {
           const x = b * 128, y = f * 128 + (b % 2) * 64;
           for (const yy of [y, y - 512]) {
-            g.fillStyle = '#5d6672'; g.fillRect(x + 22, yy + 82, 100, 26);         // slab underside (cool)
-            g.fillStyle = '#9fa3a6'; g.fillRect(x + 22, yy + 70, 100, 12);         // slab edge
-            g.fillStyle = '#181a22'; g.fillRect(x + 26, yy + 28, 92, 42);          // glass balustrade
-            g.fillStyle = 'rgba(130,150,180,0.22)'; g.fillRect(x + 26, yy + 28, 92, 6);
-            if (b % 2 === 1) { g.fillStyle = '#20222c'; g.fillRect(x + 50, yy - 30, 44, 40); g.strokeStyle = '#9a8f86'; g.lineWidth = 3; g.strokeRect(x + 50, yy - 30, 44, 40); }
+            if (b % 2 === 1) { g.fillStyle = '#1c1e27'; g.fillRect(x + 40, yy + 4, 62, 50); g.strokeStyle = '#9a8f86'; g.lineWidth = 4; g.strokeRect(x + 40, yy + 4, 62, 50); }
+            g.fillStyle = '#5a6574'; g.fillRect(x + 14, yy + 100, 112, 26);        // slab underside (cool)
+            g.fillStyle = '#a2a6a8'; g.fillRect(x + 14, yy + 90, 112, 12);         // slab edge
+            g.fillStyle = '#15171e'; g.fillRect(x + 18, yy + 58, 104, 34);         // glass balustrade
+            g.fillStyle = 'rgba(130,150,180,0.25)'; g.fillRect(x + 18, yy + 58, 104, 5);
           }
         }
-        g.fillStyle = '#a49b90'; for (let b = 0; b <= 3; b++) g.fillRect(b * 128 - 2, 0, 18, h);    // pilasters
+        g.fillStyle = '#8e877e'; for (let b = 0; b <= 3; b++) g.fillRect(b * 128 - 4, 0, 16, h);    // pilasters
       });
       hrTex.wrapS = hrTex.wrapT = THREE.RepeatWrapping;
       const W = 30, H = 160;
@@ -429,15 +429,15 @@ export default {
       const dir = T1.clone().sub(T0); const len = dir.length(); dir.normalize();
       const ang = Math.atan2(-dir.z, dir.x);
       const g = new THREE.Group(); g.position.copy(T0); g.rotation.y = ang; fence.add(g);
-      const railM = toon({ color: '#9894a0', dapple: false });
+      const railM = vtoon('#a8a4b2', { k: 0.15 });
       for (const yy of [0, -0.42, -0.9]) g.add(box(len + 4, 0.08, 0.08, railM, len / 2, yy, 0));
-      const postM = toon({ color: '#9a96a2', dapple: false });
+      const postM = vtoon('#a4a0ae', { k: 0.15 });
       const glowM = new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff0a8').multiplyScalar(1.5) });
       const fplane = T0.clone(), fN = V3(-dir.z, 0, dir.x);
       for (const px of [487, 545, 610, 680, 770, 875, 990, 1135, 1272]) {
         const P = onPlane(px, 600, fplane, fN).sub(T0); const x = P.dot(dir);
         g.add(box(0.13, 2.4, 0.13, postM, x, -1.1, 0));
-        g.add(box(0.045, 2.2, 0.135, glowM, x - 0.05, -1.05, 0.003));
+        g.add(box(0.035, 2.2, 0.135, glowM, x - 0.055, -1.05, 0.003));
       }
       // warm lit panels behind fence (low building wall)
       const panelTex = paintTexture('s1_panels', 256, 128, (g2, w, h) => {
@@ -488,7 +488,7 @@ export default {
       const clumps = [];
       // silhouette: right edge x(py)
       const rightEdge = (py) => py < 40 ? 160 : py < 250 ? 190 : py < 560 ? 215 : 225;
-      const leftEdge = (py) => py < 220 ? 185 - py * 0.85 : -80;
+      const leftEdge = (py) => py < 300 ? 240 - py * 0.8 : -80;
       for (let py = -40; py < 780; py += 34) {
         const re = rightEdge(py);
         for (let px = leftEdge(py); px < re; px += 60) {
@@ -499,13 +499,22 @@ export default {
         }
       }
       const tree = makeFoliage({ clumps, density: 3, cardSize: 0.42, kind: 'round', seed: 3, texSeed: 2,
-        dark: '#1f2611', mid: '#2e3a19', light: '#62793a', highlight: '#90a85a', wind: 0.02, shell: 0.6, lightWrap: 0.35, terminator: -0.04, sizeJitter: 0.6 });
+        dark: '#161d0c', mid: '#1f2912', light: '#2a3618', highlight: '#3a4a22', wind: 0.02, shell: 0.6, lightWrap: 0.35, terminator: 0.0, sizeJitter: 0.6 });
       scene.add(tree);
+      // light olive blotches scattered over the dark mass (painterly highlight clusters)
+      const bl = [];
+      for (let i = 0; i < 46; i++) {
+        const py = lerp(20, 720, r()), lo = Math.max(leftEdge(py), -60) + 20, hi = rightEdge(py) + 60;
+        const px = lerp(lo, hi, r());
+        const p = atDist(px, py, TD - 0.9); bl.push([p.x, p.y, p.z, lerp(0.07, 0.14, r())]);
+      }
+      scene.add(makeFoliage({ clumps: bl, density: 0.9, cardSize: 0.15, kind: 'round', seed: 21, texSeed: 5,
+        dark: '#4a5f2e', mid: '#5c7538', light: '#6d8844', highlight: '#87a356', wind: 0.025, shell: 0.3, lightWrap: 0.6, terminator: 0.1, sizeJitter: 0.5 }));
       // lower-left broad leaves (very close)
       const lc = [];
-      for (let py = 425; py < 780; py += 30) for (let px = -30; px < 90; px += 34) { if (px > 40 && py < 520) continue; const p = atDist(px + (r() - 0.5) * 20, py + (r() - 0.5) * 20, 4.0); lc.push([p.x, p.y, p.z, 0.11]); }
-      const leaves = makeFoliage({ clumps: lc, density: 5, cardSize: 0.13, kind: 'broad', seed: 8, texSeed: 3,
-        dark: '#122a20', mid: '#24503a', light: '#4f8a52', highlight: '#8fc070', wind: 0.04, shell: 0.5, lightWrap: 0.4 });
+      for (let py = 450; py < 780; py += 55) for (let px = -20; px < 70; px += 50) { if (px > 20 && py < 540) continue; const p = atDist(px + (r() - 0.5) * 20, py + (r() - 0.5) * 20, 4.0); lc.push([p.x, p.y, p.z, 0.12]); }
+      const leaves = makeFoliage({ clumps: lc, density: 2.2, cardSize: 0.26, kind: 'broad', seed: 8, texSeed: 3,
+        dark: '#173626', mid: '#2f6540', light: '#5a9a58', highlight: '#9ccc78', wind: 0.04, shell: 0.5, lightWrap: 0.5 });
       scene.add(leaves);
     }
 
