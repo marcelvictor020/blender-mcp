@@ -1,0 +1,12 @@
+{
+  "shots": [
+    { "file": "shot1.js", "start": 0.0,    "duration": 3.958, "refTimes": [0.0, 1.95, 3.9] },
+    { "file": "shot2.js", "start": 3.958,  "duration": 3.0,   "refTimes": [4.0, 5.45, 6.9] },
+    { "file": "shot3.js", "start": 6.958,  "duration": 3.042, "refTimes": [7.0, 8.475, 9.95] },
+    { "file": "shot4.js", "start": 10.0,   "duration": 3.125, "refTimes": [10.05, 11.565, 13.08] },
+    { "file": "shot5.js", "start": 13.125, "duration": 3.042, "refTimes": [13.17, 14.645, 16.12] },
+    { "file": "shot6.js", "start": 16.167, "duration": 3.041, "refTimes": [16.21, 17.685, 19.16] },
+    { "file": "shot7.js", "start": 19.208, "duration": 3.042, "refTimes": [19.25, 20.725, 22.2] },
+    { "file": "shot8.js", "start": 22.25,  "duration": 6.125, "refTimes": [22.3, 25.3] }
+  ]
+}

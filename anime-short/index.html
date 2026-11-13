@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Summer Overpass</title>
+<style>
+  @font-face { font-family: 'MontserratLocal'; src: url('fonts/montserrat-latin.woff2') format('woff2'); font-weight: 100 900; font-display: block; }
+  :root { --bg: #000; --fg: #fff; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; }
+  #stage { position: relative; overflow: hidden; background: #000; }
+  #c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #credit { position: absolute; left: 50%; top: 0; height: 100%; width: 0; pointer-events: none; font-family: 'MontserratLocal', 'Montserrat', 'Helvetica Neue', Arial, sans-serif; color: var(--fg); }
+  #credit .role, #credit .name { position: absolute; left: 0; transform: translate(-50%, -50%); white-space: nowrap; text-shadow: 0 0 0.6em rgba(0,0,0,0.25); }
+  #credit .role { font-size: 1.36em; font-weight: 500; letter-spacing: 0.42em; padding-left: 0.42em; }
+  #credit .name { font-size: 2.2em; font-weight: 600; letter-spacing: 0.40em; padding-left: 0.40em; }
+  #ui { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 14px; display: flex; gap: 10px; align-items: center; opacity: 0; transition: opacity .25s; background: linear-gradient(transparent, rgba(0,0,0,.45)); }
+  #stage:hover #ui { opacity: 1; }
+  #play { background: none; border: 0; color: #fff; font-size: 14px; cursor: pointer; width: 28px; }
+  #bar { flex: 1; height: 4px; background: rgba(255,255,255,.3); border-radius: 2px; cursor: pointer; }
+  #fill { height: 100%; width: 0; background: #fff; border-radius: 2px; }
+  .render #ui { display: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c"></canvas>
+  <div id="credit"><div class="role"></div><div class="name"></div></div>
+  <div id="ui"><button id="play" aria-label="Play or pause">❚❚</button><div id="bar"><div id="fill"></div></div></div>
+</div>
+<script>if (location.search.includes('render')) document.documentElement.classList.add('render');</script>
+<script type="module" src="main.js"></script>
+</body>
+</html>
