@@ -332,7 +332,7 @@ export default {
       const floorM = 85 / pxPerM, colM = 75 / pxPerM;      // floor height & balcony bay width matching screen sizes
       const hrTex = paintTexture('s1_highrise', 384, 512, (g, w, h) => {
         // 3 bays x 4 floors ; bay = 128 px, floor = 128 px
-        g.fillStyle = '#857565'; g.fillRect(0, 0, w, h);
+        g.fillStyle = '#7a6a5c'; g.fillRect(0, 0, w, h);
         for (let f = 0; f < 4; f++) for (let b = 0; b < 3; b++) {
           const x = b * 128, y = f * 128 + (b % 2) * 64;
           for (const yy of [y, y - 512]) {
@@ -488,7 +488,7 @@ export default {
       const clumps = [];
       // silhouette: right edge x(py)
       const rightEdge = (py) => py < 40 ? 160 : py < 250 ? 190 : py < 560 ? 215 : 225;
-      const leftEdge = (py) => py < 160 ? 190 - py * 1.3 : -80;
+      const leftEdge = (py) => py < 220 ? 185 - py * 0.85 : -80;
       for (let py = -40; py < 780; py += 34) {
         const re = rightEdge(py);
         for (let px = leftEdge(py); px < re; px += 60) {
