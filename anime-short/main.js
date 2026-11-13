@@ -12,7 +12,8 @@ const TOTAL = acc;
 const q = new URLSearchParams(location.search);
 const RENDER = q.has('render');
 const ONLY = q.has('shot') ? parseInt(q.get('shot')) - 1 : -1;
-const W = parseInt(q.get('w') || '1920'), H = parseInt(q.get('h') || '1080');
+const AUTO_W = (Math.min(innerWidth, innerHeight * 16 / 9) * (devicePixelRatio || 1)) >= 1500 ? 1920 : 1280;
+const W = parseInt(q.get('w') || (RENDER ? '1920' : String(AUTO_W))), H = parseInt(q.get('h') || String(Math.round(W * 9 / 16)));
 const NAME = (q.get('name') || 'YOUR NAME').toUpperCase();
 
 const canvas = document.getElementById('c');
@@ -65,9 +66,10 @@ function renderAt(t) {
   engine.render(shot.scene, shot.camera, lt);
 }
 
+const wrap = document.getElementById('wrap');
 function fit() {
   if (RENDER) { stage.style.width = W + 'px'; stage.style.height = H + 'px'; return; }
-  const vw = innerWidth, vh = innerHeight; const s = Math.min(vw / 16, vh / 9);
+  const vw = wrap ? wrap.clientWidth : innerWidth, vh = wrap ? wrap.clientHeight : innerHeight; const s = Math.min(vw / 16, vh / 9);
   stage.style.width = (16 * s) + 'px'; stage.style.height = (9 * s) + 'px';
   stage.style.fontSize = (16 * s / 100) + 'px';
 }
@@ -87,9 +89,15 @@ if (RENDER) {
   bar.onclick = (e) => { const r = bar.getBoundingClientRect(); setT((e.clientX - r.left) / r.width * dur); };
   // pre-build shots progressively so cuts don't hitch
   let pre = 0; const prebuild = () => { if (pre < SHOTS.length) { getShot(pre++); setTimeout(prebuild, 30); } }; prebuild();
+  const timeEl = document.getElementById('time'), shotEl = document.getElementById('shotname');
+  const NAMES = ['Viaduct at golden hour', 'Vending machine under the overpass', 'Flower garden', 'Field and farmhouse',
+    'Old shop-house', 'Vending machine row', 'Inside the car', 'Meadow from above'];
+  const fmt = (x) => Math.floor(x / 60) + ':' + String(Math.floor(x % 60)).padStart(2, '0');
   const loop = () => {
     const t = paused ? pausedAt : ((performance.now() - t0) / 1000) % dur;
     renderAt(t); fill.style.width = (t / dur * 100) + '%';
+    if (timeEl) timeEl.textContent = fmt(t) + ' / ' + fmt(dur);
+    if (shotEl) { const i = locate(t).i; shotEl.textContent = 'Shot ' + (i + 1) + ' · ' + NAMES[i]; }
     requestAnimationFrame(loop);
   };
   loop();
