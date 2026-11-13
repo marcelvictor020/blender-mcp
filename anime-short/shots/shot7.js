@@ -157,7 +157,7 @@ export default {
     train.add(cab);
 
     /* ---------------- catenary gantries ---------------- */
-    const rustMat = paintMat({ shadow: '#3e2a28', lit: '#b88a62', map: latWhite, cover: 0.62, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
+    const rustMat = paintMat({ shadow: '#33231f', lit: '#a87650', map: latWhite, cover: 0.62, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
     const redMat = paintMat({ shadow: '#6a3434', lit: '#b88a90', map: latWhite, cover: 0.55, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
     const greyMat = paintMat({ shadow: '#4c4a5a', lit: '#c8a060', map: latWhite, cover: 0.62, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
     const yelMat = paintMat({ shadow: '#9a8048', lit: '#e0c27a', map: latWhite, cover: 0.4, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
@@ -226,10 +226,10 @@ export default {
           g.fillStyle = color;
           for (const [x, y, rr] of puffs) { g.beginPath(); g.ellipse(x, y + dy * rr, rr * k * 1.25, rr * k, 0, 0, Math.PI * 2); g.fill(); }
         };
-        layer('#6c88a8', 0.0, 1.0, 1.5);
-        layer('#8a9cb4', -0.18, 0.82, 1.5);
-        layer('#a4b0c0', -0.36, 0.6, 2);
-        layer('#b8c0cc', -0.5, 0.36, 2.5);
+        layer('#6684a6', 0.0, 1.0, 1.5);
+        layer('#8294ae', -0.16, 0.84, 1.5);
+        layer('#9aa6b8', -0.32, 0.64, 2);
+        layer('#aab2c0', -0.46, 0.4, 2.5);
         // flat-ish base
         g.globalCompositeOperation = 'destination-out';
         const fade = g.createLinearGradient(0, H2 * 0.68, 0, H2 * 0.82);
@@ -255,14 +255,16 @@ export default {
     // big tree seen through the side window (left)
     const treeL = [];
     { const r = rng(77);
-      for (let i = 0; i < 34; i++) {
-        const y = lerp(-1, 23, r());
-        const xr = lerp(-24, -11.5 - Math.max(0, (y - 12)) * 0.25, Math.pow(r(), 0.7));
-        treeL.push([xr, y, lerp(-17, -23, r()), lerp(1.3, 2.4, r())]);
+      // canopy envelope: x edge (toward the pillar) as a function of height
+      for (let i = 0; i < 110; i++) {
+        const y = lerp(-2, 24, r());
+        const edge = -10.5 - Math.max(0, y - 9) * 0.45 - Math.max(0, 3 - y) * 0.5;
+        const x = lerp(-26, edge, Math.pow(r(), 0.55));
+        treeL.push([x, y, lerp(-17, -22, r()), lerp(0.7, 1.25, r())]);
       } }
-    scene.add(makeFoliage({ clumps: treeL,
-      density: 9, cardSize: 0.75, kind: 'small', seed: 21, wind: 0.05, shell: 0.55,
-      dark: '#18413a', mid: '#255e4e', light: '#3e826a', highlight: '#76ae8a', lightWrap: 0.5 }));
+    scene.add(makeFoliage({ clumps: treeL, maxCards: 20000,
+      density: 3.2, cardSize: 0.5, kind: 'small', seed: 21, wind: 0.05, shell: 0.45, lightWrap: 0.7, sizeJitter: 0.4,
+      dark: '#173d36', mid: '#25604f', light: '#3b8268', highlight: '#6aa888' }));
     // tree behind the bridge on the right
     scene.add(makeFoliage({ clumps: [[38, 20, -60, 7], [46, 18, -58, 6], [30, 17, -64, 5.5]],
       density: 6, cardSize: 1.6, kind: 'small', seed: 31, wind: 0.02,

@@ -132,7 +132,7 @@ void main(){
   float darkness = clamp(-pvn * 1.4, 0.0, 1.0);
   float lightness = clamp(pvn * 1.8, 0.0, 1.0);
   // dense dark-stroke clumps live inside the dark patches
-  float clump = smoothstep(0.35, 0.75, darkness + (mid - 0.5) * 1.1 + (streak - 0.5) * 0.3);
+  float clump = smoothstep(0.28, 0.62, darkness + (mid - 0.5) * 1.1 + (streak - 0.5) * 0.3);
 
   vec2 sc = strokes(P + vec2(3.3, 11.0), D, N, 5.0, 28.0, 3.0, 3.0);
   vec2 sb = strokes(P + vec2(1.7, 5.0), D, N, 6.0, 32.0, 2.0, 3.0);
