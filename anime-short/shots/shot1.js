@@ -495,7 +495,7 @@ export default {
       const TD = 7.5;
       const clumps = [];
       // silhouette: right edge x(py)
-      const rightEdge = (py) => py < 40 ? 160 : py < 250 ? 190 : py < 560 ? 215 : 225;
+      const rightEdge = (py) => py < 40 ? 135 : py < 250 ? 175 : py < 560 ? 215 : 225;
       const leftEdge = (py) => py < 300 ? 240 - py * 0.8 : -80;
       for (let py = -40; py < 780; py += 34) {
         const re = rightEdge(py);
@@ -518,6 +518,11 @@ export default {
       }
       scene.add(makeFoliage({ clumps: bl, density: 0.9, cardSize: 0.15, kind: 'round', seed: 21, texSeed: 5,
         dark: '#4a5f2e', mid: '#5c7538', light: '#6d8844', highlight: '#87a356', wind: 0.025, shell: 0.3, lightWrap: 0.6, terminator: 0.1, sizeJitter: 0.5 }));
+      // warm backlit rim on the upper-left of the tree
+      const rim = [];
+      for (let i = 0; i < 9; i++) { const py = lerp(120, 320, r()); const p = atDist(lerp(-10, 40, r()), py, TD - 0.6); rim.push([p.x, p.y, p.z, lerp(0.03, 0.055, r())]); }
+      scene.add(makeFoliage({ clumps: rim, density: 1.2, cardSize: 0.12, kind: 'round', seed: 33, texSeed: 7,
+        dark: '#3a2412', mid: '#6a3418', light: '#b85a2a', highlight: '#e08a40', wind: 0.025, shell: 0.4, lightWrap: 0.5, terminator: 0.0 }));
       // lower-left broad leaves (very close)
       const lc = [];
       for (let py = 450; py < 780; py += 55) for (let px = -20; px < 70; px += 50) { if (px > 20 && py < 540) continue; const p = atDist(px + (r() - 0.5) * 20, py + (r() - 0.5) * 20, 4.0); lc.push([p.x, p.y, p.z, 0.12]); }
