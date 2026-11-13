@@ -115,7 +115,7 @@ export default {
       vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
       fragmentShader: `uniform sampler2D tMap; uniform float uTime; varying vec2 vUv; ${NOISE_GLSL}
         void main(){ vec2 uv = vUv; float n = vnoise(uv*vec2(9.,6.) + uTime*0.25);
-          uv += vec2(sin(uTime*0.9 + uv.y*14.), cos(uTime*0.7 + uv.x*11.)) * 0.0012 * (0.5+n);
+          uv += vec2(sin(uTime*0.9 + uv.y*14.), cos(uTime*0.7 + uv.x*11.)) * 0.0005 * (0.5+n);
           vec3 c = texture2D(tMap, uv).rgb; gl_FragColor = vec4(c, 1.); }`,
       depthWrite: false,
     });
@@ -126,7 +126,7 @@ export default {
     /* ---------------- 2. near forest layers (3D foliage, swaying) ---------------- */
     const foliage = (clumpsPx, opts) => {
       const clumps = clumpsPx.map(([px, py, d, rpx]) => [...S(px, py, d), PX(rpx, d)]);
-      const m = makeFoliage({ clumps, ...opts }); scene.add(m); return m;
+      const m = makeFoliage({ clumps, ...opts, wind: (opts.wind ?? 0.03) * 0.5 }); scene.add(m); return m;
     };
     // top-left canopy: near-black mass broken by mid-green leaf sprays
     foliage([[40, 30, 14, 90], [160, 50, 14, 75], [50, 160, 14, 75], [195, 150, 14, 35]],
@@ -401,7 +401,7 @@ function makeStrokeGrass(core, o) {
         vec3 p = vec3(position.x * aS.y, t * aS.x, 0.);
         float c = cos(aO.w), s = sin(aO.w); p = vec3(p.x*c, p.y, p.x*s);
         float wn = vnoise(aO.xz*0.6 + vec2(uTime*0.6, uTime*0.2));
-        float sway = (wn - 0.45) * 0.35 + sin(uTime*2.0 + aO.x*1.3 + aO.z*0.9) * 0.06;
+        float sway = (wn - 0.45) * 0.25 + sin(uTime*2.0 + aO.x*1.3 + aO.z*0.9) * 0.05;
         vec2 dir = vec2(1.0, 0.2) * sway + vec2(aS.z-0.5, aS.w-0.5) * 0.5 + vec2(0.12, 0.0);
         p.xz += dir * t * t * aS.x; p.y -= length(dir) * t * t * aS.x * 0.25;
         vec3 wp = aO.xyz + p;

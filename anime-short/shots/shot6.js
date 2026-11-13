@@ -176,7 +176,7 @@ export default {
 
     /* ---------------- utility pole + wires ---------------- */
     const poleD = 17.3;
-    const poleMat = toon({ color: '#6e6058', dapple: false });
+    const poleMat = toon({ color: '#5a5048', dapple: false });
     const poleTop = P(882, 88, poleD), poleBot = P(882, 560, poleD);
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(S(6, poleD), S(7.5, poleD), poleTop.y - poleBot.y, 10), poleMat);
     pole.position.set(poleTop.x, (poleTop.y + poleBot.y) / 2, -poleD); scene.add(pole);

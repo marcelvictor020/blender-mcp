@@ -151,7 +151,7 @@ export default {
 
     // left building (lantern facade): px 0..270
     surface('lfac', PA, [-40, -60, 300, 760], {
-      res: [512, 1024], shade: '#6a5660', lit: '#c8a08a', cover: 0.5, scale: 7.0, seed: 3,
+      res: [512, 1024], shade: '#6a5660', lit: '#c8a08a', cover: 0.47, scale: 7.0, seed: 3,
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#5e4a44'; g.fillRect(0, 0, w, h);
         for (let y = -60; y < 760; y += 13) fillPoly(g, poly, [[-40, y], [300, y], [300, y + 1.6], [-40, y + 1.6]], 'rgba(25,12,6,0.45)');
@@ -182,7 +182,7 @@ export default {
         const grd = g.createLinearGradient(xa, 0, xb, 0); grd.addColorStop(0, 'rgba(255,0,0,0)'); grd.addColorStop(1, 'rgba(255,0,0,1)');
         g.fillStyle = grd; g.fillRect(0, 0, W, H);
         fillPoly(g, poly, [[262, 150], [430, 125], [430, 330], [262, 352]], '#000');
-        fillPoly(g, poly, [[262, -60], [400, -60], [400, 60], [262, 110]], '#600');
+        fillPoly(g, poly, [[262, -60], [400, -60], [400, 60], [262, 110]], '#200');
       },
     });
 

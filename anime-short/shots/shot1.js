@@ -95,7 +95,7 @@ export default {
 
     /* ---------------- viaduct frame ---------------- */
     const YTOP = 14.5;                       // parapet top (world y)
-    const A = onY(300, 228, YTOP), B = onY(1000, 385, YTOP);
+    const A = onY(300, 240, YTOP), B = onY(1000, 392, YTOP);
     const U = B.clone().sub(A).setY(0).normalize();
     const UP = V3(0, 1, 0);
     const N = U.clone().cross(UP).negate();  // horizontal, toward camera
@@ -171,9 +171,9 @@ export default {
       const step = (ps[4] - ps[1]) / 3;
       for (let k = -6; k < 0; k++) ps.push(ps[0] + k * step);
       for (let k = 1; k < 12; k++) ps.push(ps[4] + k * step);
-      for (const sp of ps) vbox(sp - 0.14, sp + 0.14, bandBot + 0.2, 2.0, 0.05, 0.3, railMat, true, true);
-      vbox(S0, S1, 1.9, 2.0, 0.05, 0.25, railMat, false, true);
-      vbox(S0, S1, 1.15, 1.22, 0.05, 0.25, railMat, false, true);
+      for (const sp of ps) vbox(sp - 0.12, sp + 0.12, bandBot + 0.2, 1.5, 0.05, 0.3, railMat, true, true);
+      vbox(S0, S1, 1.42, 1.5, 0.05, 0.25, railMat, false, true);
+      vbox(S0, S1, 0.75, 0.81, 0.05, 0.25, railMat, false, true);
     }
     // hanging hooks (cable brackets) under the deck on the right part
     for (let s = 30; s < S1; s += 8) {
@@ -186,7 +186,7 @@ export default {
       g.fillStyle = '#f3e2c4'; g.fillRect(0, 0, w, h);
       g.fillStyle = '#d9cbb3'; g.fillRect(0, 0, w, 18);
       g.fillStyle = '#e04428'; g.fillRect(0, 36, w, 16);      // upper stripe
-      g.fillStyle = '#e04428'; g.fillRect(0, 168, w, 22);     // lower stripe
+      g.fillStyle = '#e04428'; g.fillRect(0, 142, w, 18);     // lower stripe
       // windows and doors
       const dw = 70, win = '#5d6a78';
       for (let i = 0; i < 4; i++) {
@@ -200,7 +200,7 @@ export default {
     const trainMat = toon({ color: '#ffffff', map: trainTex, dapple: false });
     const trainRoof = toon({ color: '#9a9590' });
     const train = new THREE.Group(); via.add(train);
-    const CAR = 20, NCARS = 10, TD = -2.9, TH0 = -1.2, TH1 = 3.0;
+    const CAR = 20, NCARS = 10, TD = -2.9, TH0 = -1.0, TH1 = 2.1;
     for (let i = 0; i < NCARS; i++) {
       const s = -i * (CAR + 0.6) - CAR / 2;
       const body = box(CAR, TH1 - TH0, 2.9, [trainMat, trainMat, trainRoof, trainRoof, trainMat, trainMat], s, (TH0 + TH1) / 2, TD);

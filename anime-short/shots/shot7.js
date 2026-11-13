@@ -178,8 +178,8 @@ export default {
     }
     // central gantry: near mast + boom to a yellow far post
     beam([-41, 0, -1], [-41, 19.5, -1], 3.0, 3.0, rustMat, 4.4);
-    beam([-41, 18.4, -1], [-38, 14, -14], 1.8, 2.0, greyMat, 3.0);
-    beam([-38, 0, -14], [-38, 14.5, -14], 0.7, 0.7, yelMat, 1.4);
+    beam([-41, 18.4, -1], [-32, 9.6, -12], 1.8, 2.0, greyMat, 3.0);
+    beam([-32, 0, -12], [-32, 10, -12], 0.7, 0.7, yelMat, 1.4);
     // right gantry (behind the train, tilted)
     beam([0, 0, -10], [6, 22, -12], 2.0, 2.0, redMat, 3.0);
     beam([4, 15, -11], [14, 18, -6], 1.0, 1.0, redMat, 2.0);
