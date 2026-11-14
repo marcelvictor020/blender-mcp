@@ -217,13 +217,14 @@ def design(bus, place, H, rng, CUTS):
     # 1 railway at golden hour (train from ~1.2 s, moving left -> right)
     a, z = S[0], S[1]
     higurashi(a + 0.15, 2.6, db(-30), 0.55)
-    crossing_bell(a + 0.0, z, db(-31), -0.65, muffle=3200)
-    train(a + 0.9, z, db(-15), -0.85, 0.55, muffle=5200, start_in=0.9)
+    crossing_bell(a + 0.0, z, db(-26), -0.65, muffle=3600)
+    train(a + 0.9, z, db(-10), -0.85, 0.55, muffle=6500, start_in=0.7)
     sparrow(a + 2.6, db(-34), -0.4, 3)
     wind(a, z, db(-38))
     # 2 vending machine under the overpass
     a, z = S[1], S[2]
     hum(a, z, db(-30), 0.35, 50); buzz(a, z, db(-44), 0.4)
+    train(a + 0.2, z, db(-14), -0.7, 0.6, muffle=1100, start_in=0.5, whine=False)   # train rumbling over the overpass
     aburazemi(a, z, db(-36), -0.3)
     whiteeye(a + 0.5, db(-29), -0.55, 0.8); whiteeye(a + 1.9, db(-33), 0.6, 0.5)
     rustle(a, z, db(-48), -0.5)
@@ -245,6 +246,7 @@ def design(bus, place, H, rng, CUTS):
     furin(a + 0.3, db(-27), -0.55); furin(a + 1.25, db(-31), -0.5); furin(a + 2.3, db(-29), -0.6)
     minmin(a + 0.1, db(-31), 0.5, 5)
     crow(a + 1.6, db(-36), 0.75, 2)
+    train(a, z, db(-24), 0.9, 0.5, muffle=2200, start_in=0.8)                      # distant train on the viaduct
     rustle(a, z, db(-46), 0.6); wind(a, z, db(-40))
     # 6 vending machine row
     a, z = S[5], S[6]
@@ -257,7 +259,7 @@ def design(bus, place, H, rng, CUTS):
     a, z = S[6], S[7]
     t = tt(z - a); cab = lp(rng.standard_normal(len(t)), 110, 2) * 1.2 + 0.4 * np.sin(2 * np.pi * 25 * t) + 0.2 * np.sin(2 * np.pi * 50 * t)
     place(bus, fade(cab, 0.02, 0.03) * db(-27), a)
-    train(a, z, db(-16), 0.3, -0.9, muffle=700, start_in=0.05, end_out=1.0, whine=False)
+    train(a, z, db(-11), 0.3, -0.9, muffle=900, start_in=0.05, end_out=1.0, whine=True)
     crossing_bell(a, z, db(-35), 0.5, muffle=900)
     # 8 meadow from above: wind, skylark, the two birds' wingbeats and calls
     a, z = S[7], S[8]

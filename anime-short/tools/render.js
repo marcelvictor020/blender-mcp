@@ -44,7 +44,8 @@ function serve() {
     route.fulfill({ path: path.join(THREE_DIR, rel), contentType: 'text/javascript' });
   });
   const name = args.name ? '&name=' + encodeURIComponent(args.name) : '';
-  const url = `http://localhost:${port}/index.html?render=1&w=${W}&h=${H}${shot ? '&shot=' + shot : ''}${name}`;
+  const stat = (args.compare || args.times) && !args.moves ? '&static=1' : '';
+  const url = `http://localhost:${port}/index.html?render=1&w=${W}&h=${H}${shot ? '&shot=' + shot : ''}${name}${stat}`;
   await page.goto(url);
   try { await page.waitForFunction(() => window.__ready === true, null, { timeout: 120000 }); }
   catch (e) { console.error('Page never became ready.\n' + errors.join('\n')); process.exit(1); }

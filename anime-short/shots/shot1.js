@@ -13,8 +13,8 @@ export default {
   duration: 3.958,
   credit: { role: 'CREATED BY', cx: 0.744, ry: 0.6875, ny: 0.736 },
   post: {
-    bloom: 0.4, bloomRadius: 0.5, bloomThreshold: 0.86,
-    exposure: 0.9, contrast: 1.12, saturation: 1.02,
+    bloom: 0.5, bloomRadius: 0.6, bloomThreshold: 0.8,
+    exposure: 0.9, contrast: 1.12, saturation: 1.1,
     lift: [0.02, 0.015, 0.01], gamma: [1.0, 1.0, 0.99], gain: [1.0, 1.0, 0.96],
     vignette: 0.2, grain: 0.03, ca: 0.0012, soft: 0.12,
   },
@@ -46,7 +46,7 @@ export default {
     const FOL_SUN = V3(-0.3, 0.3, 0.9).normalize();      // the painted foliage was tuned for this
     shared.uSunDir.value.copy(FOL_SUN);
     const env = makeEnvMap('s1_env', {
-      zenith: '#36689a', horizon: '#a8b8c8', ground: '#454c62', sunDir: SUN.toArray(), sunColor: '#ffcf8a', sunPower: 5, sunSize: 3,
+      zenith: '#3e6494', horizon: '#a8a4b8', ground: '#4a4458', sunDir: SUN.toArray(), sunColor: '#ffcf8a', sunPower: 5, sunSize: 3,
       clouds: [{ dir: [0.5, 0.6, -1], size: 7, power: 1.3 }, { dir: [0.2, 0.4, -1], size: 5, power: 1.1 }],
       blocks: [
         { dir: [-1, 0.3], w: 30, h: 22, dist: 14, color: '#4c4036' }, { dir: [1, -0.3], w: 22, h: 30, dist: 14, color: '#3e4048' },
@@ -56,14 +56,14 @@ export default {
     const UNI = (o = {}) => pbrUniforms({ sunDir: SUN.toArray(), leafAmt: 0, grime: 0, rimAmt: 0, rimColor: '#ffb060', ...o });
     const UL = UNI();                                   // sunlit set
     const US = UNI({ sunGain: 0 });                     // set in shade: sky + bounce only
-    const UG = UNI({ sunGain: 0.3 });                   // far gantries, mostly shaded
+    const UG = UNI({ sunGain: 0.15 });                   // far gantries, mostly shaded
     const UF = UNI({ sunGain: 0.22, rimAmt: 0.5, rimPow: 3 });   // fence / bicycle in shade with a warm rim
     const M = (o, u = UL) => pbr(u, { envMap: env, envMapIntensity: 1.0, roughness: 0.8, metalness: 0, ...o }, null, 's1');
-    const sun = new THREE.DirectionalLight(col('#ffcc66'), 5.3);
+    const sun = new THREE.DirectionalLight(col('#ffc958'), 5.3);
     sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
     sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03; sun.shadow.radius = 2;
     scene.add(sun, sun.target);
-    scene.add(new THREE.HemisphereLight(col('#9cb2d8'), col('#5e5e6c'), 1.45));
+    scene.add(new THREE.HemisphereLight(col('#9c9ccc'), col('#5c5468'), 1.5));
 
     /* ---------------- textures (albedo + relief + roughness) ---------------- */
     const concT = texSet(512, 512, (g, w, h) => {
@@ -246,7 +246,7 @@ export default {
       const sh = new THREE.Shape();
       sh.moveTo(-0.62, 0); sh.lineTo(-0.44, 0); sh.lineTo(0, -1.05); sh.lineTo(0.44, 0); sh.lineTo(0.62, 0);
       sh.lineTo(0.09, -1.32); sh.lineTo(0.09, -1.95); sh.lineTo(-0.09, -1.95); sh.lineTo(-0.09, -1.32); sh.lineTo(-0.62, 0);
-      const geo = new THREE.ExtrudeGeometry(sh, { depth: 1.35, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: 1, curveSegments: 2 });
+      const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.8, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: 1, curveSegments: 2 });
       const c0 = local(317, 400, -2.2)[0], cs = local(657, 400, -2.2)[0] - c0;
       for (let s = c0 - 4 * cs; s < S1; s += cs) { const g = geo.clone(); g.translate(s, bandBot - 0.02, -2.15); put(VB, mCorbel, g); }
     }
@@ -299,7 +299,7 @@ export default {
     const train = new THREE.Group(); via.add(train); train.position.y = -0.3;
     const CAR = 20, NCARS = 10, TD = -2.9, TH0 = -1.0, W = 2.9, HW0 = 0.85, HW1 = 1.72, HB = 1.96;
     {
-      const mBody = M({ color: '#ecd8b8', roughness: 0.38, metalness: 0.15, clearcoat: 0.35, clearcoatRoughness: 0.3 });
+      const mBody = M({ color: '#f4e2c0', roughness: 0.38, metalness: 0.15, clearcoat: 0.35, clearcoatRoughness: 0.3 });
       const mStripe = M({ color: '#e0442a', roughness: 0.4, metalness: 0.1, clearcoat: 0.3 });
       const mGlass = M({ color: '#262a34', roughness: 0.06, metalness: 0.1, envMapIntensity: 1.4 });
       const mRoof = M({ color: '#8e8a86', roughness: 0.6, metalness: 0.3 });
@@ -383,7 +383,7 @@ export default {
       return best;
     };
     const mGantL = M({ color: '#d8d2c6', roughness: 0.5, metalness: 0.55 });
-    const mGantS = M({ color: '#8a8c92', roughness: 0.6, metalness: 0.45 }, UG);
+    const mGantS = M({ color: '#70737a', roughness: 0.6, metalness: 0.45 }, UG);
     const mIns = M({ color: '#c8642c', roughness: 0.3, metalness: 0.0 }, UG);
     const GB = bucket();
     const gantryAt = (xf, yf, xn, yn, postW, beamW, mat, postX = null) => {
@@ -483,7 +483,7 @@ export default {
       const pxPerM = 1661 / dist;
       const floorM = 108 / pxPerM, colM = 108 / pxPerM;
       const W2 = 30, H2 = 160;
-      const UHr = UNI({ sunGain: 0.12 });
+      const UHr = UNI({ sunGain: 0.25 });
       const mHw = M(cT({ color: '#e8dccb' }), UHr);
       const mHt = M(cT({ color: '#f0e8de' }), UHr);
       const mHg = M({ color: '#1a1a22', roughness: 0.12, metalness: 0.2, envMapIntensity: 1.0 }, US);
@@ -540,7 +540,7 @@ export default {
         const lens = new THREE.Mesh(new THREE.SphereGeometry(0.19, 24, 8, 0, Math.PI * 2, 0, 1.1), new THREE.MeshBasicMaterial({ color: new THREE.Color(lampCols[i]).multiplyScalar(glow[i]) }));
         lens.rotation.x = Math.PI / 2; lens.scale.set(1, 0.5, 1); lens.position.set(x, 0, 0.07); head.add(lens);
         const ring = new THREE.TorusGeometry(0.2, 0.02, 6, 24); ring.translate(x, 0, 0.11); put(HB2, mVisor, ring);
-        const visor = new THREE.CylinderGeometry(0.215, 0.215, 0.3, 20, 1, true, Math.PI * 0.4, Math.PI * 1.2);
+        const visor = new THREE.CylinderGeometry(0.215, 0.215, 0.3, 20, 1, true, Math.PI * 0.6, Math.PI * 0.8);
         visor.rotateX(Math.PI / 2); visor.translate(x, 0, 0.24); put(HB2, mVisor, visor);
       }
       flush(HB2, head, { uv: 4 });
@@ -570,13 +570,13 @@ export default {
       });
       const kb = new THREE.Mesh(new RoundedBoxGeometry(0.36, 0.92, 0.04, 1, 0.012), M({ color: '#d8ccb4', roughness: 0.5, metalness: 0.3 }));
       kb.position.set(0.43, -0.05, -0.03); kb.castShadow = kb.receiveShadow = true; ped.add(kb);
-      const kp = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.9), M({ map: kanji, roughness: 0.6 })); kp.position.set(0.43, -0.05, -0.008); kp.receiveShadow = true; ped.add(kp);
+      const kp = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.9), M({ map: kanji, color: '#bcae96', roughness: 0.6 })); kp.position.set(0.43, -0.05, -0.008); kp.receiveShadow = true; ped.add(kp);
       put(SB, mPole, rodG(atDist(445, 497, SD), atDist(512, 497, SD), 0.04, 8), rodG(atDist(445, 400, SD), atDist(512, 400, SD), 0.04, 8));
       // turn-right sign: disc with thickness + rolled rim, printed face, bracket clamps
-      const signTex = paintTexture('s1_turnsign', 256, 256, (g) => {
+      const signTex = paintTexture('s1_turnsign3', 256, 256, (g) => {
         g.clearRect(0, 0, 256, 256);
         g.fillStyle = '#f4f2ea'; g.beginPath(); g.arc(128, 128, 126, 0, 7); g.fill();
-        g.fillStyle = '#3d9a86'; g.beginPath(); g.arc(128, 128, 112, 0, 7); g.fill();
+        g.fillStyle = '#23908e'; g.beginPath(); g.arc(128, 128, 112, 0, 7); g.fill();
         g.strokeStyle = '#f8f6ee'; g.lineWidth = 22; g.lineCap = 'butt';
         g.beginPath(); g.moveTo(100, 210); g.lineTo(100, 130); g.quadraticCurveTo(100, 100, 135, 100); g.lineTo(160, 100); g.stroke();
         g.fillStyle = '#f8f6ee'; g.beginPath(); g.moveTo(155, 62); g.lineTo(205, 100); g.lineTo(155, 138); g.closePath(); g.fill();
@@ -586,7 +586,7 @@ export default {
       const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.025, 48), M({ color: '#a8aaa8', roughness: 0.4, metalness: 0.7 }));
       disc.rotation.x = Math.PI / 2; disc.castShadow = disc.receiveShadow = true; sign.add(disc);
       const rim = new THREE.Mesh(new THREE.TorusGeometry(0.325, 0.012, 6, 48), M({ color: '#e8e8e2', roughness: 0.35, metalness: 0.6 })); rim.position.z = 0.012; sign.add(rim);
-      const face = new THREE.Mesh(new THREE.CircleGeometry(0.322, 48), M({ map: signTex, roughness: 0.35, envMapIntensity: 1.0 })); face.position.z = 0.0135; face.receiveShadow = true; sign.add(face);
+      const face = new THREE.Mesh(new THREE.CircleGeometry(0.322, 48), M({ map: signTex, color: '#c4c4c4', roughness: 0.35, envMapIntensity: 1.0 })); face.position.z = 0.0135; face.receiveShadow = true; sign.add(face);
       const mSp = M({ color: '#e6e2da', roughness: 0.4, metalness: 0.5 });
       put(SB, mSp, rodG(V3(sc.x, 0, sc.z - 0.06), V3(sc.x, sc.y + 0.3, sc.z - 0.06), 0.04, 10));
       for (const dy of [-0.18, 0.18]) put(SB, mSp, bx(0.1, 0.05, 0.1, sc.x, sc.y + dy, sc.z - 0.04, 0.01));
@@ -688,20 +688,18 @@ export default {
         }
       }
       const tree = makeFoliage({ clumps, density: 3, cardSize: 0.42, kind: 'round', seed: 3, texSeed: 2,
-        dark: '#10180b', mid: '#18220f', light: '#222e15', highlight: '#2e3c1c', wind: 0.02, shell: 0.6, lightWrap: 0.35, terminator: 0.0, sizeJitter: 0.6 });
+        dark: '#0b170d', mid: '#112213', light: '#1a2f19', highlight: '#253d20', wind: 0.02, shell: 0.6, lightWrap: 0.35, terminator: 0.0, sizeJitter: 0.6 });
       scene.add(tree);
       const bl = [];
-      for (let i = 0; i < 11; i++) {
-        const py = lerp(40, 520, Math.pow(r(), 1.3)), lo = rightEdge(py) - 130, hi = rightEdge(py) + 10;
-        const px = lerp(lo, hi, Math.sqrt(r()));
-        const p = atDist(px, py, TD2 - 0.9); bl.push([p.x, p.y, p.z, lerp(0.22, 0.32, r())]);
+      for (const [px, py, rr] of [[150, 95, 0.34], [205, 250, 0.3], [120, 330, 0.26], [230, 430, 0.32], [180, 560, 0.24]]) {
+        const p = atDist(px, py, TD2 - 0.9); bl.push([p.x, p.y, p.z, rr]);
       }
-      scene.add(makeFoliage({ clumps: bl, density: 0.5, cardSize: 0.24, kind: 'round', seed: 21, texSeed: 5, flatten: 0.6,
-        dark: '#4c5a34', mid: '#5c6c3e', light: '#6c7e45', highlight: '#7d8f4a', wind: 0.025, shell: 0.5, lightWrap: 0.9, terminator: 0.2, sizeJitter: 0.4 }));
+      scene.add(makeFoliage({ clumps: bl, density: 0.9, cardSize: 0.3, kind: 'round', seed: 21, texSeed: 5, flatten: 0.5,
+        dark: '#2a3418', mid: '#4a5226', light: '#68702e', highlight: '#84883a', wind: 0.025, shell: 0.35, lightWrap: 0.6, terminator: 0.1, sizeJitter: 0.35 }));
       const rim = [];
-      for (let i = 0; i < 7; i++) { const py = lerp(60, 520, r()); const p = atDist(rightEdge(py) + lerp(55, 95, r()), py, TD2 - 0.2); rim.push([p.x, p.y, p.z, lerp(0.04, 0.07, r())]); }
-      scene.add(makeFoliage({ clumps: rim, density: 1.2, cardSize: 0.12, kind: 'round', seed: 33, texSeed: 7,
-        dark: '#4a4420', mid: '#7a6a2c', light: '#a88a3a', highlight: '#c8a048', wind: 0.025, shell: 0.4, lightWrap: 0.7, terminator: 0.05 }));
+      for (let i = 0; i < 16; i++) { const py = lerp(30, 600, i / 15) + (r() - 0.5) * 20; const p = atDist(rightEdge(py) + lerp(62, 88, r()), py, TD2 - 0.3); rim.push([p.x, p.y, p.z, lerp(0.06, 0.1, r())]); }
+      scene.add(makeFoliage({ clumps: rim, density: 1.4, cardSize: 0.13, kind: 'round', seed: 33, texSeed: 7,
+        dark: '#4a2a12', mid: '#8a4e20', light: '#c8742c', highlight: '#f09a40', wind: 0.025, shell: 0.4, lightWrap: 0.6, terminator: 0.05 }));
       const lc = [];
       for (let py = 450; py < 780; py += 55) for (let px = -20; px < 70; px += 50) { if (px > 20 && py < 540) continue; const p = atDist(px + (r() - 0.5) * 20, py + (r() - 0.5) * 20, 4.0); lc.push([p.x, p.y, p.z, 0.12]); }
       scene.add(makeFoliage({ clumps: lc, density: 2.2, cardSize: 0.26, kind: 'broad', seed: 8, texSeed: 3,

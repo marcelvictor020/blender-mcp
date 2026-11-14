@@ -97,13 +97,13 @@ export default {
         { dir: [-1, 0.5], w: 20, h: 12, dist: 6, color: '#16301f' },
       ],
     });
-    const UNI = (o) => pbrUniforms({ sunDir: SUN, leafScale: 8.5, leafSharp: 0.2, leafSeed: 9.0, grime: 0, ...o });
-    const LEAF = { leafAmt: 0.97, leafCover: 0.36 };
+    const UNI = (o) => pbrUniforms({ sunDir: SUN, leafScale: 8.5, leafSharp: 0.085, leafSeed: 9.0, grime: 0, ...o });
+    const LEAF = { leafAmt: 0.97, leafCover: 0.505 };
     const UM = UNI({ ...LEAF, grime: 0.05 });                 // machine body + cone under the tree
-    const UGl = UNI({ ...LEAF, sunGain: 1.9 });               // dusty glass: catches bright leaf-shaped sun patches
+    const UGl = UNI({ ...LEAF, leafCover: 0.465, sunGain: 1.2 });               // dusty glass: catches bright leaf-shaped sun patches
     const UPr = UNI({ ...LEAF, sunGain: 0.6 });                // products behind the glass
     const UO = UNI({ leafAmt: 0 });                           // overpass / pole (open sun)
-    const UF = UNI({ leafAmt: 0.45, leafCover: 0.45, leafScale: 5.0 });   // fences / tape
+    const UF = UNI({ leafAmt: 0.45, leafCover: 0.42, leafScale: 5.0 });   // fences / tape
     const sunLight = addSunShadow(scene, { sunDir: SUN, color: '#ffe0b4', intensity: 3.4,
       target: new THREE.Vector3(0.6, 0.3, -2.9), radius: 2.6, mapSize: 2048 });
     sunLight.shadow.bias = -0.0003; sunLight.shadow.normalBias = 0.01;
@@ -111,10 +111,13 @@ export default {
     // pbr material with an anisotropic (diagonal, streaky) leaf-shadow cookie with a third leaf layer
     const M = (u, o, key = 's2') => {
       const m = pbr(u, { envMap: env, envMapIntensity: 0.9, ...o }, null, key); const ob = m.onBeforeCompile;
-      m.onBeforeCompile = (sh, r) => { ob(sh, r); sh.fragmentShader = sh.fragmentShader.replace('float w = 0.20 * pow(1.0 - yy * yy, 0.7);', 'float w = 0.27 * pow(1.0 - yy * yy, 0.6);').replace('vec2 q = vec2(dot(p, t1), dot(p, t2)) * uLeafScale + uLeafSeed;',
+      m.onBeforeCompile = (sh, r) => { ob(sh, r); sh.fragmentShader = sh.fragmentShader.replace('float w = 0.20 * pow(1.0 - yy * yy, 0.7);', 'float w = 0.24 * pow(1.0 - yy * yy, 0.6);').replace('vec2 q = vec2(dot(p, t1), dot(p, t2)) * uLeafScale + uLeafSeed;',
         'vec2 q = mat2(0.8, 0.6, -0.6, 0.8) * vec2(dot(p, t1), dot(p, t2)); q = q * uLeafScale * vec2(0.85, 1.12) + uLeafSeed;')
         .replace('float lit = open * (1.0 - 0.9 * l1) * (1.0 - 0.55 * l2) * (1.0 - 0.8 * tw);',
-          'float l3 = leafCells(q * 1.45 + vec2(5.3, 1.9)); float l4 = leafCells(q * 0.8 + vec2(2.7, 8.1)); float l5 = leafCells(q * 0.42 + vec2(9.2, 4.4)); float l6 = leafCells(q * 0.3 + vec2(1.3, 6.6)); float lit = open * (1.0 - l1) * (1.0 - l2) * (1.0 - l3) * (1.0 - l4) * (1.0 - l5) * (1.0 - l6) * (1.0 - 0.8 * tw);'); };
+          `vec2 qa = q * 0.52; vec2 wq = vec2(fbm(qa * 0.6 + 3.0), fbm(qa * 0.6 + 8.0));
+          float big = fbm(qa + wq * 1.3) * 0.62 + 0.38 * fbm(q * 1.05 + wq * 0.8 + 6.0);           // broad sun patches
+          float f = big - 0.1 * l1 - 0.08 * l2 - 0.05 * tw;                         // leaf-shaped bites on the edges
+          float lit = 0.5 + (f - uLeafCover) * 3.2;`); };
       m.customProgramCacheKey = () => key + '_s2a'; return m;
     };
     const add = (geo, mat, parent = scene, cast = true, recv = true) => {
@@ -426,7 +429,7 @@ export default {
         g.filter = 'blur(6px)'; g.fillStyle = 'rgba(255,255,255,0.4)';
         for (const [x0, wd] of [[10, 26], [52, 10], [80, 34]]) { g.beginPath(); g.moveTo(x0, -10); g.lineTo(x0 + wd, -10); g.lineTo(x0 + wd - 90, h + 10); g.lineTo(x0 - 90, h + 10); g.closePath(); g.fill(); }
       }, true);
-      const glassM = M(UGl, { color: '#cfd0cc', roughness: 0.4, metalness: 0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+      const glassM = M(UGl, { color: '#e2d2b6', roughness: 0.4, metalness: 0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
         envMapIntensity: 0.5, clearcoat: 1, clearcoatRoughness: 0.05, emissive: '#a8c4dc', emissiveMap: sheenTex, emissiveIntensity: 0.12 }, 's2glass');
       const gm = add(new THREE.PlaneGeometry(ww, wh), glassM, vm, false, true); gm.position.set(wcx, wcy, -0.014); gm.renderOrder = 3;
       // modules: protruding boxes in front-fraction coords
@@ -502,7 +505,7 @@ export default {
 
     /* ---------------- traffic cone: lathe-turned PBR plastic with reflective band, square base ---------------- */
     {
-      const UC = UNI({ leafAmt: 0.7, leafCover: 0.3, grime: 0.05 });
+      const UC = UNI({ leafAmt: 0.85, leafCover: 0.44, grime: 0.05 });
       const coneM = M(UC, { color: '#ec7a40', roughness: 0.45, clearcoat: 0.3, clearcoatRoughness: 0.4, emissive: '#7a2a10', emissiveIntensity: 0.15, envMapIntensity: 0.7 }, 's2cone');
       const bandM = M(UC, { color: '#f0eae2', roughness: 0.22, metalness: 0.25, clearcoat: 0.8, envMapIntensity: 1.2 }, 's2cone');
       const h = 0.85, cp = hitY(1196, 545, 0.25);

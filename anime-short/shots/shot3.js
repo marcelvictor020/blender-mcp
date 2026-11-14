@@ -124,12 +124,27 @@ export default {
       }
     });
     const backMat = new THREE.ShaderMaterial({
-      uniforms: { tMap: { value: backTex }, uTime: shared.uTime },
+      uniforms: { tMap: { value: backTex }, uTime: shared.uTime, cMist: { value: col('#a6caa2') }, cDeep: { value: col('#5e8a66') } },
       vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
       fragmentShader: `uniform sampler2D tMap; uniform float uTime; varying vec2 vUv; ${NOISE_GLSL}
         void main(){ vec2 uv = vUv; float n = vnoise(uv*vec2(9.,6.) + uTime*0.25);
           uv += vec2(sin(uTime*0.9 + uv.y*14.), cos(uTime*0.7 + uv.x*11.)) * 0.0005 * (0.5+n);
-          vec3 c = texture2D(tMap, uv).rgb; gl_FragColor = vec4(c, 1.); }`,
+          // aerial perspective: the far layer is softer than the crisp near leaves
+          vec3 c = texture2D(tMap, uv).rgb * 0.2;
+          for (int k = 0; k < 8; k++) { float a = float(k) * 0.785 + 0.4; c += texture2D(tMap, uv + vec2(cos(a), sin(a)) * vec2(0.0026, 0.0046)).rgb * 0.1; }
+          vec2 p = vec2(vUv.x, 1.0 - vUv.y);
+          // deep shadowed void (tree trunks) behind the clearing
+          float trunk = smoothstep(0.075, 0.0, abs(p.x - 0.5 + p.y * 0.05) - 0.035) * smoothstep(0.62, 0.12, p.y) * (0.6 + 0.4 * fbm(p * vec2(7., 3.)));
+          c *= 1.0 - 0.6 * trunk;
+          // misty light in the middle distance: soft glows + diagonal shafts from the upper right
+          float glow = exp(-dot((p - vec2(0.6, 0.3)) * vec2(2.2, 2.6), (p - vec2(0.6, 0.3)) * vec2(2.2, 2.6)) * 2.0);
+          float glow2 = exp(-dot((p - vec2(0.27, 0.33)) * vec2(2.6, 3.0), (p - vec2(0.27, 0.33)) * vec2(2.6, 3.0)) * 2.0);
+          float across = p.x + p.y * 0.38;
+          float shafts = smoothstep(0.45, 0.85, vnoise(vec2(across * 14.0, 3.0 + uTime * 0.08))) * smoothstep(0.75, 0.1, p.y) * smoothstep(0.25, 0.45, p.x);
+          float mist = clamp(glow * 0.6 + glow2 * 0.32 + shafts * 0.3, 0.0, 0.9) * (0.7 + 0.3 * fbm(p * vec2(5., 3.) + uTime * 0.02));
+          c = mix(c, cMist, mist * 0.62);
+          c = mix(c, cDeep, 0.06);
+          gl_FragColor = vec4(c, 1.); }`,
       depthWrite: false,
     });
     const BD = 40;
@@ -194,7 +209,7 @@ export default {
     }
     const GU = {
       uTime: shared.uTime, uSun: { value: sunV.clone() }, uOccC: { value: occC }, uOccR: { value: occR },
-      cRoot: { value: col('#345e2a') }, cMid: { value: col('#70aa48') }, cTip: { value: col('#b0dc68') }, cDry: { value: col('#c2d86c') },
+      cRoot: { value: col('#345e2a') }, cMid: { value: col('#78b24a') }, cTip: { value: col('#c0e872') }, cDry: { value: col('#c2d86c') },
       cDark: { value: col('#336a2c') }, cSky: { value: col('#a4c4b0') }, cSunC: { value: col('#fff2d4') }, uSunI: { value: 1.25 }, uSkyI: { value: 0.75 },
     };
     const OCC_GLSL = `
@@ -249,10 +264,14 @@ export default {
     function bush(px, py, d, rxp, ryp, n, spec, seed, lv = 0.8, lo = {}) {
       const r = rng(seed);
       const c = S(px, py, d), rx = PX(rxp, d), ry = PX(ryp, d);
+      // loose spray: stems fan out from the bush base, flower clusters at their (irregular) ends
+      const spray = (k) => { const a = (r() - 0.5) * 2.5, len = Math.sqrt(lerp(0.12, 1, r())) * k;
+        const x = Math.sin(a) * len * 1.08, y = Math.min(1, -0.85 + Math.cos(a) * len * 1.85 * lerp(0.75, 1.1, r())), z = lerp(-0.25, 0.85, r()) * (0.4 + 0.6 * Math.cos(a));
+        return [x, y, z, Math.min(1, Math.max(0.3, 0.45 + 0.55 * len))]; };
       const pick = (lmin) => { let x, y, z, l; do { x = r() * 2 - 1; y = r() * 2 - 1; z = r() * 1.2 - 0.2; l = x * x + y * y + z * z; } while (l > 1 || l < lmin); l = Math.sqrt(l); return [x, y, z, l]; };
       const cl = lo.cl || 1, cs = lo.cs || 0.2; let base = null;
       for (let i = 0; i < n; i++) {
-        if (i % cl === 0) base = pick(0.12);
+        if (i % cl === 0) base = lo.spray ? spray(1) : pick(0.12);
         let [x, y, z, l] = base;
         if (i % cl) { x += (r() - 0.5) * cs; y += (r() - 0.5) * cs * rx / ry; z += (r() - 0.5) * cs; l = Math.max(0.2, Math.min(1, Math.hypot(x, y, z))); }
         const nx = x / l, ny = y / l, nz = z / l;
@@ -265,7 +284,7 @@ export default {
       }
       const nl = lo.nl ?? Math.round(n * lv), kind = lo.kind || 'leaf', cols = lo.cols || LEAF_G;
       for (let i = 0; i < nl; i++) {
-        const [x, y, z, l] = pick(0.25);
+        const [x, y, z, l] = lo.spray ? spray(lerp(0.35, 1, r())) : pick(0.25);
         const nx = x / l, ny = y / l, nz = z / l;
         const sunF = Math.max(0, nx * sunV.x + ny * sunV.y + nz * sunV.z);
         if (kind === 'strap') nT.set((r() - 0.5) * 0.8, 0.15 + r() * 0.3, 0.8).normalize();
@@ -286,19 +305,19 @@ export default {
 
     // green bodies of bushes (painted leaf foliage behind/under the modelled flowers and leaves)
     const greenBush = (list, opts) => foliage(list, { density: 5, shell: 0.5, kind: 'small', wind: 0.035, dark: '#1a3a22', mid: '#2f5e30', light: '#4f8a3e', highlight: '#86b35a', ...opts });
-    greenBush([[340, 455, 7.4, 80], [280, 480, 7.2, 50], [400, 480, 7.2, 55]], { cardSize: PX(24, 7.4), seed: 31, texSeed: 4 });
+    greenBush([[340, 470, 7.4, 62], [285, 488, 7.2, 42], [400, 488, 7.2, 46]], { cardSize: PX(24, 7.4), seed: 31, texSeed: 4 });
     greenBush([[510, 450, 7.7, 75], [560, 470, 7.6, 60], [460, 480, 7.5, 50]], { cardSize: PX(22, 7.7), seed: 32, texSeed: 6, dark: '#132a19', mid: '#22442a', light: '#3a6a37' });
-    greenBush([[700, 445, 7.9, 85], [760, 470, 7.8, 50], [640, 470, 7.8, 50]], { cardSize: PX(24, 7.9), seed: 33, texSeed: 8 });
+    greenBush([[700, 462, 7.9, 64], [760, 478, 7.8, 42], [640, 478, 7.8, 42]], { cardSize: PX(24, 7.9), seed: 33, texSeed: 8 });
     greenBush([[915, 400, 8.4, 85], [905, 470, 8.3, 80], [950, 320, 8.4, 55], [870, 320, 8.4, 45]], { density: 3, cardSize: PX(24, 8.4), seed: 34, texSeed: 10, dark: '#1a3420', mid: '#2c5a2e', light: '#4a8040' });
     greenBush([[1060, 190, 7.0, 30], [1100, 250, 7.0, 35], [1130, 310, 7.0, 35], [1170, 360, 7.0, 30], [1090, 330, 7.0, 25]], { density: 1.6, shell: 0.2, cardSize: PX(30, 7.0), seed: 35, texSeed: 12, dark: '#2a4a30', mid: '#4a7a50', light: '#7aa070', highlight: '#a6c79a' });
     greenBush([[870, 540, 3.0, 70], [1020, 460, 3.7, 70], [800, 580, 2.95, 40]], { density: 3.5, cardSize: PX(26, 3.6), seed: 36, texSeed: 14, dark: '#24452c', mid: '#3a6e40', light: '#5e9050' });
 
-    bush(345, 450, 7.3, 92, 88, 480, PINK, 101, 1.3, { ls: 15, cl: 3, cs: 0.25, cols: ['#5a9a40', '#6aa84a', '#7ab45a', '#4a8a38', '#3c7a32'] });
+    bush(345, 452, 7.3, 98, 92, 480, PINK, 101, 1.5, { spray: true, ls: 15, cl: 6, cs: 0.32, cols: ['#5a9a40', '#6aa84a', '#7ab45a', '#4a8a38', '#3c7a32'] });
     const YL = { ls: 13, cl: 2, cs: 0.25, cols: ['#2e5e2a', '#3a6e30', '#4a7e38', '#24502a'] };
     bush(512, 478, 7.25, 78, 50, 90, YEL, 102, 0.45, YL);
     bush(522, 415, 7.25, 64, 45, 80, YEL, 122, 0.45, YL);
     bush(535, 365, 7.25, 36, 28, 30, YEL, 123, 0.45, YL);
-    bush(705, 440, 7.8, 100, 66, 420, PINK, 103, 1.3, { ls: 15, cl: 3, cs: 0.25, cols: ['#5a9a40', '#6aa84a', '#7ab45a', '#4a8a38', '#3c7a32'] });
+    bush(705, 440, 7.8, 105, 72, 420, PINK, 103, 1.5, { spray: true, ls: 15, cl: 6, cs: 0.32, cols: ['#5a9a40', '#6aa84a', '#7ab45a', '#4a8a38', '#3c7a32'] });
     // red spire: airy column of small star-flower clusters among lit leaves
     const RL = { cl: 5, cs: 0.32, ls: 12, fs: 1.45, cols: ['#3e7a34', '#4c8a3c', '#5a9a46', '#6aa852', '#336a2e'] };
     bush(915, 452, 8.3, 88, 38, 150, RED, 113, 0.6, RL);
@@ -324,6 +343,28 @@ export default {
     bush(340, 255, 12, 25, 15, 6, [{ t: 1, s: 9, c: '#e8a59a', cc: '#c0786a', th: 0.3 }], 111, 0);
     const FU = { uTime: shared.uTime, uSun: { value: sunV.clone() }, cSun: { value: col('#fff2d6') }, cSky: { value: col('#c4e2c8') }, cGnd: { value: col('#5a8a3a') }, uSunI: { value: 0.85 }, uSkyI: { value: 0.46 } };
     for (const k of Object.keys(FL)) if (FL[k].length) scene.add(makeInstFlowers(core, flowerGeo(THREE, k), FL[k], FU));
+
+    // overhanging canopy edges: modelled dark leaves with sunlit rims, layered over the painted canopy
+    const CAN = { ls: 34, cols: ['#0f2216', '#16301e', '#1e3c26', '#2a5032', '#3c6a40'] };
+    bush(130, 40, 6.2, 190, 70, 0, [], 150, 0, { ...CAN, nl: 330 });
+    bush(40, 190, 6.0, 70, 110, 0, [], 151, 0, { ...CAN, nl: 160 });
+    bush(950, 50, 6.4, 150, 70, 0, [], 152, 0, { ...CAN, nl: 300 });
+    bush(560, -20, 6.8, 170, 30, 0, [], 153, 0, { ...CAN, nl: 140, cols: ['#1a3622', '#24462c', '#2f5838', '#3e6c44'] });
+    // volumetric light: faint additive shafts crossing the mid-distance foliage
+    {
+      const SD = 12.5;
+      const sh = new THREE.Mesh(new THREE.PlaneGeometry(2 * TH * SD, 2 * TV * SD), new THREE.ShaderMaterial({
+        uniforms: { uTime: shared.uTime, cS: { value: col('#cfe8b4') } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+        vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
+        fragmentShader: `uniform float uTime; uniform vec3 cS; varying vec2 vUv; ${NOISE_GLSL}
+          void main(){ vec2 p = vec2(vUv.x, 1.0 - vUv.y); float across = p.x + p.y * 0.38;
+            float s = smoothstep(0.5, 0.9, vnoise(vec2(across * 11.0, 7.0 + uTime * 0.06))) * (0.6 + 0.4 * vnoise(vec2(across * 31.0, 2.0)));
+            s *= smoothstep(0.7, 0.15, p.y) * smoothstep(0.28, 0.5, p.x) * smoothstep(0.98, 0.8, p.x);
+            float g = exp(-dot((p - vec2(0.6, 0.3)) * vec2(2.4, 3.0), (p - vec2(0.6, 0.3)) * vec2(2.4, 3.0)) * 2.0);
+            gl_FragColor = vec4(cS * (s * 0.075 + g * 0.05), 1.); }`,
+      }));
+      sh.position.set(...S(640, 360, SD)); sh.renderOrder = 5; scene.add(sh);
+    }
 
     /* ---------------- 6. foreground framing leaves ---------------- */
     foliage([[40, 400, 4.6, 110], [150, 470, 4.6, 90], [60, 290, 4.8, 60], [90, 545, 4.3, 85], [190, 530, 4.4, 40]],
@@ -431,6 +472,8 @@ function makeLitGrass(core, bl, U, OCC_GLSL) {
         vec3 c = alb * (sunC * (diff + trans * vec3(1.05, 1.2, 0.55)) + cSky * uSkyI * ao);
         vec3 H = normalize(L + V);
         c += sunC * pow(max(dot(N, H), 0.0), 20.0) * 0.1 * smoothstep(0.4, 1.0, vT);
+        c += cTip * sunC * smoothstep(0.72, 1.0, vT) * (0.12 + 0.2 * max(ndl, 0.0)) * (0.5 + 0.5 * vR);   // sunlit tips
+        c *= 1.0 + 0.14 * smoothstep(-4.6, -2.6, vW.z);                                                  // brighter lime foreground
         gl_FragColor = vec4(c, 1.);
       }`,
   });

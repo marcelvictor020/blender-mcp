@@ -1,4 +1,5 @@
 import * as core from './core.js';
+import { cameraMove, BARS } from './camera_moves.js';
 const { Engine, shared, THREE } = core;
 
 const SHOTS = [
@@ -11,6 +12,7 @@ const TOTAL = acc;
 
 const q = new URLSearchParams(location.search);
 const RENDER = q.has('render');
+const STATIC = q.has('static');
 const ONLY = q.has('shot') ? parseInt(q.get('shot')) - 1 : -1;
 const AUTO_W = (Math.min(innerWidth, innerHeight * 16 / 9) * (devicePixelRatio || 1)) >= 1500 ? 1920 : 1280;
 const W = parseInt(q.get('w') || (RENDER ? '1920' : String(AUTO_W))), H = parseInt(q.get('h') || String(Math.round(W * 9 / 16)));
@@ -82,7 +84,19 @@ function renderAt(t) {
   }
   shared.uTime.value = lt + 10;
   shot.update?.(lt, core);
-  engine.render(shot.scene, shot.camera, lt);
+  const cam = shot.camera;
+  if (STATIC) { engine.setLens(1, 0, 0, 0, 0); engine.render(shot.scene, cam, lt); return; }
+  const mv = cameraMove(i + 1, lt, SHOTS[i].duration);
+  const p0 = cam.position.clone(), q0 = cam.quaternion.clone();
+  if (!mv.twoD) {
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+    cam.position.addScaledVector(fwd, mv.dolly);
+    cam.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(mv.pitch, mv.yaw, 0, 'YXZ')));
+    cam.updateMatrixWorld(true);
+  }
+  engine.setLens(mv.zoom, mv.twoD ? mv.yaw * 0.3 : 0, mv.twoD ? mv.pitch * 0.3 : 0, BARS, mv.roll);
+  engine.render(shot.scene, cam, lt);
+  cam.position.copy(p0); cam.quaternion.copy(q0); cam.updateMatrixWorld(true);
 }
 
 const wrap = document.getElementById('wrap');

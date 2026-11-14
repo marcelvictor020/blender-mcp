@@ -636,15 +636,20 @@ const FinalShader = {
     uLift: { value: new THREE.Vector3(0, 0, 0) }, uGamma: { value: new THREE.Vector3(1, 1, 1) }, uGain: { value: new THREE.Vector3(1, 1, 1) },
     uVignette: { value: 0.25 }, uGrain: { value: 0.035 }, uCA: { value: 0.0015 },
     uLeak: { value: 0.0 }, uLeakPos: { value: new THREE.Vector2(0.95, 0.95) }, uSoft: { value: 0.0 },
+    uZoom: { value: 1.0 }, uPan: { value: new THREE.Vector2(0, 0) }, uBars: { value: 0.0 }, uRoll: { value: 0.0 },
   },
   vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float uTime, uExposure, uContrast, uSat, uVignette, uGrain, uCA, uLeak, uSoft; uniform vec2 uRes, uLeakPos;
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uTime, uExposure, uContrast, uSat, uVignette, uGrain, uCA, uLeak, uSoft, uZoom, uBars, uRoll; uniform vec2 uRes, uLeakPos, uPan;
     uniform vec3 uLift, uGamma, uGain; varying vec2 vUv;
     float h(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
     vec3 toSRGB(vec3 c){ c = max(c, 0.); return mix(c*12.92, 1.055*pow(c, vec3(1./2.4)) - 0.055, step(0.0031308, c)); }
     vec3 rainbow(float x){ return clamp(abs(mod(x*6.0+vec3(0.,4.,2.),6.0)-3.0)-1.0, 0., 1.); }
     void main(){
-      vec2 uv = vUv; vec2 d = uv - 0.5;
+      vec2 sv = vUv;                                   // screen uv (for bars/grain/vignette)
+      vec2 q0 = (vUv - 0.5) * vec2(uRes.x / uRes.y, 1.0);
+      q0 = mat2(cos(uRoll), -sin(uRoll), sin(uRoll), cos(uRoll)) * q0;
+      vec2 uv = 0.5 + q0 / vec2(uRes.x / uRes.y, 1.0) / uZoom + uPan;   // camera zoom / pan / roll
+      vec2 d = uv - 0.5;
       vec3 c;
       c.r = texture2D(tDiffuse, uv + d*uCA).r;
       c.g = texture2D(tDiffuse, uv).g;
@@ -661,7 +666,9 @@ const FinalShader = {
       if (uLeak > 0.) { vec2 lp = uv - uLeakPos; float r = length(lp*vec2(uRes.x/uRes.y,1.)); float ring = smoothstep(0.55,0.35,abs(r-0.55)) ; c += rainbow(r*1.4+0.1) * ring * uLeak * 0.35; }
       float v = smoothstep(0.85, 0.2, length(d*vec2(1.0, 0.8)));
       c *= mix(1.0 - uVignette, 1.0, v);
-      c += (h(uv*uRes + fract(uTime)*137.) - 0.5) * uGrain;
+      c += (h(sv*uRes + fract(uTime)*137.) - 0.5) * uGrain;
+      float bar = step(sv.y, uBars) + step(1.0 - uBars, sv.y);
+      c = mix(c, vec3(0.0), bar);
       gl_FragColor = vec4(clamp(c, 0., 1.), 1.);
     }`,
 };
@@ -702,6 +709,9 @@ export class Engine {
     u.uLift.value.set(...P.lift); u.uGamma.value.set(...P.gamma); u.uGain.value.set(...P.gain);
     u.uVignette.value = P.vignette; u.uGrain.value = P.grain; u.uCA.value = P.ca; u.uLeak.value = P.leak; u.uLeakPos.value.set(...P.leakPos);
     u.uSoft.value = P.soft;
+  }
+  setLens(zoom = 1, panX = 0, panY = 0, bars = 0, roll = 0) {
+    const u = this.final.uniforms; u.uZoom.value = zoom; u.uPan.value.set(panX, panY); u.uBars.value = bars; u.uRoll.value = roll;
   }
   render(scene, camera, time) {
     camera.aspect = this.w / this.h; camera.updateProjectionMatrix();
