@@ -88,7 +88,7 @@ export default {
     /* ---------------- lighting: one shadow-casting sun + sky env + leaf-shadow dapple ---------------- */
     shared.uSunDir.value.copy(sunDir);
     const env = makeEnvMap('s2_env', {
-      zenith: '#1a7a92', horizon: '#a2c6c4', ground: '#2c2824', sunDir: SUN, sunColor: '#ffe8cc', sunPower: 16,
+      zenith: '#1a7a92', horizon: '#a2c6c4', ground: '#5c564e', sunDir: SUN, sunColor: '#ffe8cc', sunPower: 16,
       clouds: [{ dir: [0.35, 0.55, -1], size: 7, power: 1.6 }, { dir: [-0.4, 0.7, 0.6], size: 5, power: 1.2 }],
       blocks: [
         { dir: [-1, -0.3], w: 30, h: 14, dist: 12, y: 2, color: '#5a554e' },   // overpass, upper left
@@ -97,24 +97,24 @@ export default {
         { dir: [-1, 0.5], w: 20, h: 12, dist: 6, color: '#16301f' },
       ],
     });
-    const UNI = (o) => pbrUniforms({ sunDir: SUN, leafScale: 7.0, leafSharp: 0.2, leafSeed: 9.0, grime: 0, ...o });
-    const LEAF = { leafAmt: 0.94, leafCover: 0.5 };
+    const UNI = (o) => pbrUniforms({ sunDir: SUN, leafScale: 11.0, leafSharp: 0.2, leafSeed: 9.0, grime: 0, ...o });
+    const LEAF = { leafAmt: 0.97, leafCover: 0.36 };
     const UM = UNI({ ...LEAF, grime: 0.05 });                 // machine body + cone under the tree
-    const UGl = UNI({ ...LEAF, sunGain: 2.6 });               // dusty glass: catches bright leaf-shaped sun patches
-    const UP = UNI({ ...LEAF, sunGain: 0.6 });                // products behind the glass
+    const UGl = UNI({ ...LEAF, sunGain: 1.9 });               // dusty glass: catches bright leaf-shaped sun patches
+    const UPr = UNI({ ...LEAF, sunGain: 0.6 });                // products behind the glass
     const UO = UNI({ leafAmt: 0 });                           // overpass / pole (open sun)
     const UF = UNI({ leafAmt: 0.45, leafCover: 0.45, leafScale: 5.0 });   // fences / tape
     const sunLight = addSunShadow(scene, { sunDir: SUN, color: '#ffe0b4', intensity: 3.4,
       target: new THREE.Vector3(0.6, 0.3, -2.9), radius: 2.6, mapSize: 2048 });
     sunLight.shadow.bias = -0.0003; sunLight.shadow.normalBias = 0.01;
-    scene.add(new THREE.HemisphereLight(col('#86c0d0'), col('#4a3a34'), 0.6));
+    scene.add(new THREE.HemisphereLight(col('#86c0d0'), col('#6a625a'), 0.7));
     // pbr material with an anisotropic (diagonal, streaky) leaf-shadow cookie with a third leaf layer
     const M = (u, o, key = 's2') => {
       const m = pbr(u, { envMap: env, envMapIntensity: 0.9, ...o }, null, key); const ob = m.onBeforeCompile;
-      m.onBeforeCompile = (sh, r) => { ob(sh, r); sh.fragmentShader = sh.fragmentShader.replace('vec2 q = vec2(dot(p, t1), dot(p, t2)) * uLeafScale + uLeafSeed;',
+      m.onBeforeCompile = (sh, r) => { ob(sh, r); sh.fragmentShader = sh.fragmentShader.replace('float w = 0.20 * pow(1.0 - yy * yy, 0.7);', 'float w = 0.27 * pow(1.0 - yy * yy, 0.6);').replace('vec2 q = vec2(dot(p, t1), dot(p, t2)) * uLeafScale + uLeafSeed;',
         'vec2 q = mat2(0.8, 0.6, -0.6, 0.8) * vec2(dot(p, t1), dot(p, t2)); q = q * uLeafScale * vec2(0.85, 1.12) + uLeafSeed;')
         .replace('float lit = open * (1.0 - 0.9 * l1) * (1.0 - 0.55 * l2) * (1.0 - 0.8 * tw);',
-          'float l3 = leafCells(q * 1.45 + vec2(5.3, 1.9)); float lit = open * (1.0 - 0.95 * l1) * (1.0 - 0.9 * l2) * (1.0 - 0.85 * l3) * (1.0 - 0.8 * tw);'); };
+          'float l3 = leafCells(q * 1.45 + vec2(5.3, 1.9)); float l4 = leafCells(q * 0.8 + vec2(2.7, 8.1)); float l5 = leafCells(q * 0.42 + vec2(9.2, 4.4)); float l6 = leafCells(q * 0.3 + vec2(1.3, 6.6)); float lit = open * (1.0 - l1) * (1.0 - l2) * (1.0 - l3) * (1.0 - l4) * (1.0 - l5) * (1.0 - l6) * (1.0 - 0.8 * tw);'); };
       m.customProgramCacheKey = () => key + '_s2a'; return m;
     };
     const add = (geo, mat, parent = scene, cast = true, recv = true) => {
@@ -135,14 +135,14 @@ export default {
 
     /* ---------------- concrete texture set (stains, drips, form lines, pits) ---------------- */
     const concT = texSet(512, 512, (g, w, h) => {
-      const r = rng(21); g.fillStyle = '#b7aa95'; g.fillRect(0, 0, w, h);
+      const r = rng(21); g.fillStyle = '#b6aea2'; g.fillRect(0, 0, w, h);
       for (let i = 0; i < 70; i++) { const x = r() * w, y = r() * h, rr = 30 + r() * 110; const gr = g.createRadialGradient(x, y, 0, x, y, rr);
-        const v = r() < 0.55 ? '70,62,54' : '226,216,198'; gr.addColorStop(0, `rgba(${v},${0.08 + r() * 0.12})`); gr.addColorStop(1, `rgba(${v},0)`); g.fillStyle = gr; g.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
-      for (let i = 0; i < 46; i++) { const x = r() * w, y = r() * h, len = 40 + r() * 200; const gr = g.createLinearGradient(0, y, 0, y + len);
-        gr.addColorStop(0, `rgba(58,48,40,${0.18 + r() * 0.25})`); gr.addColorStop(1, 'rgba(58,48,40,0)'); g.fillStyle = gr; g.fillRect(x, y, 2 + r() * 7, len); }
+        const v = r() < 0.55 ? '74,70,64' : '226,220,208'; gr.addColorStop(0, `rgba(${v},${0.08 + r() * 0.12})`); gr.addColorStop(1, `rgba(${v},0)`); g.fillStyle = gr; g.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
+      g.filter = 'blur(3px)'; for (let i = 0; i < 46; i++) { const x = r() * w, y = r() * h, len = 40 + r() * 200; const gr = g.createLinearGradient(0, y, 0, y + len);
+        gr.addColorStop(0, `rgba(58,48,40,${0.18 + r() * 0.25})`); gr.addColorStop(1, 'rgba(58,48,40,0)'); g.fillStyle = gr; g.fillRect(x, y, 3 + r() * 9, len); }
+      g.filter = 'none';
       for (let i = 0; i < 9000; i++) { const v = r() < 0.5 ? 80 + r() * 40 : 190 + r() * 50; g.fillStyle = `rgba(${v | 0},${(v - 6) | 0},${(v - 14) | 0},${0.25 + r() * 0.4})`; g.fillRect(r() * w, r() * h, 1 + r() * 1.6, 1 + r() * 1.6); }
-      g.fillStyle = 'rgba(60,52,44,0.35)'; for (let k = 1; k < 4; k++) g.fillRect(0, k * h / 4, w, 2);
-      for (let i = 0; i < 26; i++) { g.fillStyle = 'rgba(40,34,30,0.6)'; g.beginPath(); g.arc(r() * w, r() * h, 1 + r() * 2.5, 0, 7); g.fill(); }
+            for (let i = 0; i < 14; i++) { g.fillStyle = 'rgba(40,34,30,0.45)'; g.beginPath(); g.arc(r() * w, r() * h, 1 + r() * 1.5, 0, 7); g.fill(); }
     }, { normalStrength: 2.4, roughBase: 0.86, roughVar: 0.2 });
     const concM = (c, key = 's2conc', u = UO) => M(u, { color: c, map: concT.map, normalMap: concT.normalMap, roughnessMap: concT.roughnessMap, envMapIntensity: 0.55 }, key);
 
@@ -158,17 +158,18 @@ export default {
     {
       const L0 = -80, L1 = 220, LEN = L1 - L0, WID = 40, LC = (L0 + L1) / 2;
       const fasciaM = concM('#ffffff'), underM = concM('#a49e96'), girderM = concM('#bab4ac');
-      const ob = (geo, mat, x, y, z, s = 2.2) => { geo.translate(x, y, z); boxUV(geo, s); return add(geo, mat, opGroup, false, true); };
+      const DY = -0.42;   // deck sits below the railing tops (tall posts as in the original)
+      const ob = (geo, mat, x, y, z, s = 3.0) => { geo.translate(x, y + DY, z); boxUV(geo, s); return add(geo, mat, opGroup, false, true); };
       ob(new THREE.BoxGeometry(LEN, 0.42, WID), underM, LC, -0.62, WID / 2);              // deck slab
       ob(rbox(LEN, 0.74, 0.36, 0.05, 2), fasciaM, LC, -0.3, 0.13);                       // edge beam (fascia), chamfered
       ob(rbox(LEN, 0.12, 0.46, 0.035, 2), fasciaM, LC, 0.1, 0.16);                       // coping
       ob(rbox(LEN, 0.06, 0.1, 0.02, 1), underM, LC, -0.69, -0.02);                       // drip lip
       // haunch brackets (triangular plates) under the edge beam
-      const sh = new THREE.Shape([new THREE.Vector2(0.24, -0.62), new THREE.Vector2(1.5, -0.8), new THREE.Vector2(1.5, -1.0), new THREE.Vector2(0.3, -1.75), new THREE.Vector2(0.22, -1.7)]);
-      const bg = new THREE.ExtrudeGeometry(sh, { depth: 0.07, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 1 });
+      const sh = new THREE.Shape([new THREE.Vector2(0.2, -0.64), new THREE.Vector2(0.4, -0.64), new THREE.Vector2(0.5, -0.8), new THREE.Vector2(1.55, -1.74), new THREE.Vector2(1.47, -1.79), new THREE.Vector2(0.24, -0.8)]);
+      const bg = new THREE.ExtrudeGeometry(sh, { depth: 0.045, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.01, bevelSegments: 1 });
       bg.rotateY(-Math.PI / 2); bg.computeVertexNormals(); boxUV(bg, 1.5);
       const nb = Math.floor(LEN / 1.44); const bim = new THREE.InstancedMesh(bg, girderM, nb); bim.receiveShadow = true;
-      for (let i = 0; i < nb; i++) bim.setMatrixAt(i, new THREE.Matrix4().makeTranslation(L0 + i * 1.44 + 0.04, 0, 0));
+      for (let i = 0; i < nb; i++) bim.setMatrixAt(i, new THREE.Matrix4().makeTranslation(L0 + i * 1.44 + 0.04, DY, 0));
       opGroup.add(bim);
       // longitudinal I-girders under the deck
       for (let z = 1.6, k = 0; z < WID; z += 3.4, k++) {
@@ -182,11 +183,11 @@ export default {
       // railing: white tube posts, three rusty rails
       const postM = M(UO, { color: '#ece6da', roughness: 0.38, clearcoat: 0.5, clearcoatRoughness: 0.3, envMapIntensity: 0.8 }, 's2paint');
       const railM = M(UO, { color: '#5e3a2e', roughness: 0.5, metalness: 0.45, envMapIntensity: 0.8 }, 's2paint');
-      const pg = new THREE.CylinderGeometry(0.026, 0.03, 1.08, 10).translate(0, 0.16 + 0.54, 0.14);
+      const pg = new THREE.CylinderGeometry(0.028, 0.032, 1.5, 10).translate(0, 0.49, 0.14);
       const np = Math.floor(LEN / 0.72); const pim = new THREE.InstancedMesh(pg, postM, np); pim.receiveShadow = true;
       for (let i = 0; i < np; i++) pim.setMatrixAt(i, new THREE.Matrix4().makeTranslation(L0 + i * 0.72 + 0.36, 0, 0));
       opGroup.add(pim);
-      for (const [y, r] of [[1.24, 0.026], [0.92, 0.016], [0.56, 0.016]]) add(new THREE.CylinderGeometry(r, r, LEN, 8).rotateZ(Math.PI / 2).translate(LC, y, 0.14), railM, opGroup, false, true);
+      for (const [y, r] of [[1.24, 0.026], [0.84, 0.016], [0.44, 0.016]]) add(new THREE.CylinderGeometry(r, r, LEN, 8).rotateZ(Math.PI / 2).translate(LC, y, 0.14), railM, opGroup, false, true);
       add(new THREE.CylinderGeometry(0.03, 0.03, LEN, 8).rotateZ(Math.PI / 2).translate(LC, 1.24, 0.14), railM, opGroup, false, true);
     }
 
@@ -204,7 +205,7 @@ export default {
         g.fillStyle = 'rgba(255,248,232,0.35)'; g.fillRect(w * 0.3, 0, 2, h); g.fillRect(w * 0.69, 0, 2, h);
       }, { normalStrength: 3.0, roughBase: 0.85 });
       for (const t of [poleT.map, poleT.normalMap, poleT.roughnessMap]) t.wrapS = t.wrapT = THREE.RepeatWrapping;
-      const len = PT.distanceTo(PB) + 0.25;
+      const len = PT.distanceTo(PB);
       for (const t of [poleT.map, poleT.normalMap, poleT.roughnessMap]) t.repeat.set(4, len / 1.7);
       let pg = new THREE.CylinderGeometry(0.11 * Math.SQRT2, 0.15 * Math.SQRT2, len, 4, 1, false, Math.PI / 4).toNonIndexed();
       const toCam = CAM.clone().sub(PB).setY(0).normalize();
@@ -212,7 +213,7 @@ export default {
       const pm = M(UO, { color: '#ffffff', map: poleT.map, normalMap: poleT.normalMap, roughnessMap: poleT.roughnessMap, roughness: 1, envMapIntensity: 0.6 }, 's2pole');
       const pole = add(pg, pm);
       const dir = PT.clone().sub(PB).normalize();
-      pole.position.copy(PB).lerp(PT, 0.5).addScaledVector(dir, 0.125);
+      pole.position.copy(PB).lerp(PT, 0.5);
       pole.quaternion.setFromUnitVectors(UP, dir);
       const rust = M(UO, { color: '#4a2a22', roughness: 0.6, metalness: 0.5 }, 's2steel');
       const steel = M(UO, { color: '#5a4038', roughness: 0.5, metalness: 0.55 }, 's2steel');
@@ -285,7 +286,7 @@ export default {
       const Hf = 1.05;
       const A = hitY(60, 568, Hf), B = hitY(600, 400, Hf);
       const len = A.distanceTo(B);
-      quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), linkMat([len / 0.3, (Hf - GROUND) / 0.3], '#f0c8b0', UF, 0.95));
+      quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), linkMat([len / 0.48, (Hf - GROUND) / 0.48], '#f4ccc0', UF, 0.95));
       rod(hitY(-40, 600, Hf), B, 0.036, galv, scene, 12);
       const pA = hitY(140, 545, Hf); rod(pA.clone().setY(Hf + 0.04), pA.clone().setY(GROUND), 0.038, galv, scene, 12);
       add(new THREE.SphereGeometry(0.042, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), galv).position.copy(pA).setY(Hf + 0.04);
@@ -294,10 +295,10 @@ export default {
     }
     // right fence: top rail (875,250) -> (1280,85)
     {
-      const Hr = 1.5;
+      const Hr = 2.6, KR = (Hr - CAM.y) / 1.5;   // pushed back (same screen line) so the fence stays behind the machine
       const A = hitY(860, 258, Hr), B = hitY(1330, 62, Hr);
       const len = A.distanceTo(B);
-      quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), linkMat([len / 0.12, (Hr - GROUND) / 0.12], '#d8ccc0', UNI({ leafAmt: 0.85, leafCover: 0.5, leafScale: 4 }), 0.9));
+      quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), linkMat([len / (0.12 * KR), (Hr - GROUND) / (0.12 * KR)], '#d8ccc0', UNI({ leafAmt: 0.85, leafCover: 0.5, leafScale: 4 }), 0.9));
       rod(A, B, 0.032, rustTube, scene, 10);
       rod(at(975, 395, A.distanceTo(CAM)), at(1300, 512, 2.6), 0.024, rustTube, scene, 8);
     }
@@ -311,12 +312,12 @@ export default {
     vm.position.set(MA.x, GROUND, MA.z);
     vm.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(fdir, UP, fdir.clone().cross(UP)));
     const X = (f) => f * VW, Y = (g) => VH - g * VH;      // front fractions (x from left, g from top) -> local
-    const RED = '#c8121c';
+    const RED = '#c80f22';
     {
       const tw = 384, th = Math.round(384 * VH / VW);
       const frontTex = canvasTex(tw, th, (g, w, h) => {
         const r = rng(37); const x = (f) => f * w, y = (f) => f * h;
-        g.fillStyle = '#cf1820'; g.fillRect(0, 0, w, h);
+        g.fillStyle = '#cf1426'; g.fillRect(0, 0, w, h);
         for (let i = 0; i < 90; i++) { const cx = r() * w, cy = r() * h, rr = 10 + r() * 50; const gr = g.createRadialGradient(cx, cy, 0, cx, cy, rr);
           const v = r() < 0.6 ? '90,0,8' : '255,110,100'; gr.addColorStop(0, `rgba(${v},${0.05 + r() * 0.06})`); gr.addColorStop(1, `rgba(${v},0)`); g.fillStyle = gr; g.fillRect(cx - rr, cy - rr, rr * 2, rr * 2); }
         g.fillStyle = '#b4121a'; g.fillRect(0, 0, w, y(0.02));
@@ -336,8 +337,8 @@ export default {
         const bez = (t, p0, p1, p2, p3) => { const u = 1 - t; return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3; };
         for (let i = 0; i < 520; i++) {
           const t = i / 520; const cx = x(bez(t, 0.48, 0.62, 0.8, 0.95)), cy = y(bez(t, 0.6, 0.66, 0.7, 0.88)) + Math.sin(t * 20) * y(0.008);
-          const off = (r() - 0.5) * y(0.045); const px = cx - off * 0.4, py = cy + off;
-          g.fillStyle = '#240a0c'; g.beginPath(); g.arc(px, py, w * 0.013, 0, 7); g.fill();
+          const off = (r() - 0.5) * y(0.07); const px = cx - off * 0.4, py = cy + off;
+          g.fillStyle = '#240a0c'; g.beginPath(); g.arc(px, py, w * 0.018, 0, 7); g.fill();
           g.strokeStyle = 'rgba(200,140,120,0.85)'; g.lineWidth = 1.4; g.beginPath(); g.arc(px, py, w * 0.01, 0.3, 2.7); g.stroke();
         }
         g.fillStyle = '#240a0c'; g.beginPath(); g.ellipse(x(0.47), y(0.6), x(0.04), y(0.025), -0.4, 0, 7); g.fill();     // head
@@ -353,7 +354,7 @@ export default {
       add(rbox(VW, VH - KICK, VD - T + 0.02, 0.04, 3), bodyM, vm).position.set(VW / 2, KICK + (VH - KICK) / 2, -T - (VD - T) / 2 + 0.01);
       add(rbox(VW + 0.014, 0.04, VD + 0.014, 0.014, 2), M(UM, { color: '#a80f18', roughness: 0.4, clearcoat: 0.4 }, 's2vm'), vm).position.set(VW / 2, VH - 0.014, -VD / 2 + 0.007);
       add(rbox(VW - 0.03, KICK, VD - 0.06, 0.008, 1), dark, vm).position.set(VW / 2, KICK / 2, -VD / 2 - 0.02);
-      add(rbox(0.13, 0.3, 0.13, 0.012, 2), M(UM, { color: '#2a2224', roughness: 0.55, metalness: 0.2 }, 's2vm'), vm).position.set(X(0.6), VH + 0.13, -VD * 0.72);
+      add(rbox(0.09, 0.38, 0.1, 0.012, 2), M(UM, { color: '#2a2224', roughness: 0.55, metalness: 0.2 }, 's2vm'), vm).position.set(X(0.53), VH + 0.16, -0.26);
       // door slab around the display window (window = recess T deep); UVs follow the front so the graphics line up
       const [wx0, wy0, wx1, wy1] = [0.03, 0.044, 0.885, 0.567];
       const parts = [];
@@ -368,9 +369,9 @@ export default {
       const ww = X(wx1) - X(wx0), wh = Y(wy0) - Y(wy1), wcx = (X(wx0) + X(wx1)) / 2, wcy = (Y(wy0) + Y(wy1)) / 2;
       const backTex = canvasTex(256, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#b4aca6'); gr.addColorStop(1, '#787270'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
         for (let k = 0; k < 5; k++) { g.fillStyle = 'rgba(255,250,240,0.25)'; g.fillRect(0, h * (0.1 + k * 0.2), w, 3); } }, true);
-      add(new THREE.PlaneGeometry(ww, wh), M(UM, { color: '#ffffff', map: backTex, emissive: '#ffffff', emissiveMap: backTex, emissiveIntensity: 0.12, roughness: 0.6 }, 's2vmb'), vm, false, true)
+      add(new THREE.PlaneGeometry(ww, wh), M(UM, { color: '#ffffff', map: backTex, emissive: '#ffffff', emissiveMap: backTex, emissiveIntensity: 0.035, roughness: 0.6 }, 's2vmb'), vm, false, true)
         .position.set(wcx, wcy, -T + 0.022);
-      const shelfM = M(UM, { color: '#d8d6d2', roughness: 0.4, metalness: 0.4 }, 's2vm');
+      const shelfM = M(UM, { color: '#8a8886', roughness: 0.45, metalness: 0.5 }, 's2vm');
       const prod = { bottle: [], label: [], cap: [], can: [], btn: [] };
       const _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3();
       const putP = (list, x, y, z, sx, sy, sz, c) => list.push([new THREE.Matrix4().compose(_p.set(x, y, z), _q.identity(), _s.set(sx, sy, sz)), col(c)]);
@@ -382,7 +383,7 @@ export default {
         { y: 0.95, h: 0.11, n: 15, kind: 'can', pal: ['#d63a3a', '#e8c35a', '#3b8f5a', '#2f2f3a', '#f4f4f0', '#5a7ed0', '#c0c4cc'] },
         { y: 0.8, h: 0.11, n: 15, kind: 'can', pal: ['#e8c35a', '#d63a3a', '#f4f4f0', '#3b62b0', '#9a6a3a', '#c0c4cc'] },
       ];
-      const stripM = M(UM, { color: '#e8e2dc', roughness: 0.35, clearcoat: 0.3 }, 's2vm');
+      const stripM = M(UM, { color: '#b8b2ac', roughness: 0.35, clearcoat: 0.3 }, 's2vm');
       for (const row of rows) {
         const yb = row.y, n = row.n, sp = ww / n;
         add(new THREE.BoxGeometry(ww, 0.012, T - 0.03), shelfM, vm).position.set(wcx, yb - 0.006, -T / 2 - 0.005);
@@ -413,11 +414,11 @@ export default {
           list.forEach(([m4, c], i) => { im.setMatrixAt(i, m4); im.setColorAt(i, c); });
           im.castShadow = true; im.receiveShadow = true; vm.add(im); return im;
         };
-        mk(lathe, prod.bottle, M(UP, { color: '#ffffff', roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05, emissive: '#15181a', envMapIntensity: 1.2 }, 's2prod'));
-        mk(label, prod.label, M(UP, { color: '#ffffff', roughness: 0.4, emissive: '#26282a' }, 's2prod'));
-        mk(capG, prod.cap, M(UP, { color: '#ffffff', roughness: 0.4, emissive: '#26282a' }, 's2prod'));
-        mk(canG, prod.can, M(UP, { color: '#ffffff', roughness: 0.25, metalness: 0.5, emissive: '#202224' }, 's2prod'));
-        mk(btnG, prod.btn, M(UP, { color: '#ffffff', roughness: 0.3, clearcoat: 0.6 }, 's2prod'));
+        mk(lathe, prod.bottle, M(UPr, { color: '#ffffff', roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05, emissive: '#08090a', envMapIntensity: 0.5 }, 's2prod'));
+        mk(label, prod.label, M(UPr, { color: '#ffffff', roughness: 0.4, emissive: '#101112' }, 's2prod'));
+        mk(capG, prod.cap, M(UPr, { color: '#ffffff', roughness: 0.4, emissive: '#26282a' }, 's2prod'));
+        mk(canG, prod.can, M(UPr, { color: '#ffffff', roughness: 0.25, metalness: 0.5, emissive: '#0c0d0e' }, 's2prod'));
+        mk(btnG, prod.btn, M(UPr, { color: '#ffffff', roughness: 0.3, clearcoat: 0.6 }, 's2prod'));
       }
       // dusty glass: additive layer = sky reflections + bright leaf-shaped sun patches scattered by the dust
       const sheenTex = canvasTex(128, 256, (g, w, h) => {
@@ -425,7 +426,7 @@ export default {
         g.filter = 'blur(6px)'; g.fillStyle = 'rgba(255,255,255,0.4)';
         for (const [x0, wd] of [[10, 26], [52, 10], [80, 34]]) { g.beginPath(); g.moveTo(x0, -10); g.lineTo(x0 + wd, -10); g.lineTo(x0 + wd - 90, h + 10); g.lineTo(x0 - 90, h + 10); g.closePath(); g.fill(); }
       }, true);
-      const glassM = M(UGl, { color: '#a89a88', roughness: 0.35, metalness: 0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+      const glassM = M(UGl, { color: '#cfd0cc', roughness: 0.4, metalness: 0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
         envMapIntensity: 0.5, clearcoat: 1, clearcoatRoughness: 0.05, emissive: '#a8c4dc', emissiveMap: sheenTex, emissiveIntensity: 0.12 }, 's2glass');
       const gm = add(new THREE.PlaneGeometry(ww, wh), glassM, vm, false, true); gm.position.set(wcx, wcy, -0.014); gm.renderOrder = 3;
       // modules: protruding boxes in front-fraction coords
@@ -438,8 +439,8 @@ export default {
       box(0.9, 0.19, 0.975, 0.27, 0.02, white); box(0.915, 0.215, 0.96, 0.232, 0.026, blackP);                      // bill acceptor
       box(0.905, 0.3, 0.97, 0.4, 0.02, white); box(0.915, 0.315, 0.96, 0.345, 0.026, blackP); box(0.925, 0.36, 0.95, 0.385, 0.026, ledR);
       box(0.03, 0.567, 0.885, 0.584, 0.045, silver, 0, 0.004);                                                      // ledge under the glass
-      box(0.6, 0.59, 0.86, 0.655, 0.026, white);                                                                     // coin / price module
-      box(0.62, 0.6, 0.7, 0.62, 0.032, blackP); box(0.72, 0.6, 0.76, 0.645, 0.032, blackP);
+      box(0.62, 0.59, 0.84, 0.64, 0.022, silver);                                                                     // coin / price module
+      box(0.64, 0.598, 0.7, 0.612, 0.028, blackP); box(0.72, 0.6, 0.745, 0.632, 0.028, blackP); box(0.64, 0.618, 0.7, 0.632, 0.028, ledR);
       add(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 16).rotateX(Math.PI / 2), M(UM, { color: '#d8d2cc', roughness: 0.3, metalness: 0.6 }, 's2vm'), vm).position.set(X(0.8), Y(0.62), 0.03);
       // product outlet: bezel + dark flap
       const bz = M(UM, { color: '#8a1018', roughness: 0.38, clearcoat: 0.5 }, 's2vm');
@@ -450,7 +451,7 @@ export default {
       // side decals (GM logo, arrows, label strip, stickers) on the right side panel
       const sideTex = canvasTex(256, 512, (g, w, h) => {
         g.clearRect(0, 0, w, h); const x = (f) => f * w, y = (f) => f * h;
-        g.fillStyle = '#f4ece6'; g.font = `bold ${Math.round(h * 0.05)}px sans-serif`; g.fillText('GM', x(0.46), y(0.62));
+        g.fillStyle = '#f4ece6'; g.font = `bold ${Math.round(h * 0.075)}px sans-serif`; g.fillText('GM', x(0.4), y(0.63));
         g.fillStyle = '#e8c838'; g.beginPath(); g.arc(x(0.85), y(0.6), x(0.035), 0, 7); g.fill();
         const arrow = (cx, cy, s) => { g.fillStyle = '#f4ece6'; g.beginPath(); g.moveTo(cx, cy - s); g.lineTo(cx + s * 0.7, cy); g.lineTo(cx + s * 0.25, cy); g.lineTo(cx + s * 0.25, cy + s); g.lineTo(cx - s * 0.25, cy + s); g.lineTo(cx - s * 0.25, cy); g.lineTo(cx - s * 0.7, cy); g.closePath(); g.fill(); };
         arrow(x(0.66), y(0.22), x(0.06)); arrow(x(0.76), y(0.47), x(0.06)); arrow(x(0.38), y(0.7), x(0.06)); arrow(x(0.55), y(0.86), x(0.05));
@@ -473,7 +474,7 @@ export default {
     }, { repeat: true });
     const tapeM = (glow) => M(UF, { color: '#ffffff', map: tapeTex, emissive: '#ffd27a', emissiveMap: tapeGlow, emissiveIntensity: glow, side: THREE.DoubleSide, roughness: 0.32, clearcoat: 0.5, envMapIntensity: 0.7 }, 's2tape');
     const ribbon = (pts, width, glow) => {
-      const curve = new THREE.CatmullRomCurve3(pts); const rep = curve.getLength() / 0.32;
+      const curve = new THREE.CatmullRomCurve3(pts); const rep = curve.getLength() / 2.3;
       const n = 80, pos = [], uv = [], idx = [];
       for (let i = 0; i <= n; i++) {
         const t = i / n, p = curve.getPoint(t), tg = curve.getTangent(t);
@@ -486,8 +487,8 @@ export default {
       g.computeVertexNormals(); add(g, tapeM(glow), scene, false, true); return curve;
     };
     {
-      const c1 = ribbon([at(-20, 700, 3.2), at(120, 680, 3.4), at(260, 668, 3.6), at(380, 645, 3.8), at(470, 612, 4.0), at(540, 565, 4.2), at(590, 530, 4.4)], 0.1, 0.55);
-      const c2 = ribbon([at(980, 492, 4.0), at(1100, 482, 3.6), at(1220, 466, 3.2), at(1320, 455, 3.0)], 0.05, 1.4);
+      const c1 = ribbon([at(-20, 700, 3.2), at(120, 680, 3.4), at(260, 668, 3.6), at(380, 645, 3.8), at(470, 612, 4.0), at(540, 565, 4.2), at(590, 530, 4.4)], 0.11, 0.8);
+      const c2 = ribbon([at(980, 492, 4.0), at(1100, 482, 3.6), at(1220, 466, 3.2), at(1320, 455, 3.0)], 0.1, 1.5);
       const bulbM = new THREE.MeshBasicMaterial({ color: new THREE.Color('#fff2c8').multiplyScalar(2.2) });
       const bulbs = []; for (let i = 0; i < 9; i++) bulbs.push(c1.getPoint((i + 0.4) / 9));
       for (const p of bulbs) add(new THREE.SphereGeometry(0.016, 10, 6), bulbM, scene, false, false).position.copy(p).add(new THREE.Vector3(0, -0.03, 0));
@@ -501,7 +502,7 @@ export default {
 
     /* ---------------- traffic cone: lathe-turned PBR plastic with reflective band, square base ---------------- */
     {
-      const coneM = M(UM, { color: '#e8581e', roughness: 0.42, clearcoat: 0.35, clearcoatRoughness: 0.4, emissive: '#8a2008', emissiveIntensity: 0.12, envMapIntensity: 0.7 }, 's2cone');
+      const coneM = M(UM, { color: '#ec7a40', roughness: 0.45, clearcoat: 0.3, clearcoatRoughness: 0.4, emissive: '#7a2a10', emissiveIntensity: 0.15, envMapIntensity: 0.7 }, 's2cone');
       const bandM = M(UM, { color: '#f0eae2', roughness: 0.22, metalness: 0.25, clearcoat: 0.8, envMapIntensity: 1.2 }, 's2cone');
       const h = 0.85, cp = hitY(1196, 545, 0.25);
       const g = new THREE.Group(); g.position.set(cp.x, GROUND, cp.z); g.rotation.y = 0.4; scene.add(g);

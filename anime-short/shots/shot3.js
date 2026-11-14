@@ -16,8 +16,8 @@ const GD = (py) => CAM_Y / ((py / 360 - 1) * TV);          // view distance of g
 export default {
   duration: 3.042,
   credit: { role: '3D ANIMATOR', cx: 0.743, ry: 0.674, ny: 0.726 },
-  post: { bloom: 0.18, bloomRadius: 0.5, bloomThreshold: 0.9, exposure: 1.05, contrast: 1.03, saturation: 1.04,
-    lift: [0.0, 0.01, 0.015], gamma: [1, 1, 1], gain: [1.02, 1.02, 0.96], vignette: 0.14, grain: 0.025, ca: 0.0008, soft: 0.25 },
+  post: { bloom: 0.18, bloomRadius: 0.5, bloomThreshold: 0.9, exposure: 1.05, contrast: 1.03, saturation: 0.99,
+    lift: [0.0, 0.01, 0.015], gamma: [1, 1, 1], gain: [1.02, 1.01, 0.99], vignette: 0.14, grain: 0.025, ca: 0.0008, soft: 0.25 },
 
   build(core) {
     const { THREE, rng, lerp, clamp, col, shared, NOISE_GLSL, paintTexture, makeFoliage, makeButterflies, makeMotes, lightRig } = core;
@@ -164,10 +164,10 @@ export default {
     const rockBrown = rockTexSet(core, 32, ROCK_PAL.brown);
     const rockDefs = [
       // px centre, py bottom, width px, height px, texture set, tint, moss, seed
-      [260, 612, 172, 112, rockGrey, '#ffffff', 0.25, 1],
-      [414, 636, 186, 95, rockBrown, '#ffffff', 0.12, 2],
-      [606, 592, 222, 116, rockGrey, '#f0f1ea', 0.35, 3],
-      [905, 645, 250, 112, rockGrey, '#6e6862', 0.2, 4],
+      [265, 642, 168, 124, rockGrey, '#ffffff', 0.25, 1],
+      [414, 666, 188, 100, rockBrown, '#ffffff', 0.12, 2],
+      [604, 615, 222, 128, rockGrey, '#f4f4ee', 0.3, 3],
+      [905, 665, 250, 112, rockGrey, '#6e6862', 0.2, 4],
     ];
     const occ = [];   // ellipsoid occluders {c, r, s: shadow strength, ao: contact-AO strength} for the analytic grass shadows
     for (const [px, pyb, wpx, hpx, ts, tint, moss, sd] of rockDefs) {
@@ -181,7 +181,7 @@ export default {
       occ.push({ c: [p[0], rock.position.y, p[2]], r: [w * 0.5, h, w * 0.4], s: 0.8, ao: 0.75 });
     }
     // the aster masses in front also shade the grass under them
-    for (const [px, py, d, rx, ry] of [[860, 560, 3.5, 95, 70], [1010, 470, 3.6, 100, 70], [790, 590, 3.3, 45, 35]]) {
+    for (const [px, py, d, rx, ry] of [[860, 560, 2.95, 95, 70], [1010, 470, 3.6, 100, 70], [790, 590, 2.9, 45, 35]]) {
       const c = S(px, py, d); occ.push({ c, r: [PX(rx, d), PX(ry, d) * 1.4, PX(rx, d) * 0.7], s: 0.5, ao: 0.35 });
     }
 
@@ -194,8 +194,8 @@ export default {
     }
     const GU = {
       uTime: shared.uTime, uSun: { value: sunV.clone() }, uOccC: { value: occC }, uOccR: { value: occR },
-      cRoot: { value: col('#21491a') }, cMid: { value: col('#58a032') }, cTip: { value: col('#a6d85a') }, cDry: { value: col('#bcd662') },
-      cDark: { value: col('#2c6424') }, cSky: { value: col('#8ab89a') }, cSunC: { value: col('#fff2d4') }, uSunI: { value: 1.25 }, uSkyI: { value: 0.6 },
+      cRoot: { value: col('#345e2a') }, cMid: { value: col('#70aa48') }, cTip: { value: col('#b0dc68') }, cDry: { value: col('#c2d86c') },
+      cDark: { value: col('#336a2c') }, cSky: { value: col('#a4c4b0') }, cSunC: { value: col('#fff2d4') }, uSunI: { value: 1.25 }, uSkyI: { value: 0.75 },
     };
     const OCC_GLSL = `
       uniform vec4 uOccC[8]; uniform vec4 uOccR[8];
@@ -250,8 +250,11 @@ export default {
       const r = rng(seed);
       const c = S(px, py, d), rx = PX(rxp, d), ry = PX(ryp, d);
       const pick = (lmin) => { let x, y, z, l; do { x = r() * 2 - 1; y = r() * 2 - 1; z = r() * 1.2 - 0.2; l = x * x + y * y + z * z; } while (l > 1 || l < lmin); l = Math.sqrt(l); return [x, y, z, l]; };
+      const cl = lo.cl || 1, cs = lo.cs || 0.2; let base = null;
       for (let i = 0; i < n; i++) {
-        const [x, y, z, l] = pick(0.12);
+        if (i % cl === 0) base = pick(0.12);
+        let [x, y, z, l] = base;
+        if (i % cl) { x += (r() - 0.5) * cs; y += (r() - 0.5) * cs * rx / ry; z += (r() - 0.5) * cs; l = Math.max(0.2, Math.min(1, Math.hypot(x, y, z))); }
         const nx = x / l, ny = y / l, nz = z / l;
         const sunF = Math.max(0, nx * sunV.x + ny * sunV.y + nz * sunV.z);
         const sp = spec[Math.floor(r() * spec.length)];
@@ -260,7 +263,7 @@ export default {
           n: nT.toArray(), roll: r() * 6.283, c: sp.c, cc: sp.cc, th: sp.th ?? 0.3,
           sun: lerp(0.3, 1.0, ss(0.35, 0.95, l)) * (0.6 + 0.4 * sunF), ao: lerp(0.5, 1.0, l), ph: r() * 6.28 });
       }
-      const nl = Math.round(n * lv), kind = lo.kind || 'leaf', cols = lo.cols || LEAF_G;
+      const nl = lo.nl ?? Math.round(n * lv), kind = lo.kind || 'leaf', cols = lo.cols || LEAF_G;
       for (let i = 0; i < nl; i++) {
         const [x, y, z, l] = pick(0.25);
         const nx = x / l, ny = y / l, nz = z / l;
@@ -274,12 +277,12 @@ export default {
       }
       return { c, rx, ry };
     }
-    const PINK = [{ t: 1, s: 16, c: '#e98aa8', cc: '#c94f78', th: 0.5 }, { t: 1, s: 15, c: '#f2a7bd', cc: '#d0607f', th: 0.5 }, { t: 1, s: 14, c: '#d66f92', cc: '#b04066', th: 0.5 }, { t: 1, s: 13, c: '#e07a9c', cc: '#b84870', th: 0.5 }, { t: 1, s: 14, c: '#f4bccb', cc: '#d77892', th: 0.5 }];
-    const YEL = [{ t: 1, s: 17, c: '#f6d42a', cc: '#d79a12', th: 0.25 }, { t: 3, s: 14, c: '#f3cf20', cc: '#d79a12', th: 0.25 }];
-    const RED = [{ t: 1, s: 13, c: '#d0182c', cc: '#7a0a16', th: 0.35 }, { t: 1, s: 11, c: '#dc2434', cc: '#8a0c1a', th: 0.35 }, { t: 3, s: 10, c: '#b8142a', cc: '#700814', th: 0.35 }];
-    const ORA = [{ t: 0, s: 42, c: '#f07a1e', cc: '#5a160a', th: 0.8 }, { t: 0, s: 36, c: '#ec8a24', cc: '#5a160a', th: 0.8 }, { t: 0, s: 32, c: '#e86a18', cc: '#5a160a', th: 0.8 }];
-    const WHI = [{ t: 1, s: 18, c: '#f0ead8', cc: '#cdbd8e', th: 0.3 }, { t: 1, s: 15, c: '#e6e0ca', cc: '#c0b082', th: 0.3 }];
-    const PUR = [{ t: 2, s: 26, c: '#9c94e0', cc: '#e6c23a', th: 0 }, { t: 2, s: 22, c: '#8c86d4', cc: '#e6c23a', th: 0 }, { t: 2, s: 24, c: '#aaa2e8', cc: '#efcf48', th: 0 }];
+    const PINK = [{ t: 1, s: 17, c: '#e47aaa', cc: '#c03c78', th: 0.5 }, { t: 1, s: 16, c: '#ee9cc2', cc: '#cc5488', th: 0.5 }, { t: 1, s: 15, c: '#d0608f', cc: '#a83068', th: 0.5 }, { t: 1, s: 14, c: '#dc6ea0', cc: '#b23c74', th: 0.5 }, { t: 1, s: 15, c: '#f2b4d0', cc: '#d0709a', th: 0.5 }];
+    const YEL = [{ t: 3, s: 19, c: '#f6d42a', cc: '#d79a12', th: 0.25 }, { t: 3, s: 16, c: '#f3cf20', cc: '#d79a12', th: 0.25 }, { t: 1, s: 15, c: '#f8dc3a', cc: '#d79a12', th: 0.2 }];
+    const RED = [{ t: 1, s: 13, c: '#cc1634', cc: '#780a1c', th: 0.35 }, { t: 1, s: 11, c: '#d8243e', cc: '#880c22', th: 0.35 }, { t: 3, s: 10, c: '#b41232', cc: '#6e0818', th: 0.35 }];
+    const ORA = [{ t: 0, s: 44, c: '#f07a1e', cc: '#3e0a06', th: 0.95 }, { t: 0, s: 38, c: '#ee8a26', cc: '#3e0a06', th: 0.95 }, { t: 0, s: 34, c: '#e86a18', cc: '#3e0a06', th: 0.95 }];
+    const WHI = [{ t: 1, s: 23, c: '#f0ead8', cc: '#cdbd8e', th: 0.3 }, { t: 1, s: 20, c: '#e6e0ca', cc: '#c0b082', th: 0.3 }];
+    const PUR = [{ t: 2, s: 29, c: '#a090e2', cc: '#e8b832', th: 0 }, { t: 2, s: 25, c: '#9282d6', cc: '#e8b832', th: 0 }, { t: 2, s: 27, c: '#b0a0ea', cc: '#f0c844', th: 0 }];
 
     // green bodies of bushes (painted leaf foliage behind/under the modelled flowers and leaves)
     const greenBush = (list, opts) => foliage(list, { density: 5, shell: 0.5, kind: 'small', wind: 0.035, dark: '#1a3a22', mid: '#2f5e30', light: '#4f8a3e', highlight: '#86b35a', ...opts });
@@ -288,29 +291,38 @@ export default {
     greenBush([[700, 445, 7.9, 85], [760, 470, 7.8, 50], [640, 470, 7.8, 50]], { cardSize: PX(24, 7.9), seed: 33, texSeed: 8 });
     greenBush([[915, 400, 8.4, 85], [905, 470, 8.3, 80], [950, 320, 8.4, 55], [870, 320, 8.4, 45]], { density: 3, cardSize: PX(24, 8.4), seed: 34, texSeed: 10, dark: '#1a3420', mid: '#2c5a2e', light: '#4a8040' });
     greenBush([[1060, 190, 7.0, 30], [1100, 250, 7.0, 35], [1130, 310, 7.0, 35], [1170, 360, 7.0, 30], [1090, 330, 7.0, 25]], { density: 1.6, shell: 0.2, cardSize: PX(30, 7.0), seed: 35, texSeed: 12, dark: '#2a4a30', mid: '#4a7a50', light: '#7aa070', highlight: '#a6c79a' });
-    greenBush([[870, 540, 3.6, 70], [1020, 460, 3.7, 70], [800, 580, 3.4, 40]], { density: 3.5, cardSize: PX(26, 3.6), seed: 36, texSeed: 14, dark: '#24452c', mid: '#3a6e40', light: '#5e9050' });
+    greenBush([[870, 540, 3.0, 70], [1020, 460, 3.7, 70], [800, 580, 2.95, 40]], { density: 3.5, cardSize: PX(26, 3.6), seed: 36, texSeed: 14, dark: '#24452c', mid: '#3a6e40', light: '#5e9050' });
 
-    bush(345, 455, 7.3, 90, 82, 420, PINK, 101, 0.9, { ls: 16 });
-    bush(515, 440, 7.6, 90, 100, 70, YEL, 102, 1.6, { ls: 15 });
-    bush(705, 440, 7.8, 100, 64, 360, PINK, 103, 0.9, { ls: 16 });
-    bush(875, 290, 8.3, 50, 35, 70, RED, 104, 1.0);
-    bush(960, 300, 8.3, 50, 45, 80, RED, 114, 1.0);
-    bush(900, 365, 8.3, 85, 50, 130, RED, 115, 1.0);
-    bush(955, 425, 8.3, 80, 50, 130, RED, 113, 1.0);
-    bush(890, 470, 8.3, 85, 35, 90, RED, 118, 1.0);
-    bush(995, 380, 8.3, 30, 60, 45, RED, 116, 1.0);
-    for (let k = 0; k < 7; k++) { const t = k / 6; bush(lerp(1050, 1195, t) + (k % 2) * 20, lerp(165, 370, t), 6.9, 42, 34, 10, WHI, 120 + k, 2.2, { ls: 22, cols: ['#4a7a48', '#5a8a54', '#6a9a60', '#3e6e40'] }); }
-    bush(860, 535, 3.5, 95, 70, 85, PUR, 106, 0.9, { ls: 26 });
-    bush(1010, 450, 3.6, 100, 70, 85, PUR, 117, 0.9, { ls: 26 });
-    bush(1080, 410, 3.6, 60, 50, 60, PUR, 107, 0.9, { ls: 26 });
-    bush(790, 585, 3.3, 45, 35, 35, PUR, 112, 0.9, { ls: 26 });
+    bush(345, 450, 7.3, 92, 88, 480, PINK, 101, 1.3, { ls: 15, cl: 3, cs: 0.25, cols: ['#5a9a40', '#6aa84a', '#7ab45a', '#4a8a38', '#3c7a32'] });
+    const YL = { ls: 13, cl: 2, cs: 0.25, cols: ['#2e5e2a', '#3a6e30', '#4a7e38', '#24502a'] };
+    bush(512, 478, 7.25, 78, 50, 90, YEL, 102, 0.45, YL);
+    bush(522, 415, 7.25, 64, 45, 80, YEL, 122, 0.45, YL);
+    bush(535, 365, 7.25, 36, 28, 30, YEL, 123, 0.45, YL);
+    bush(705, 440, 7.8, 100, 66, 420, PINK, 103, 1.3, { ls: 15, cl: 3, cs: 0.25, cols: ['#5a9a40', '#6aa84a', '#7ab45a', '#4a8a38', '#3c7a32'] });
+    // red spire: airy column of small star-flower clusters among lit leaves
+    const RL = { cl: 5, cs: 0.32, ls: 12, fs: 1.45, cols: ['#3e7a34', '#4c8a3c', '#5a9a46', '#6aa852', '#336a2e'] };
+    bush(915, 452, 8.3, 88, 38, 150, RED, 113, 0.6, RL);
+    bush(918, 398, 8.3, 92, 42, 180, RED, 115, 0.6, RL);
+    bush(912, 342, 8.3, 82, 40, 160, RED, 114, 0.6, RL);
+    bush(962, 292, 8.3, 46, 34, 80, RED, 104, 0.6, RL);
+    bush(846, 312, 8.3, 30, 26, 40, RED, 118, 0.6, RL);
+    bush(985, 262, 8.3, 22, 18, 15, RED, 116, 0.6, RL);
+    for (let k = 0; k < 7; k++) { const t = k / 6; bush(lerp(1050, 1195, t) + (k % 2) * 20, lerp(165, 370, t), 6.9, 44, 36, 9, WHI, 120 + k, 3.0, { ls: 26, cols: ['#5e9452', '#6ea45e', '#7eb06a', '#4e8248', '#8cbc78'] }); }
+    // right-hand shrub: modelled, sun-lit leaves (depth layer between the painted canopy and the framing leaves)
+    const RS = { ls: 30, cols: ['#2f6a3c', '#3c7a46', '#4a8a52', '#5a9a5e', '#264f30', '#6aa66a', '#78b070'] };
+    bush(1195, 290, 7.6, 120, 160, 0, [], 140, 0, { ...RS, nl: 650 });
+    bush(1215, 520, 5.2, 125, 150, 0, [], 141, 0, { ...RS, nl: 650, ls: 34 });
+    bush(860, 540, 2.95, 95, 75, 80, PUR, 106, 1.1, { ls: 26 });
+    bush(1000, 455, 3.6, 95, 65, 72, PUR, 117, 1.3, { ls: 26 });
+    bush(1085, 410, 3.6, 55, 50, 48, PUR, 107, 1.3, { ls: 26 });
+    bush(790, 590, 2.9, 50, 35, 26, PUR, 112, 1.3, { ls: 26 });
     // orange day-lilies (left, with strap leaves), yellow sprinkles and small red flowers
-    bush(110, 405, 3.7, 105, 140, 40, ORA, 108, 1.2, { kind: 'strap', ls: 70 });
-    bush(120, 525, 3.7, 80, 35, 18, ORA, 119, 1.0, { kind: 'strap', ls: 60 });
+    bush(110, 405, 3.7, 105, 140, 52, ORA, 108, 1.6, { ls: 34, cols: ['#24502a', '#2e6232', '#3a723a', '#1e4424', '#4a8240'] });
+    bush(120, 525, 3.7, 80, 35, 18, ORA, 119, 1.4, { ls: 34, cols: ['#24502a', '#2e6232', '#3a723a', '#1e4424', '#4a8240'] });
     bush(50, 420, 3.8, 55, 60, 30, [{ t: 1, s: 16, c: '#f2d02a', cc: '#d8a414', th: 0.25 }], 109, 0.5);
     bush(195, 548, 3.9, 40, 12, 10, [{ t: 3, s: 12, c: '#e3392a', cc: '#a01b14', th: 0.3 }], 110, 0.5);
     bush(340, 255, 12, 25, 15, 6, [{ t: 1, s: 9, c: '#e8a59a', cc: '#c0786a', th: 0.3 }], 111, 0);
-    const FU = { uTime: shared.uTime, uSun: { value: sunV.clone() }, cSun: { value: col('#fff2d6') }, cSky: { value: col('#c4e2c8') }, cGnd: { value: col('#5a8a3a') }, uSunI: { value: 1.1 }, uSkyI: { value: 0.5 } };
+    const FU = { uTime: shared.uTime, uSun: { value: sunV.clone() }, cSun: { value: col('#fff2d6') }, cSky: { value: col('#c4e2c8') }, cGnd: { value: col('#5a8a3a') }, uSunI: { value: 0.85 }, uSkyI: { value: 0.46 } };
     for (const k of Object.keys(FL)) if (FL[k].length) scene.add(makeInstFlowers(core, flowerGeo(THREE, k), FL[k], FU));
 
     /* ---------------- 6. foreground framing leaves ---------------- */
@@ -385,7 +397,7 @@ function makeLitGrass(core, bl, U, OCC_GLSL) {
         float flutter = sin(uTime * 3.3 + aS.w * 31.0 + aO.x * 4.7) * 0.06 + sin(uTime * 5.1 + aS.z * 17.0) * 0.03;
         vec3 windD = normalize(vec3(1.0, 0.0, 0.15));
         float clump = vnoise(aO.xz * 2.2 + 11.0);
-        vec3 bendV = Fd * (aS.z - 0.5) * 0.75 + windD * (0.04 + clump * 0.2 + gust * 0.28 + flutter) + vec3(0., 0., 0.1);
+        vec3 bendV = Fd * (aS.z - 0.5) * 0.55 + windD * (0.04 + clump * 0.2 + gust * 0.28 + flutter) + vec3(0., 0., 0.1);
         vec3 p = aO.xyz + Wd * position.x * aS.y + vec3(0., t * h, 0.);
         vec3 off = bendV * h * t * t;
         p += off; p.y -= dot(off, off) / max(h, 0.01) * 0.45;
@@ -452,7 +464,7 @@ function flowerGeo(THREE, kind) {
     for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2; pos.push(Math.cos(a) * rc, Math.sin(a) * rc, 0.0); kk.push(0, 1, 0); }
     for (let k = 0; k < n; k++) { const k1 = (k + 1) % n; idx.push(b, b + 1 + k, b + 1 + k1, b + 1 + k, b + 1 + n + k, b + 1 + k1, b + 1 + k1, b + 1 + n + k, b + 1 + n + k1); }
   };
-  if (kind === 'lily') { for (let k = 0; k < 6; k++) petal(k * Math.PI / 3 + 0.3, k % 2 ? 0.46 : 0.5, k % 2 ? 0.21 : 0.17, { shape: 'point', cup: 0.55, curl: -0.45, segL: 5 }); centre(0.07, 0.08); }
+  if (kind === 'lily') { for (let k = 0; k < 5; k++) petal(k * Math.PI * 0.4 + 0.3, 0.44, 0.46, { cup: 0.18, curl: -0.12, segL: 4, segW: 3, r0: 0.04 }); centre(0.1, 0.05, 8); }   // black-eyed (Thunbergia-like) flower
   else if (kind === 'five') { for (let k = 0; k < 5; k++) petal(k * Math.PI * 0.4, 0.42, 0.36, { cup: 0.22, segL: 3 }); centre(0.07, 0.03, 6); }
   else if (kind === 'four') { for (let k = 0; k < 4; k++) petal(k * Math.PI * 0.5 + 0.4, 0.42, 0.42, { cup: 0.3, segL: 3 }); centre(0.06, 0.03, 6); }
   else if (kind === 'aster') { for (let k = 0; k < 16; k++) petal(k * Math.PI / 8 + (k % 2) * 0.08, k % 2 ? 0.42 : 0.46, 0.085, { shape: 'strap', cup: 0.08, segL: 4, segW: 1, r0: 0.06, lift: (k % 2) * 0.012 }); centre(0.13, 0.07, 10); }
@@ -540,8 +552,8 @@ function rockTexSet(core, seed, P) {
       wrap(x, y, rad * 1.5, () => { g.beginPath(); g.ellipse(0, 0, rad, rad * lerp(0.5, 1, r()), r() * 3, 0, Math.PI * 2); g.fill(); }); }
     g.filter = 'none';
     // angular painted facets (the reference's chunky, mottled rock surface)
-    for (let i = 0; i < 1100; i++) {
-      const x = r() * w, y = r() * h, sz = lerp(5, 34, Math.pow(r(), 1.6)); g.globalAlpha = lerp(0.25, 0.75, r()); g.fillStyle = pickC();
+    for (let i = 0; i < 800; i++) {
+      const x = r() * w, y = r() * h, sz = lerp(8, 52, Math.pow(r(), 1.4)); g.globalAlpha = lerp(0.35, 0.85, r()); g.fillStyle = pickC();
       const nv = 4 + Math.floor(r() * 3), a0 = r() * 6.28, rs = []; for (let k = 0; k < nv; k++) rs.push(lerp(0.5, 1, r()));
       wrap(x, y, sz, () => { g.beginPath(); for (let k = 0; k < nv; k++) { const a = a0 + k / nv * 6.283; g.lineTo(Math.cos(a) * sz * rs[k], Math.sin(a) * sz * rs[k] * 0.7); } g.closePath(); g.fill(); });
     }
@@ -572,14 +584,15 @@ function makeRock(core, { w, h, seed, moss = 0.2 }) {
   const pos = geo.attributes.position, v = new THREE.Vector3(), pn = new THREE.Vector3();
   const o = [r() * 50, r() * 50, r() * 50];
   const planes = [];
-  for (let k = 0; k < 8; k++) { const a = r() * Math.PI * 2, e = lerp(-0.1, 1.2, r()); planes.push([Math.cos(a) * Math.cos(e), Math.sin(e), Math.sin(a) * Math.cos(e), lerp(0.74, 0.92, r())]); }
+  for (let k = 0; k < 8; k++) { const a = r() * Math.PI * 2, e = lerp(-0.1, 1.2, r()); planes.push([Math.cos(a) * Math.cos(e), Math.sin(e), Math.sin(a) * Math.cos(e), lerp(0.8, 0.96, r())]); }
   const cav = new Float32Array(pos.count);
   for (let i = 0; i < pos.count; i++) {
     v.fromBufferAttribute(pos, i);
-    const lo = (fbm3(v.x * 1.1 + o[0], v.y * 1.1 + o[1], v.z * 1.1 + o[2]) - 0.5) * 0.34;
+    v.set(Math.sign(v.x) * Math.abs(v.x) ** 0.8, Math.sign(v.y) * Math.abs(v.y) ** 0.62, Math.sign(v.z) * Math.abs(v.z) ** 0.8);   // squarer, loaf-like dome
+    const lo = (fbm3(v.x * 1.1 + o[0], v.y * 1.1 + o[1], v.z * 1.1 + o[2]) - 0.5) * 0.24;
     const hi = (fbm3(v.x * 4.5 + o[1], v.y * 4.5 + o[2], v.z * 4.5 + o[0]) - 0.5) * 0.09;
     v.multiplyScalar(1 + lo + hi);
-    for (const [px, py, pz, pd] of planes) { const dd = v.x * px + v.y * py + v.z * pz; if (dd > pd) v.addScaledVector(pn.set(px, py, pz), -(dd - pd) * 0.8); }
+    for (const [px, py, pz, pd] of planes) { const dd = v.x * px + v.y * py + v.z * pz; if (dd > pd) v.addScaledVector(pn.set(px, py, pz), -(dd - pd) * 0.55); }
     if (v.y < 0) v.y *= 0.3;
     pos.setXYZ(i, v.x, v.y, v.z); cav[i] = hi;
   }
