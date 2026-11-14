@@ -1,3 +1,4 @@
+import { makeCoupe, makeEnvMap, addVehicleLight, makeGroundShadow } from '../vehicles.js';
 // Shot 5 — low angle in the shade, looking up at an old two-storey wooden shop-house: lattice balcony, chōchin lantern,
 // triangular stop sign, white AE86-style hatchback parked lower right, concrete overpass + blue sky, back-lit tree,
 // leaves with glowing butterflies lower left. Static camera; dappled leaf light shimmers across everything.
@@ -342,53 +343,32 @@ export default {
       }
     }
 
-    /* ---------------- car (AE86-like hatchback) ---------------- */
+    /* ---------------- car: modelled hatchback coupe, PBR paint, real + contact shadows, leaf dapple ---------------- */
     const car = new THREE.Group();
+    let carVeh;
     {
-      const fwd = dirTo(1700), side = new THREE.Vector3().crossVectors(fwd, UP).normalize();
-      const Lc = 4.18, Wc = 1.63;
-      const cw = { shade: '#868aa0', lit: '#ccc8c0', cover: 0.455, scale: 2.2, seed: 41, sharp: 0.2, leaf: 0.0 };
-      const white = pmat({ color: '#dcdad6', ...cw });
-      const black = pmat({ color: '#141418', ...cw, shade: '#ffffff', lit: '#b0b0b8' });
-      const glassTex = paintTexture('s5_glass', 128, 128, (g, w, h) => { g.fillStyle = '#e0dedc'; g.fillRect(0, 0, w, h); g.fillStyle = '#10131e'; g.fillRect(9, 8, w - 18, h - 14); });
-      const glass = pmat({ map: glassTex, ...cw });
-      const tail = paintTexture('s5_tail', 256, 64, (g, w, h) => {
-        g.fillStyle = '#101014'; g.fillRect(0, 0, w, h);
-        g.fillStyle = '#4a1216'; g.fillRect(4, 10, 64, 40); g.fillRect(w - 68, 10, 64, 40);
-        g.fillStyle = '#5a1a1e'; g.fillRect(70, 10, 22, 40); g.fillRect(w - 92, 10, 22, 40);
-        g.fillStyle = '#1e1e24'; g.fillRect(96, 12, w - 192, 36);
+      const fwd = dirTo(1640), side = new THREE.Vector3().crossVectors(fwd, UP).normalize();
+      const env = makeEnvMap('s5_env', {
+        zenith: '#3f8fc2', horizon: '#9fb4c0', ground: '#231f1c', sunDir: [L.x, L.y, L.z], sunColor: '#ffe8cc', sunPower: 22,
+        clouds: [{ dir: [0.8, 0.35, -0.6], size: 7, power: 1.5 }, { dir: [0.4, 0.5, -0.9], size: 6, power: 1.3 }],
+        blocks: [
+          { dir: [-1, -0.2], w: 26, h: 14, dist: 9, color: '#1d1714' }, { dir: [-0.3, -1], w: 22, h: 12, dist: 10, color: '#231c17' },
+          { dir: [0.9, -0.7], w: 30, h: 5, dist: 14, y: 3, color: '#5d5853' }, { dir: [1, 0.4], w: 14, h: 3, dist: 9, color: '#3a3532' }, { dir: [0.2, 1], w: 30, h: 9, dist: 12, color: '#2b2622' },
+        ],
       });
-      const tailM = pmat({ map: tail, shade: '#ffffff', lit: '#ffffff', cover: 2 });
-      const plateTex = paintTexture('s5_plate', 128, 64, (g, w, h) => {
-        g.fillStyle = '#f6f2e8'; g.fillRect(0, 0, w, h); g.strokeStyle = '#555'; g.lineWidth = 3; g.strokeRect(2, 2, w - 4, h - 4);
-        g.fillStyle = '#222'; g.font = 'bold 36px sans-serif'; g.textAlign = 'center'; g.fillText('13954', w / 2, 54);
-        g.font = '13px sans-serif'; g.fillText('群馬 50 ら', w / 2, 16);
-      });
-      const plateM = pmat({ map: plateTex, shade: '#ffffff', lit: '#ffffff', emit: '#000000', cover: 2 });
-      const add = (geo, mat, f, s, y) => { const m = new THREE.Mesh(geo, mat); m.position.set(s, y, -f); car.add(m); return m; };
-      const taper = (w, h, l, kx, zTopBack, zTopFront) => {   // box whose top face is narrowed / shifted (car-local z: + = back)
-        const g = new THREE.BoxGeometry(w, h, l); const p = g.attributes.position;
-        for (let i = 0; i < p.count; i++) if (p.getY(i) > 0) { p.setX(i, p.getX(i) * kx); p.setZ(i, p.getZ(i) > 0 ? zTopBack : zTopFront); }
-        g.computeVertexNormals(); return g;
-      };
-      // car-local: x = right, y = up, -z = forward. Origin = rear centre on the ground.
-      add(taper(Wc, 0.3, Lc - 0.1, 1, (Lc - 0.1) / 2, -(Lc - 0.1) / 2), black, Lc / 2, 0, 0.3);         // lower (black)
-      add(taper(Wc, 0.38, Lc, 0.98, Lc / 2 - 0.06, -Lc / 2 + 0.25), white, Lc / 2, 0, 0.64);             // upper body
-      add(new THREE.BoxGeometry(Wc + 0.012, 0.03, Lc - 0.3), black, Lc / 2 + 0.05, 0, 0.5);             // side stripe
-      // cabin: rear hatch slopes from the tail to the roof
-      add(taper(Wc * 0.94, 0.39, 2.35, 0.84, 0.475, -0.525), [glass, glass, white, white, glass, glass], 1.475, 0, 1.025);
-      add(new THREE.PlaneGeometry(Wc * 0.99, 0.19), tailM, 0.0 - 0.064, 0, 0.66);                          // tail light bar
-      add(new THREE.PlaneGeometry(0.34, 0.17), plateM, -0.075, -0.1, 0.42);
-      add(new THREE.BoxGeometry(Wc + 0.05, 0.16, 0.14), black, 0.04, 0, 0.3);                               // bumper
-      const wheel = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 18); wheel.rotateZ(Math.PI / 2);
-      const wm = pmat({ color: '#0a0a0e', shade: '#ffffff', lit: '#ffffff', cover: 2 });
-      for (const [f, s] of [[0.85, -0.72], [0.85, 0.72], [3.25, -0.72], [3.25, 0.72]]) add(wheel, wm, f, s, 0.3);
-      add(new THREE.BoxGeometry(0.1, 0.09, 0.16), white, 2.75, -Wc / 2 - 0.06, 0.92);                       // mirrors
-      add(new THREE.BoxGeometry(0.1, 0.09, 0.16), white, 2.75, Wc / 2 + 0.06, 0.92);
+      carVeh = makeCoupe({ envMap: env, envIntensity: 0.95, sunDir: [L.x, L.y, L.z], leafAmt: 1, leafCover: 0.5, leafScale: 4.6, leafSharp: 0.04, leafSeed: 7.3,
+        rimColor: '#ff8a52', rimAmt: 0.12, rimPow: 6, grime: 0.12, plate: '13954' });
+      car.add(carVeh.group);
+      car.add(makeGroundShadow(carVeh, { contact: 0.9, cast: 0.5 }));
       car.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(side, UP, fwd.clone().negate()));
-      const rear = at(700, 700, 4.2); rear.y = GROUND;
+      const rear = at(706, 741, 4.35); rear.y = GROUND + 0.07;
       car.position.copy(rear);
+      car.traverse((m) => { if (m.isMesh) m.frustumCulled = false; });
       scene.add(car);
+      // lighting for the physically shaded car only (the painted set ignores lights)
+      const carCentre = car.localToWorld(new THREE.Vector3(0, 0.6, -2.0));
+      addVehicleLight(scene, { sunDir: [L.x, L.y, L.z], color: '#ffe3c2', intensity: 2.3, target: carCentre, radius: 3.6 });
+      scene.add(new THREE.HemisphereLight(new THREE.Color('#7f97b8'), new THREE.Color('#3a2a22'), 0.55));
     }
 
     /* ---------------- foliage ---------------- */

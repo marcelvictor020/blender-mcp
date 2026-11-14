@@ -19,6 +19,7 @@ const NAME = (q.get('name') || 'YOUR NAME').toUpperCase();
 const canvas = document.getElementById('c');
 const stage = document.getElementById('stage');
 const engine = new Engine(canvas, W, H);
+core.ctx.renderer = engine.renderer; core.ctx.W = W; core.ctx.H = H;
 const credit = document.getElementById('credit');
 const roleEl = credit.querySelector('.role'), nameEl = credit.querySelector('.name');
 nameEl.textContent = NAME;

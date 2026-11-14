@@ -8,6 +8,9 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export { THREE, mergeGeometries };
 
+/** Runtime context filled in by main.js before any shot is built (renderer for PMREM etc.). */
+export const ctx = { renderer: null, W: 0, H: 0 };
+
 /* ------------------------------------------------------------------ */
 /* Deterministic randomness                                            */
 /* ------------------------------------------------------------------ */
