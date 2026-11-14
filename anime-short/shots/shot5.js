@@ -65,13 +65,13 @@ export default {
           map: { value: o.map || whiteTex }, mask: { value: o.mask || maskWhite }, uColor: { value: col(o.color || '#ffffff') },
           uShade: { value: col(o.shade || '#202436') }, uLit: { value: col(o.lit || '#ffe6c8') }, uEmit: { value: col(o.emit || '#000000') },
           uCover: { value: o.cover ?? 0.56 }, uScale: { value: o.scale ?? 0.9 }, uSeed: { value: o.seed ?? 0 }, uOpacity: { value: o.opacity ?? 1 },
-          uSharp: { value: o.sharp ?? 0.025 }, uT1: { value: T1 }, uT2: { value: T2 }, uTime: shared.uTime,
+          uSharp: { value: o.sharp ?? 0.025 }, uLeaf: { value: o.leaf ?? 1 }, uT1: { value: T1 }, uT2: { value: T2 }, uTime: shared.uTime,
         },
         vertexShader: `varying vec2 vUv; varying vec3 vW;
           void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
         fragmentShader: `varying vec2 vUv; varying vec3 vW;
           uniform sampler2D map, mask; uniform vec3 uColor, uShade, uLit, uEmit, uT1, uT2;
-          uniform float uCover, uScale, uSeed, uOpacity, uSharp, uTime;
+          uniform float uCover, uScale, uSeed, uOpacity, uSharp, uTime, uLeaf;
           ${NOISE_GLSL}
           // leaf silhouettes: one pointed ellipse per jittered cell (rotating slightly in the wind)
           float leaves(vec2 q){
@@ -97,7 +97,7 @@ export default {
             vec2 sw = vec2(sin(uTime*0.9), cos(uTime*0.7)) * 0.06;
             float l1 = leaves(q + sw);
             float l2 = leaves(q * 0.55 + vec2(3.7, 1.3) - sw * 0.6);
-            float lit = open * (1.0 - l1) * (1.0 - 0.6 * l2);
+            float lit = open * (1.0 - l1 * uLeaf) * (1.0 - 0.6 * l2 * uLeaf);
             return smoothstep(0.5 - uSharp, 0.5 + uSharp, lit);
           }
           void main(){
@@ -151,7 +151,7 @@ export default {
 
     // left building (lantern facade): px 0..270
     surface('lfac', PA, [-40, -60, 300, 760], {
-      res: [512, 1024], shade: '#6a5660', lit: '#c8a08a', cover: 0.47, scale: 7.0, seed: 3,
+      res: [512, 1024], shade: '#5e4a48', lit: '#d09060', cover: 0.55, scale: 7.0, seed: 3,
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#5e4a44'; g.fillRect(0, 0, w, h);
         for (let y = -60; y < 760; y += 13) fillPoly(g, poly, [[-40, y], [300, y], [300, y + 1.6], [-40, y + 1.6]], 'rgba(25,12,6,0.45)');
@@ -166,9 +166,9 @@ export default {
 
     // corrugated metal wall section px 262..540
     surface('corr', PA, [262, -60, 548, 760], {
-      res: [512, 1024], shade: '#3c3438', lit: '#d8c4bc', cover: 0.5, scale: 7.0, seed: 7, off: 0.02,
+      res: [512, 1024], shade: '#3e3232', lit: '#e0a060', cover: 0.57, leaf: 0.5, scale: 7.0, seed: 7, off: 0.02,
       paint(g, C, poly, w, h, r) {
-        g.fillStyle = '#d8c4bc'; g.fillRect(0, 0, w, h);
+        g.fillStyle = '#c4b4a4'; g.fillRect(0, 0, w, h);
         for (let x = 0; x < w; x += 7) { g.fillStyle = 'rgba(40,30,40,0.45)'; g.fillRect(x, 0, 2.5, h); g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(x + 3.5, 0, 1.2, h); }
         // dark recessed stair / balcony structure
         fillPoly(g, poly, [[262, 150], [430, 125], [430, 330], [262, 352]], '#6a5c6c');
@@ -188,7 +188,7 @@ export default {
 
     // balcony house wall px 540..950 (first floor windows etc.)
     surface('hwall', PA, [532, -60, 960, 760], {
-      res: [768, 1024], shade: '#3e3446', lit: '#c8a898', cover: 0.52, scale: 7.0, seed: 11, off: -0.15,
+      res: [768, 1024], shade: '#40343a', lit: '#d89a68', cover: 0.57, leaf: 0.5, scale: 7.0, seed: 11, off: -0.15,
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#5a5262'; g.fillRect(0, 0, w, h);
         // vertical boards
@@ -236,7 +236,7 @@ export default {
     // balcony (2nd floor), protruding
     const PB = PA.shift(0.9);
     surface('balc', PB, [530, -80, 960, 350], {
-      res: [1024, 768], shade: '#6a5458', lit: '#f0e0d0', cover: 0.52, scale: 7.0, seed: 21, emit: '#e8784a',
+      res: [1024, 768], shade: '#6a5250', lit: '#f0c890', cover: 0.55, leaf: 0.5, scale: 7.0, seed: 21, emit: '#e8784a',
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#806058'; g.fillRect(0, 0, w, h);
         // vertical slats with dark gaps
@@ -288,17 +288,17 @@ export default {
     });
     const dSign = 6.0;
     const sp = at(517, 345, dSign);
-    const sw = 125 / F * dSign;
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(sw, sw), pmat({ map: signTex, shade: '#9a8a98', lit: '#ffffff', cover: 0.45, scale: 1.4, seed: 9 }));
+    const sw = 108 / F * dSign;
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(sw, sw), pmat({ map: signTex, shade: '#7a6e72', lit: '#d4ccc6', cover: 0.5, scale: 4, seed: 9, leaf: 0.3 }));
     sign.position.copy(sp); sign.position.y += 0.0; sign.rotation.y = 0.2; scene.add(sign);
     const poleTop = at(505, 280, dSign).y, poleBot = at(505, 760, dSign).y;
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, poleTop - poleBot, 10), pmat({ color: '#e8e4e4', shade: '#6a6878', lit: '#ffffff', cover: 0.5, scale: 1.4, seed: 2 }));
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, poleTop - poleBot, 10), pmat({ color: '#e8e4e4', shade: '#4e4c58', lit: '#b4b0ae', cover: 0.55, scale: 4, seed: 2, leaf: 0.3 }));
     pole.position.copy(at(505, 520, dSign)); pole.position.y = (poleTop + poleBot) / 2; pole.position.z -= 0.08; scene.add(pole);
 
     /* ---------------- overpass ---------------- */
     const PO = plane(at(1100, 470, 24), dirTo(250));
     surface('over', PO, [930, 250, 1300, 800], {
-      res: [768, 768], shade: '#6e6470', lit: '#e0d4c0', cover: 0.4, scale: 2.6, seed: 31, order: 1,
+      res: [768, 768], shade: '#8a8078', lit: '#e0d0b4', cover: 0.44, scale: 2.6, seed: 31, leaf: 0.35, sharp: 0.1, order: 1,
       paint(g, C, poly, w, h, r) {
         g.clearRect(0, 0, w, h);
         const F_ = (pts, c) => fillPoly(g, poly, pts, c);
@@ -345,7 +345,7 @@ export default {
     {
       const fwd = dirTo(1700), side = new THREE.Vector3().crossVectors(fwd, UP).normalize();
       const Lc = 4.18, Wc = 1.63;
-      const cw = { shade: '#7a7e94', lit: '#d8d4cc', cover: 0.36, scale: 5.0, seed: 41, sharp: 0.18 };
+      const cw = { shade: '#8a8ca0', lit: '#dcd8d0', cover: 0.43, scale: 2.2, seed: 41, sharp: 0.2, leaf: 0.0 };
       const white = pmat({ color: '#dcdad6', ...cw });
       const black = pmat({ color: '#141418', ...cw, shade: '#ffffff', lit: '#b0b0b8' });
       const glassTex = paintTexture('s5_glass', 128, 128, (g, w, h) => { g.fillStyle = '#e0dedc'; g.fillRect(0, 0, w, h); g.fillStyle = '#10131e'; g.fillRect(9, 8, w - 18, h - 14); });
