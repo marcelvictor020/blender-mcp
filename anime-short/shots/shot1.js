@@ -423,9 +423,9 @@ export default {
       const L = onPlane(226, 300, V3(0, 0, Z), V3(0, 0, 1)), R = onPlane(560, 300, V3(0, 0, Z), V3(0, 0, 1));
       const x0 = L.x, x1 = R.x, w = x1 - x0, H = 120;
       const tT = (o) => ({ map: tileT.map, normalMap: tileT.normalMap, roughnessMap: tileT.roughnessMap, normalScale: new THREE.Vector2(0.6, 0.6), ...o });
-      const mTw = M(tT({ color: '#f4cc94' }));
+      const mTw = M(tT({ color: '#e8b47c' }));
       const mTrim = M(cT({ color: '#fbe6c4' }));
-      const mWin = M({ color: '#4a2c22', roughness: 0.12, metalness: 0.1, envMapIntensity: 1.1 });
+      const mWin = M({ color: '#24160f', roughness: 0.08, metalness: 0.1, envMapIntensity: 1.1 });
       const mFrame = M({ color: '#8c6a50', roughness: 0.45, metalness: 0.4 });
       const mRec = M({ color: '#5c3424', roughness: 0.9 });
       const mBal = M({ color: '#3e2a26', roughness: 0.3, metalness: 0.5 });
@@ -517,7 +517,7 @@ export default {
     const sig = new THREE.Group(); scene.add(sig);
     const SD = 15;
     const mPole = M({ color: '#a08c72', roughness: 0.55, metalness: 0.3 });
-    const mHous = M({ color: '#5e5452', roughness: 0.45, metalness: 0.3 });
+    const mHous = M({ color: '#a89a8a', roughness: 0.5, metalness: 0.25 });
     const mVisor = M({ color: '#36302f', roughness: 0.5, metalness: 0.3, side: THREE.DoubleSide });
     const SB = bucket();
     const poleBase = atDist(518, 720, SD); poleBase.y = 0;
@@ -540,8 +540,8 @@ export default {
         const lens = new THREE.Mesh(new THREE.SphereGeometry(0.19, 24, 8, 0, Math.PI * 2, 0, 1.1), new THREE.MeshBasicMaterial({ color: new THREE.Color(lampCols[i]).multiplyScalar(glow[i]) }));
         lens.rotation.x = Math.PI / 2; lens.scale.set(1, 0.5, 1); lens.position.set(x, 0, 0.07); head.add(lens);
         const ring = new THREE.TorusGeometry(0.2, 0.02, 6, 24); ring.translate(x, 0, 0.11); put(HB2, mVisor, ring);
-        const visor = new THREE.CylinderGeometry(0.215, 0.215, 0.26, 20, 1, true, -Math.PI * 0.62, Math.PI * 1.24);
-        visor.rotateX(Math.PI / 2); visor.translate(x, 0, 0.22); put(HB2, mVisor, visor);
+        const visor = new THREE.CylinderGeometry(0.215, 0.215, 0.3, 20, 1, true, Math.PI * 0.4, Math.PI * 1.2);
+        visor.rotateX(Math.PI / 2); visor.translate(x, 0, 0.24); put(HB2, mVisor, visor);
       }
       flush(HB2, head, { uv: 4 });
       // box + band clamps on the pole

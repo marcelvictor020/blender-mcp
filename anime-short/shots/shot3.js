@@ -30,13 +30,13 @@ export default {
     const SUN = [0.5, 0.74, 0.45];
     const sunV = new THREE.Vector3(...SUN).normalize();
     shared.uSunDir.value.copy(sunV);
-    const env = makeEnvMap('s3_env', { zenith: '#b8dcc0', horizon: '#86b07a', ground: '#3c5e2c', sunDir: SUN, sunColor: '#fff2d8', sunPower: 10,
+    const env = makeEnvMap('s3_env', { zenith: '#c0d8d4', horizon: '#8eaa88', ground: '#44583a', sunDir: SUN, sunColor: '#fff2d8', sunPower: 10,
       blocks: [{ dir: [0, -1], w: 40, h: 12, dist: 11, color: '#2c5232' }, { dir: [0, 1], w: 40, h: 14, dist: 8, color: '#1c3a24' },
         { dir: [-1, 0], w: 30, h: 12, dist: 7, color: '#1a3420' }, { dir: [1, 0], w: 30, h: 12, dist: 7, color: '#21402a' }] });
     const PU = pbrUniforms({ sunDir: SUN, leafAmt: 0, grime: 0.3, rimAmt: 0 });
     const sunL = addSunShadow(scene, { sunDir: SUN, color: '#fff0d6', intensity: 2.4, target: new THREE.Vector3(-0.1, 0.3, -5.0), radius: 3.4, mapSize: 2048 });
     sunL.shadow.bias = -0.0004; sunL.shadow.normalBias = 0.02;
-    scene.add(new THREE.HemisphereLight(col('#cfe6bc'), col('#4a7430'), 0.75));
+    scene.add(new THREE.HemisphereLight(col('#d4e4dc'), col('#5a7048'), 0.75));
 
     /* ---------------- tiny JS value noise for the canvas painter ---------------- */
     const hash = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
@@ -164,9 +164,9 @@ export default {
     const rockBrown = rockTexSet(core, 32, ROCK_PAL.brown);
     const rockDefs = [
       // px centre, py bottom, width px, height px, texture set, tint, moss, seed
-      [265, 642, 168, 124, rockGrey, '#ffffff', 0.25, 1],
-      [414, 666, 188, 100, rockBrown, '#ffffff', 0.12, 2],
-      [604, 615, 222, 128, rockGrey, '#f4f4ee', 0.3, 3],
+      [265, 642, 168, 124, rockGrey, '#f2f3fa', 0.08, 1],
+      [414, 666, 188, 100, rockBrown, '#ffffff', 0.06, 2],
+      [604, 615, 222, 128, rockGrey, '#f4f4f4', 0.14, 3],
       [905, 665, 250, 112, rockGrey, '#6e6862', 0.2, 4],
     ];
     const occ = [];   // ellipsoid occluders {c, r, s: shadow strength, ao: contact-AO strength} for the analytic grass shadows
@@ -235,7 +235,7 @@ export default {
         if (inRock(x, -d)) continue;
         const cl = fbm(x * 1.6 + 3, d * 1.6);                         // clump height variation
         const hb = lerp(0.7, 1.3, cl) * lerp(1.12, 0.72, ss(3.0, 7.5, d));
-        bl.push(x, 0, -d, r() * Math.PI * 2, lerp(0.12, 0.24, Math.pow(r(), 0.8)) * hb, lerp(0.024, 0.046, r()), r(), r());
+        bl.push(x, 0, -d, r() * Math.PI * 2, lerp(0.12, 0.24, Math.pow(r(), 0.8)) * hb, lerp(0.03, 0.06, r()), r(), r());
       }
       scene.add(makeLitGrass(core, bl, GU, OCC_GLSL));
     }
@@ -604,9 +604,9 @@ function makeRock(core, { w, h, seed, moss = 0.2 }) {
     const ao = lerp(0.32, 1.0, sst(-0.04, 0.42, v.y)) * Math.min(1.08, Math.max(0.6, 1 + cav[i] * 5));
     const mz = moss * sst(0.35, 0.85, nrm.getY(i)) * sst(0.42, 0.62, fbm3(v.x * 3 + 9, v.y * 3, v.z * 3));
     const gb = 1 - sst(-0.04, 0.3, v.y);                                    // green bounce from the lawn at the base
-    cols[i * 3] = ao * lerp(1, 0.62, mz) * lerp(1, 0.78, gb);
-    cols[i * 3 + 1] = ao * lerp(1, 0.86, mz) * lerp(1, 0.94, gb);
-    cols[i * 3 + 2] = ao * lerp(1, 0.36, mz) * lerp(1, 0.62, gb);
+    cols[i * 3] = ao * lerp(1, 0.62, mz) * lerp(1, 0.86, gb);
+    cols[i * 3 + 1] = ao * lerp(1, 0.86, mz) * lerp(1, 0.95, gb);
+    cols[i * 3 + 2] = ao * lerp(1, 0.36, mz) * lerp(1, 0.8, gb);
   }
   geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial());

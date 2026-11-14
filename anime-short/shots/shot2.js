@@ -88,7 +88,7 @@ export default {
     /* ---------------- lighting: one shadow-casting sun + sky env + leaf-shadow dapple ---------------- */
     shared.uSunDir.value.copy(sunDir);
     const env = makeEnvMap('s2_env', {
-      zenith: '#1a7a92', horizon: '#a2c6c4', ground: '#5c564e', sunDir: SUN, sunColor: '#ffe8cc', sunPower: 16,
+      zenith: '#1a7a92', horizon: '#a2c6c4', ground: '#433c36', sunDir: SUN, sunColor: '#ffe8cc', sunPower: 16,
       clouds: [{ dir: [0.35, 0.55, -1], size: 7, power: 1.6 }, { dir: [-0.4, 0.7, 0.6], size: 5, power: 1.2 }],
       blocks: [
         { dir: [-1, -0.3], w: 30, h: 14, dist: 12, y: 2, color: '#5a554e' },   // overpass, upper left
@@ -97,7 +97,7 @@ export default {
         { dir: [-1, 0.5], w: 20, h: 12, dist: 6, color: '#16301f' },
       ],
     });
-    const UNI = (o) => pbrUniforms({ sunDir: SUN, leafScale: 11.0, leafSharp: 0.2, leafSeed: 9.0, grime: 0, ...o });
+    const UNI = (o) => pbrUniforms({ sunDir: SUN, leafScale: 8.5, leafSharp: 0.2, leafSeed: 9.0, grime: 0, ...o });
     const LEAF = { leafAmt: 0.97, leafCover: 0.36 };
     const UM = UNI({ ...LEAF, grime: 0.05 });                 // machine body + cone under the tree
     const UGl = UNI({ ...LEAF, sunGain: 1.9 });               // dusty glass: catches bright leaf-shaped sun patches
@@ -107,7 +107,7 @@ export default {
     const sunLight = addSunShadow(scene, { sunDir: SUN, color: '#ffe0b4', intensity: 3.4,
       target: new THREE.Vector3(0.6, 0.3, -2.9), radius: 2.6, mapSize: 2048 });
     sunLight.shadow.bias = -0.0003; sunLight.shadow.normalBias = 0.01;
-    scene.add(new THREE.HemisphereLight(col('#86c0d0'), col('#6a625a'), 0.7));
+    scene.add(new THREE.HemisphereLight(col('#86c0d0'), col('#574c44'), 0.62));
     // pbr material with an anisotropic (diagonal, streaky) leaf-shadow cookie with a third leaf layer
     const M = (u, o, key = 's2') => {
       const m = pbr(u, { envMap: env, envMapIntensity: 0.9, ...o }, null, key); const ob = m.onBeforeCompile;
@@ -466,11 +466,11 @@ export default {
     /* ---------------- barrier tape (PBR plastic ribbon, yellow segments glow) + bulbs ---------------- */
     const tapeTex = paintTexture('s2_tape', 512, 32, (g, w, h) => {
       g.fillStyle = '#16120f'; g.fillRect(0, 0, w, h);
-      for (let x = 0; x < w; x += 64) { g.fillStyle = '#e8c058'; g.beginPath(); g.moveTo(x, h); g.lineTo(x + 20, 0); g.lineTo(x + 52, 0); g.lineTo(x + 32, h); g.fill(); }
+      for (let x = 0; x < w; x += 64) { g.fillStyle = '#ecc860'; g.beginPath(); g.moveTo(x, h); g.lineTo(x + 14, 0); g.lineTo(x + 54, 0); g.lineTo(x + 40, h); g.fill(); }
     }, { repeat: true });
     const tapeGlow = paintTexture('s2_tapeG', 512, 32, (g, w, h) => {
       g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.filter = 'blur(2px)';
-      for (let x = 0; x < w; x += 64) { g.fillStyle = '#fff'; g.beginPath(); g.moveTo(x + 3, h); g.lineTo(x + 22, 0); g.lineTo(x + 50, 0); g.lineTo(x + 30, h); g.fill(); }
+      for (let x = 0; x < w; x += 64) { g.fillStyle = '#fff'; g.beginPath(); g.moveTo(x + 4, h); g.lineTo(x + 17, 0); g.lineTo(x + 51, 0); g.lineTo(x + 37, h); g.fill(); }
     }, { repeat: true });
     const tapeM = (glow) => M(UF, { color: '#ffffff', map: tapeTex, emissive: '#ffd27a', emissiveMap: tapeGlow, emissiveIntensity: glow, side: THREE.DoubleSide, roughness: 0.32, clearcoat: 0.5, envMapIntensity: 0.7 }, 's2tape');
     const ribbon = (pts, width, glow) => {
@@ -502,8 +502,9 @@ export default {
 
     /* ---------------- traffic cone: lathe-turned PBR plastic with reflective band, square base ---------------- */
     {
-      const coneM = M(UM, { color: '#ec7a40', roughness: 0.45, clearcoat: 0.3, clearcoatRoughness: 0.4, emissive: '#7a2a10', emissiveIntensity: 0.15, envMapIntensity: 0.7 }, 's2cone');
-      const bandM = M(UM, { color: '#f0eae2', roughness: 0.22, metalness: 0.25, clearcoat: 0.8, envMapIntensity: 1.2 }, 's2cone');
+      const UC = UNI({ leafAmt: 0.7, leafCover: 0.3, grime: 0.05 });
+      const coneM = M(UC, { color: '#ec7a40', roughness: 0.45, clearcoat: 0.3, clearcoatRoughness: 0.4, emissive: '#7a2a10', emissiveIntensity: 0.15, envMapIntensity: 0.7 }, 's2cone');
+      const bandM = M(UC, { color: '#f0eae2', roughness: 0.22, metalness: 0.25, clearcoat: 0.8, envMapIntensity: 1.2 }, 's2cone');
       const h = 0.85, cp = hitY(1196, 545, 0.25);
       const g = new THREE.Group(); g.position.set(cp.x, GROUND, cp.z); g.rotation.y = 0.4; scene.add(g);
       const body = new THREE.LatheGeometry([[0.2, 0], [0.19, 0.05], [0.13, 0.42], [0.075, 0.78], [0.045, 0.94], [0.036, 0.975], [0, 0.98]].map(([x, y]) => new THREE.Vector2(x * h, y * h)), 32);
