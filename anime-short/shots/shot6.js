@@ -39,10 +39,11 @@ export default {
         { dir: [1, -0.6], w: 20, h: 9, dist: 30, color: '#1d4a3a' },
       ],
     });
-    const UNI = (o) => pbrUniforms({ sunDir: SUN.toArray(), leafScale: 6.0, leafSharp: 0.12, leafSeed: 4.0, grime: 0, ...o });
-    const UG = UNI({ leafAmt: 1, leafCover: 0.5 });               // ground under the canopy
-    const UM = UNI({ leafAmt: 1, leafCover: 0.42, grime: 0.1 });   // machines / props
-    const UF = UNI({ leafAmt: 0.5, leafCover: 0.35 });           // fence / bike (mostly open sun)
+    const UNI = (o) => pbrUniforms({ sunDir: SUN.toArray(), leafScale: 6.5, leafSharp: 0.2, leafSeed: 4.0, grime: 0, ...o });
+    const UG = UNI({ leafAmt: 1, leafCover: 0.38, leafScale: 6.5, leafSharp: 0.14, leafSeed: 9.0 });               // ground under the canopy
+    const UM = UNI({ leafAmt: 1, leafCover: 0.3, grime: 0.1, leafSeed: 9.0 });   // machines / props
+    const UF = UNI({ leafAmt: 0.5, leafCover: 0.35 });
+    const UP = UNI({ leafAmt: 1, leafCover: 0.3, leafSeed: 9.0, sunGain: 0.55 });  // products behind (dusty) glass           // fence / bike (mostly open sun)
     const UO = UNI({ leafAmt: 0 });                               // pole (full sun)
     const sunLight = addSunShadow(scene, { sunDir: SUN.toArray(), color: '#ffe8cc', intensity: 3.4,
       target: new THREE.Vector3(0.4, 1.0, -11.8), radius: 6.5, mapSize: 2048 });
@@ -52,7 +53,9 @@ export default {
     const M = (u, o, key = 's6') => {
       const m = pbr(u, { envMap: env, envMapIntensity: 0.9, ...o }, null, key); const ob = m.onBeforeCompile;
       m.onBeforeCompile = (sh, r) => { ob(sh, r); sh.fragmentShader = sh.fragmentShader.replace('vec2 q = vec2(dot(p, t1), dot(p, t2)) * uLeafScale + uLeafSeed;',
-        'vec2 q = mat2(0.8, 0.6, -0.6, 0.8) * vec2(dot(p, t1), dot(p, t2)); q = q * uLeafScale * vec2(0.55, 1.35) + uLeafSeed;'); };
+        'vec2 q = mat2(0.8, 0.6, -0.6, 0.8) * vec2(dot(p, t1), dot(p, t2)); q = q * uLeafScale * vec2(0.6, 1.3) + uLeafSeed;')
+        .replace('float lit = open * (1.0 - 0.9 * l1) * (1.0 - 0.55 * l2) * (1.0 - 0.8 * tw);',
+          'float l3 = leafCells(q * 1.45 + vec2(5.3, 1.9)); float lit = open * (1.0 - 0.95 * l1) * (1.0 - 0.9 * l2) * (1.0 - 0.85 * l3) * (1.0 - 0.8 * tw);'); };
       m.customProgramCacheKey = () => key + '_s6a'; return m;
     };
     const add = (geo, mat, parent = scene, cast = true, recv = true) => {
@@ -222,7 +225,7 @@ export default {
     /* ---------------- lush grass field behind the fence: instanced curved blades, sun-lit per blade ---------------- */
     const grassUniforms = {
       uTime: shared.uTime, uSun: { value: SUN.clone() },
-      cRoot: { value: col('#24401f') }, cMid: { value: col('#4a963c') }, cTip: { value: col('#92ca5e') }, cDry: { value: col('#a8c460') },
+      cRoot: { value: col('#2a4a2a') }, cMid: { value: col('#4a9840') }, cTip: { value: col('#8ecc62') }, cDry: { value: col('#9cc464') },
       cDark: { value: col('#2c5a2a') }, cSky: { value: col('#5d86a8') }, cSunC: { value: col('#fff0d2') }, cHaze: { value: col('#9cc0b8') },
       uSunI: { value: 1.0 }, uSkyI: { value: 0.62 },
     };
@@ -252,14 +255,15 @@ export default {
             float gust = vnoise(gp) * 0.75 + vnoise(gp * 2.3 + 3.7) * 0.35;
             float flutter = sin(uTime * 3.3 + aS.w * 31.0 + aO.x * 1.7) * 0.05 + sin(uTime * 5.1 + aS.z * 17.0) * 0.025;
             vec3 windD = normalize(vec3(1.0, 0.0, 0.2));
-            vec3 bendV = Fd * (aS.z - 0.45) * 0.55 + windD * (0.18 + gust * 0.42 + flutter);
+            float clump = vnoise(aO.xz * 0.75 + 11.0);
+            vec3 bendV = Fd * (aS.z - 0.45) * 0.45 + windD * (0.22 + clump * 0.35 + gust * 0.4 + flutter) + vec3(0., 0., 0.12);
             vec3 p = aO.xyz + Wd * position.x * aS.y + vec3(0., t * h, 0.);
             vec3 off = bendV * h * t * t;
             p += off; p.y -= dot(off, off) / max(h, 0.01) * 0.45;
             vec3 tang = normalize(vec3(0., h, 0.) + 2.0 * bendV * h * t);
             vN = normalize(cross(Wd, tang));
             vWd = Wd; vW = p; vT = t; vX = position.x * 2.0 / max(1.0 - pow(t, 1.7), 0.05);
-            vP = fbm(aO.xz * 0.11 + 3.0); vQ = vnoise(aO.xz * 0.9 + 7.0); vR = aS.w;
+            vP = fbm(aO.xz * 0.11 + 3.0); vQ = clump * 0.7 + vnoise(aO.xz * 2.3 + 7.0) * 0.3; vR = aS.w;
             gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.);
           }`,
         fragmentShader: `uniform vec3 uSun, cRoot, cMid, cTip, cDry, cDark, cSky, cSunC, cHaze; uniform float uSunI, uSkyI, uTime;
@@ -275,13 +279,13 @@ export default {
             alb = mix(alb, cTip, smoothstep(0.55, 1.0, vT) * (0.45 + 0.55 * vR));
             alb = mix(alb, cDry * mix(0.8, 1.05, vT), smoothstep(0.55, 0.8, vP) * 0.45);
             alb = mix(alb, cDark, smoothstep(0.45, 0.2, vP) * 0.5);
-            alb *= 0.82 + 0.3 * vQ;
+            alb *= 0.62 + 0.62 * vQ;
             float ndl = dot(N, L);
             float diff = max(ndl, 0.0) * 0.8 + 0.2 * (ndl * 0.5 + 0.5);
             float trans = max(-ndl, 0.0) * 0.35;
-            float ao = mix(0.22, 1.0, smoothstep(0.0, 0.7, vT));
-            float self = mix(0.4, 1.0, smoothstep(0.05, 0.75, vT));                      // canopy self-shadowing toward roots
-            float cloud = mix(0.55, 1.0, smoothstep(0.32, 0.62, fbm(vW.xz * vec2(0.07, 0.11) + vec2(uTime * 0.04, 0.0) + 4.0)));
+            float ao = mix(0.35, 1.0, smoothstep(0.0, 0.7, vT));
+            float self = mix(0.62, 1.0, smoothstep(0.05, 0.75, vT));                      // canopy self-shadowing toward roots
+            float cloud = mix(0.42, 1.0, smoothstep(0.34, 0.6, fbm(vW.xz * vec2(0.07, 0.11) + vec2(uTime * 0.04, 0.0) + 4.0)));
             vec3 sunC = cSunC * uSunI * cloud * self;
             vec3 col = alb * (sunC * (diff + trans * vec3(1.1, 1.25, 0.6)) + cSky * uSkyI * ao);
             vec3 H = normalize(L + V);
@@ -303,12 +307,12 @@ export default {
         const zFar = lerp(31, 21, Math.min(1, Math.max(0, (x - 4.5) / 3.5)));
         const z = zNear + Math.pow(r(), 1.25) * (zFar - zNear);
         const hb = 0.95 + 0.18 * Math.sin(x * 0.7 + z * 0.3);
-        push(x, z, hb * 0.78, hb * 1.12, 0.026, 0.05);
+        push(x, z, hb * 0.78, hb * 1.12, 0.034, 0.066);
       }
       // left strip (in front of the bushes): shorter grass
       for (let i = 0; i < 11000; i++) {
         const x = lerp(-14, -1.0, r()); const z = lerp(zNear, 16.5, Math.pow(r(), 1.2));
-        push(x, z, 0.45, 0.78, 0.024, 0.045);
+        push(x, z, 0.45, 0.74, 0.03, 0.058);
       }
       grassField(blades);
     }
@@ -318,7 +322,7 @@ export default {
     const poleTop = P(882, 88, poleD), poleBot = P(882, 560, poleD);
     {
       const woodPole = texSet(64, 512, (g, w, h) => {
-        g.fillStyle = '#857a70'; g.fillRect(0, 0, w, h); const r = rng(17);
+        g.fillStyle = '#86847e'; g.fillRect(0, 0, w, h); const r = rng(17);
         for (let i = 0; i < 70; i++) { const x = r() * w; g.fillStyle = `rgba(${40 + r() * 50},${30 + r() * 40},${25 + r() * 30},${0.25 + r() * 0.35})`; g.fillRect(x, 0, 1 + r() * 2.5, h); }
         for (let i = 0; i < 30; i++) { g.fillStyle = `rgba(20,16,12,${0.3 + r() * 0.3})`; g.fillRect(r() * w, r() * h, 1, 8 + r() * 40); }
       }, { normalStrength: 2.5, roughBase: 0.85 });
@@ -383,7 +387,7 @@ export default {
       g.strokeStyle = 'rgba(18,18,22,0.55)'; g.lineWidth = 1.3;
       for (let i = 0; i < 4; i++) { g.beginPath(); let x = r() * w, y = r() * h; g.moveTo(x, y); for (let k = 0; k < 14; k++) { x += (r() - 0.5) * 36; y += (r() - 0.4) * 26; g.lineTo(x, y); } g.stroke(); }
     }, { normalStrength: 2.2, roughBase: 0.88, roughVar: 0.25 });
-    const swT = asphalt(61, '#706a6c', 120), rdT = asphalt(67, '#5c5a60', 105);
+    const swT = asphalt(61, '#686468', 115), rdT = asphalt(67, '#5a585e', 100);
     const swGeo = worldUV(new THREE.PlaneGeometry(40, swFar - sidewalkD0 - kerbW).rotateX(-Math.PI / 2).translate(0, 0, -(sidewalkD0 + kerbW + swFar) / 2), 1.6);
     add(swGeo, M(UG, { map: swT.map, normalMap: swT.normalMap, roughnessMap: swT.roughnessMap, color: '#ffffff', envMapIntensity: 0.55 }, 's6gnd'), scene, false, true);
     const rdGeo = worldUV(new THREE.PlaneGeometry(40, sidewalkD0 - 2.5).rotateX(-Math.PI / 2).translate(0, -kerbH, -(sidewalkD0 + 2.5) / 2), 2.0);
@@ -439,6 +443,12 @@ export default {
     const prod = { bottle: [], label: [], cap: [], can: [], cup: [], btn: [] };   // [matrix, colour]
     const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3();
     const putP = (list, x, y, z, sx, sy, sz, c) => { list.push([new THREE.Matrix4().compose(_p.set(x, y, z), _q.identity(), _s.set(sx, sy, sz)), col(c)]); };
+    const sheenTex = canvasTex(128, 256, (g, w, h) => {   // soft diagonal reflection bands + haze toward the top of the glass
+      const v = g.createLinearGradient(0, 0, 0, h); v.addColorStop(0, 'rgba(255,255,255,0.55)'); v.addColorStop(0.45, 'rgba(255,255,255,0.12)'); v.addColorStop(1, 'rgba(255,255,255,0.05)');
+      g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = v; g.fillRect(0, 0, w, h);
+      g.filter = 'blur(6px)'; g.fillStyle = 'rgba(255,255,255,0.35)';
+      for (const [x0, ww] of [[10, 26], [52, 10], [80, 34]]) { g.beginPath(); g.moveTo(x0, -10); g.lineTo(x0 + ww, -10); g.lineTo(x0 + ww - 90, h + 10); g.lineTo(x0 - 90, h + 10); g.closePath(); g.fill(); }
+    }, true);
     const vmBuild = (o) => {
       const a = P(o.x0, o.top, o.d), b = P(o.x1, 0, o.d);
       const W = b.x - a.x, H = a.y, D = o.depth, T = 0.12, KICK = 0.07;
@@ -500,7 +510,7 @@ export default {
       }
       // glass: reflection-only layer (additive), with a faint dusty sheen
       const glassM = M(UM, { color: '#000000', roughness: 0.06, metalness: 0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
-        envMapIntensity: 1.6, clearcoat: 1, clearcoatRoughness: 0.05 }, 's6glass');
+        envMapIntensity: 1.6, clearcoat: 1, clearcoatRoughness: 0.05, emissive: '#a8c4dc', emissiveMap: sheenTex, emissiveIntensity: 0.3 }, 's6glass');
       const gm = add(new THREE.PlaneGeometry(ww, wh), glassM, g, false, false); gm.position.set(wcx, wcy, -0.014); gm.renderOrder = 3;
       // extras: protruding modules / bezels / slots, in front-fraction coords
       const box = (f0, g0, f1, g1, dz, mat, z0 = 0, r = 0.006) => {
@@ -534,10 +544,10 @@ export default {
     const bottlePal = ['#f4f4f0', '#a7d6e6', '#e9dc6a', '#7fc98d', '#5c8fd0', '#f0b25a', '#cfe6f0', '#3f9b8a', '#e65a4a'];
     // white machine
     vmBuild({ x0: 365, x1: 492, top: 375, d: groundD(632), depth: 0.62, side: '#cfd3d8', cap: '#c4c8ce', seed: 11,
-      win: [0.05, 0.06, 0.93, 0.52], glow: 0.16,
+      win: [0.05, 0.06, 0.93, 0.52], glow: 0.07,
       rows: [{ y: 0.215, h: 0.2, n: 10, pal: bottlePal, strip: '#4d62a6' }, { y: 0.37, h: 0.2, n: 10, pal: bottlePal, strip: '#4d62a6' },
         { y: 0.52, h: 0.19, n: 11, pal: bottlePal, strip: '#4d62a6' }],
-      back: (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#dfe8ee'); gr.addColorStop(1, '#a9b8c4'); g.fillStyle = gr; g.fillRect(0, 0, w, h); },
+      back: (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#8a9aa8'); gr.addColorStop(1, '#5a6874'); g.fillStyle = gr; g.fillRect(0, 0, w, h); },
       paint: (g, w, h, X, Y, r) => {
         g.fillStyle = '#d9dde1'; g.fillRect(0, 0, w, h);
         g.fillStyle = '#c9cdd3'; g.fillRect(0, 0, w, Y(0.03));
@@ -556,13 +566,13 @@ export default {
     });
     // navy hot/cold cup machine
     vmBuild({ x0: 506, x1: 630, top: 360, d: groundD(626), depth: 0.46, side: '#c3c7cf', cap: '#2a2f55', seed: 23,
-      win: [0.03, 0.03, 0.665, 0.49], glow: 0.2,
+      win: [0.03, 0.03, 0.665, 0.49], glow: 0.1,
       rows: [{ y: 0.37, h: 0.075, n: 6, kind: 'cup', pal: ['#c03030', '#2a4fa0'], strip: '#c33d48' }, { y: 0.43, h: 0.075, n: 6, kind: 'cup', pal: ['#c03030', '#d8a040'], strip: '#c33d48' },
         { y: 0.49, h: 0.075, n: 6, kind: 'cup', pal: ['#c03030', '#2a4fa0'], strip: '#c33d48' }],
       back: (g, w, h) => {
         g.fillStyle = '#1e2342'; g.fillRect(0, 0, w, h);
-        const gr = g.createLinearGradient(0, 0, 0, h * 0.62); gr.addColorStop(0, '#5a3a24'); gr.addColorStop(1, '#c0783a'); g.fillStyle = gr; g.fillRect(0, 0, w, h * 0.62);
-        g.fillStyle = '#e0aa6a'; g.beginPath(); g.ellipse(w * 0.5, h * 0.2, w * 0.3, h * 0.09, 0, 0, 7); g.fill();
+        const gr = g.createLinearGradient(0, 0, 0, h * 0.62); gr.addColorStop(0, '#3e2c26'); gr.addColorStop(1, '#8a6040'); g.fillStyle = gr; g.fillRect(0, 0, w, h * 0.62);
+        g.fillStyle = '#b89070'; g.beginPath(); g.ellipse(w * 0.5, h * 0.2, w * 0.3, h * 0.09, 0, 0, 7); g.fill();
         g.fillStyle = '#f4efe6'; g.beginPath(); g.moveTo(w * 0.24, h * 0.22); g.lineTo(w * 0.76, h * 0.22); g.lineTo(w * 0.68, h * 0.56); g.lineTo(w * 0.32, h * 0.56); g.closePath(); g.fill();
         g.fillStyle = '#c03030'; g.fillRect(w * 0.33, h * 0.32, w * 0.34, h * 0.05);
         g.fillStyle = '#1d3f9a'; g.fillRect(w * 0.35, h * 0.4, w * 0.3, h * 0.07);
@@ -596,12 +606,12 @@ export default {
     });
     // red drinks machine
     vmBuild({ x0: 637, x1: 787, top: 383, d: groundD(640), depth: 0.72, side: '#c4252d', cap: '#b2202a', seed: 37,
-      win: [0.04, 0.05, 0.845, 0.575], glow: 0.16,
+      win: [0.04, 0.05, 0.845, 0.575], glow: 0.07,
       rows: [{ y: 0.2, h: 0.2, n: 12, pal: ['#f4f4f0', '#d63a3a', '#7a4a2a', '#e8c35a', '#3b8f5a', '#5a7ed0', '#c25a2a', '#2f2f3a'], strip: '#b52a32' },
         { y: 0.35, h: 0.2, n: 12, pal: ['#f4f4f0', '#d63a3a', '#e8c35a', '#5a7ed0', '#f0f0f0', '#c25a2a'], strip: '#b52a32' },
         { y: 0.5, h: 0.19, n: 12, pal: ['#e8c35a', '#3b8f5a', '#f4f4f0', '#d63a3a', '#7a4a2a'], strip: '#b52a32' },
         { y: 0.575, h: 0.1, n: 14, kind: 'can', pal: ['#d63a3a', '#e8c35a', '#3b8f5a', '#2f2f3a', '#f4f4f0'], strip: '#b52a32' }],
-      back: (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#f2efea'); gr.addColorStop(1, '#c9c4c0'); g.fillStyle = gr; g.fillRect(0, 0, w, h); },
+      back: (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#a8a29e'); gr.addColorStop(1, '#6e6a68'); g.fillStyle = gr; g.fillRect(0, 0, w, h); },
       paint: (g, w, h, X, Y, r) => {
         g.fillStyle = '#d4252b'; g.fillRect(0, 0, w, h);
         g.fillStyle = '#b81f28'; g.fillRect(0, 0, w, Y(0.025));
@@ -640,12 +650,12 @@ export default {
         list.forEach(([m4, c], i) => { im.setMatrixAt(i, m4); im.setColorAt(i, c); });
         im.castShadow = true; im.receiveShadow = true; scene.add(im); return im;
       };
-      mk(lathe, prod.bottle, M(UM, { color: '#ffffff', roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05, emissive: '#15181a', envMapIntensity: 1.2 }, 's6prod'));
-      mk(label, prod.label, M(UM, { color: '#ffffff', roughness: 0.4, emissive: '#26282a' }, 's6prod'));
-      mk(capG, prod.cap, M(UM, { color: '#ffffff', roughness: 0.4, emissive: '#26282a' }, 's6prod'));
-      mk(canG, prod.can, M(UM, { color: '#ffffff', roughness: 0.25, metalness: 0.5, emissive: '#202224' }, 's6prod'));
-      mk(cupG, prod.cup, M(UM, { color: '#ffffff', roughness: 0.5, emissive: '#2a2a2a' }, 's6prod'));
-      mk(btnG, prod.btn, M(UM, { color: '#ffffff', roughness: 0.3, clearcoat: 0.6 }, 's6prod'));
+      mk(lathe, prod.bottle, M(UP, { color: '#ffffff', roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05, emissive: '#15181a', envMapIntensity: 1.2 }, 's6prod'));
+      mk(label, prod.label, M(UP, { color: '#ffffff', roughness: 0.4, emissive: '#26282a' }, 's6prod'));
+      mk(capG, prod.cap, M(UP, { color: '#ffffff', roughness: 0.4, emissive: '#26282a' }, 's6prod'));
+      mk(canG, prod.can, M(UP, { color: '#ffffff', roughness: 0.25, metalness: 0.5, emissive: '#202224' }, 's6prod'));
+      mk(cupG, prod.cup, M(UP, { color: '#ffffff', roughness: 0.5, emissive: '#2a2a2a' }, 's6prod'));
+      mk(btnG, prod.btn, M(UP, { color: '#ffffff', roughness: 0.3, clearcoat: 0.6 }, 's6prod'));
     }
     // contact shadows at the machine bases
     contact(P(428, 632, groundD(632)).x, -groundD(632) - 0.3, 1.05, 0.75, 0.75);
@@ -654,7 +664,7 @@ export default {
 
     /* ---------------- cardboard boxes + wooden boxes (left of the white machine) ---------------- */
     const cardT = texSet(256, 256, (g, w, h) => {
-      const r = rng(81); g.fillStyle = '#9c8f7e'; g.fillRect(0, 0, w, h);
+      const r = rng(81); g.fillStyle = '#8c857c'; g.fillRect(0, 0, w, h);
       for (let i = 0; i < 120; i++) { g.fillStyle = `rgba(${90 + r() * 40},${75 + r() * 30},${55 + r() * 20},${r() * 0.14})`; g.fillRect(r() * w, r() * h, 10 + r() * 40, 2 + r() * 8); }
       for (let x = 0; x < w; x += 3) { g.fillStyle = 'rgba(80,65,45,0.05)'; g.fillRect(x, 0, 1, h); }   // corrugation
       g.fillStyle = 'rgba(60,48,36,0.55)'; g.fillRect(0, h * 0.5 - 1, w, 2);                              // flap seam
@@ -664,14 +674,14 @@ export default {
       for (let i = 0; i < 6; i++) { g.beginPath(); const x = r() * w, y = r() * h; g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 60, y + (r() - 0.5) * 30); g.stroke(); }
       g.fillStyle = 'rgba(40,40,40,0.5)'; g.font = '14px sans-serif'; g.fillText('↑↑  取扱注意', 12, h * 0.8);
     }, { normalStrength: 2.5, roughBase: 0.9 });
-    const cardM = M(UM, { color: '#ffffff', map: cardT.map, normalMap: cardT.normalMap, roughnessMap: cardT.roughnessMap, envMapIntensity: 0.6 }, 's6card');
-    const cardM2 = M(UM, { color: '#b8b4b4', map: cardT.map, normalMap: cardT.normalMap, roughnessMap: cardT.roughnessMap, envMapIntensity: 0.6 }, 's6card');
-    const woodT = (seed, base) => texSet(256, 256, (g, w, h) => {
+    const cardM = M(UM, { color: '#ffffff', map: cardT.map, normalMap: cardT.normalMap, roughnessMap: cardT.roughnessMap, envMapIntensity: 1.0 }, 's6card');
+    const cardM2 = M(UM, { color: '#b8b4b4', map: cardT.map, normalMap: cardT.normalMap, roughnessMap: cardT.roughnessMap, envMapIntensity: 1.0 }, 's6card');
+    const woodT = (seed, base, gaps = true) => texSet(256, 256, (g, w, h) => {
       const r = rng(seed); g.fillStyle = base; g.fillRect(0, 0, w, h);
       const nb = 4; for (let i = 0; i < nb; i++) {
         const y0 = i * h / nb; g.fillStyle = `rgba(${r() * 40},${r() * 30},0,${0.08 + r() * 0.1})`; g.fillRect(0, y0, w, h / nb);
         for (let k = 0; k < 14; k++) { g.strokeStyle = `rgba(60,40,22,${0.15 + r() * 0.2})`; g.lineWidth = 1; g.beginPath(); const yy = y0 + r() * h / nb; g.moveTo(0, yy); g.bezierCurveTo(w * 0.3, yy + (r() - 0.5) * 8, w * 0.6, yy + (r() - 0.5) * 8, w, yy + (r() - 0.5) * 6); g.stroke(); }
-        g.fillStyle = 'rgba(25,16,10,0.85)'; g.fillRect(0, y0, w, 4);                                     // gap between planks
+        if (gaps) { g.fillStyle = 'rgba(25,16,10,0.85)'; g.fillRect(0, y0, w, 4); }                                     // gap between planks
         g.fillStyle = 'rgba(30,25,20,0.7)'; for (const x of [10, w - 14]) { g.beginPath(); g.arc(x, y0 + h / nb / 2, 2.2, 0, 7); g.fill(); }
       }
     }, { normalStrength: 3.0, roughBase: 0.85 });
@@ -690,7 +700,7 @@ export default {
     crateBox(172, 230, 565, 615, groundD(615), 0.4, dwM, -0.05, 0.008);
 
     /* ---------------- traffic cones: lathe-turned PBR plastic, square base, reflective band ---------------- */
-    const coneM = M(UM, { color: '#e2501e', roughness: 0.42, clearcoat: 0.35, clearcoatRoughness: 0.4, emissive: '#8a2008', emissiveIntensity: 0.25, envMapIntensity: 0.7 }, 's6cone');
+    const coneM = M(UM, { color: '#e2501e', roughness: 0.42, clearcoat: 0.35, clearcoatRoughness: 0.4, emissive: '#8a2008', emissiveIntensity: 0.1, envMapIntensity: 0.7 }, 's6cone');
     const bandM = M(UM, { color: '#ece6de', roughness: 0.22, metalness: 0.25, clearcoat: 0.8, envMapIntensity: 1.2 }, 's6cone');
     const coneBody = new THREE.LatheGeometry([[0.2, 0], [0.19, 0.05], [0.13, 0.42], [0.075, 0.78], [0.045, 0.94], [0.036, 0.975], [0, 0.98]].map(([x, y]) => new THREE.Vector2(x, y)), 24);
     const bandG = new THREE.LatheGeometry([[0.1265, 0.47], [0.1035, 0.62]].map(([x, y]) => new THREE.Vector2(x + 0.004, y)), 24);
@@ -760,12 +770,12 @@ export default {
       bar(W - t, t * 0.6, Dp - t, 0, t * 0.3, 0);
       return mergeGeometries(parts);
     };
-    const lightWood = woodT(97, '#c9a46c');
+    const lightWood = woodT(97, '#dcbb84', false);
     const lwM = M(UM, { color: '#ffffff', map: lightWood.map, normalMap: lightWood.normalMap, roughnessMap: lightWood.roughnessMap, envMapIntensity: 0.5 }, 's6wood');
     const woodCrate = (W, H, Dp) => {
       const parts = []; const pl = (w, h, d, x, y, z) => { const b = new THREE.BoxGeometry(w, h, d).translate(x, y, z);
         const p = b.attributes.position, uv = b.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + p.getZ(i)) / 0.5, p.getY(i) / 0.5 + 0.02); parts.push(b); };
-      const n = 2, gap = 0.07, ph = (H - gap * (n - 1)) / n, t = 0.016;
+      const n = 3, gap = 0.035, ph = (H - gap * (n - 1)) / n, t = 0.016;
       for (let i = 0; i < n; i++) { const y = ph / 2 + i * (ph + gap);
         for (const sz of [-1, 1]) pl(W, ph, t, 0, y, sz * (Dp / 2 - t / 2));
         for (const sx of [-1, 1]) pl(t, ph, Dp - 2 * t, sx * (W / 2 - t / 2), y, 0); }
@@ -822,7 +832,7 @@ export default {
       for (const s of [-1, 1]) rod(HB, FA.clone().setZ(FA.z + s * 0.05), R * 0.75, yel);
       // drivetrain (drive side faces the camera)
       const ring = add(new THREE.TorusGeometry(0.1, 0.006, 6, 40), chrome); ring.position.copy(BB).add(new THREE.Vector3(0, 0, 0.055));
-      add(new THREE.CircleGeometry(0.095, 32), black).position.copy(BB).add(new THREE.Vector3(0, 0, 0.052));
+      add(new THREE.CircleGeometry(0.06, 24), black).position.copy(BB).add(new THREE.Vector3(0, 0, 0.052));
       add(new THREE.TorusGeometry(0.036, 0.005, 6, 24), black).position.copy(RA).add(new THREE.Vector3(0, 0, 0.05));
       {
         const c1 = BB.clone().add(new THREE.Vector3(0, 0, 0.055)), c2 = RA.clone().add(new THREE.Vector3(0, 0, 0.05));

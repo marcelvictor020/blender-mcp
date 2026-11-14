@@ -67,6 +67,7 @@ export default {
     // far set (overpass) sits outside the canopy shade: lit by the car's sun L instead, bigger softer leaf shadows
     const uo = pbrUniforms({ sunDir: [L.x, L.y, L.z], leafAmt: 0.8, leafCover: 0.45, leafScale: 1.4, leafSharp: 0.08, leafSeed: 2.1, grime: 0, rimAmt: 0 });
     uo.uDirGain = { value: [0, 0, 0, 0] };
+    const uz = pbrUniforms({ leafAmt: 0, grime: 0 }); uz.uDirGain = { value: [0, 0, 0, 0] };   // parts in deep shadow (no direct sun)
     function bm(o, u = ub) {
       const m = pbr(u, o, null, 's5set');
       const ob = m.onBeforeCompile;
@@ -138,14 +139,18 @@ export default {
     };
     for (const k of ['slat']) for (const t of Object.values(T[k])) t.wrapS = t.wrapT = THREE.RepeatWrapping;
 
+    // sky-only ambient environment for the set (bounce/skylight in the shade; no sun disc so shadows stay dark)
+    const amb = makeEnvMap('s5_amb', { zenith: '#2f6f9a', horizon: '#7f95a0', ground: '#1e1a17', sunDir: [L.x, L.y, L.z], sunColor: '#3a3632', sunPower: 1,
+      blocks: [{ dir: [-1, -0.2], w: 26, h: 14, dist: 9, color: '#140f0c' }, { dir: [0.2, 1], w: 30, h: 9, dist: 12, color: '#1b1714' }, { dir: [-0.3, -1], w: 22, h: 12, dist: 10, color: '#18120f' }] });
+    const A = { envMap: amb, envMapIntensity: 0.55 };
     const M = {
-      board: bm({ ...T.board, vertexColors: true, roughness: 1 }),
-      boardDark: bm({ ...T.board, color: '#4a3e3e', vertexColors: true, roughness: 1 }),
-      slat: bm({ ...T.slat, vertexColors: true, roughness: 1 }),
-      beam: bm({ ...T.beam, vertexColors: true, roughness: 1 }),
-      trim: bm({ ...T.board, color: '#d6cfc8', vertexColors: true, roughness: 0.9 }),
-      frame: bm({ color: '#d4d0ca', roughness: 0.45, metalness: 0.2, envMap: env, envMapIntensity: 0.25, vertexColors: true }),
-      corr: bm({ ...T.corr, roughness: 1, metalness: 0.35, envMap: env, envMapIntensity: 0.2, side: THREE.DoubleSide }),
+      board: bm({ ...T.board, ...A, vertexColors: true, roughness: 1 }),
+      boardDark: bm({ ...T.board, ...A, color: '#4a3e3e', vertexColors: true, roughness: 1 }),
+      slat: bm({ ...T.slat, ...A, vertexColors: true, roughness: 1 }),
+      beam: bm({ ...T.beam, ...A, vertexColors: true, roughness: 1 }),
+      trim: bm({ ...T.board, ...A, color: '#d6cfc8', vertexColors: true, roughness: 0.9 }),
+      frame: bm({ ...A, color: '#cfcac2', roughness: 0.55, metalness: 0, vertexColors: true }),
+      corr: bm({ ...T.corr, color: '#d8c8c8', roughness: 1, metalness: 0.15, envMap: amb, envMapIntensity: 0.6, side: THREE.DoubleSide }),
       sheetDark: bm({ ...T.corr, color: '#55525a', roughness: 1, metalness: 0.3, vertexColors: true }),
       metal: bm({ color: '#c9ccd2', roughness: 0.38, metalness: 0.65, envMap: env, envMapIntensity: 0.45, vertexColors: true }),
       darkMetal: bm({ color: '#3a3c44', roughness: 0.5, metalness: 0.5, envMap: env, envMapIntensity: 0.3, vertexColors: true }),
@@ -226,7 +231,7 @@ export default {
     const FA = PA.frame();
     const R = rng(77);
     {
-      const wood = [], woodDark = [], beam = [], slat = [], trim = [], frame = [], glass = [], metal = [], dmetal = [], sheet = [], conc = [];
+      const pierGeo = [], wood = [], woodDark = [], beam = [], slat = [], trim = [], frame = [], glass = [], metal = [], dmetal = [], sheet = [], conc = [];
       /* --- left shop-house (lantern wall): clapboards, overhanging upper storey, roof eave --- */
       clapboards(wood, { u0: -5.8, u1: -3.0, v0: G0, v1: 1.98, z: 0, seed: 3 });
       clapboards(wood, { u0: -5.8, u1: -3.0, v0: 1.96, v1: 2.75, z: 0.42, seed: 4 });
@@ -235,7 +240,7 @@ export default {
       for (let u = -5.7; u < -3.0; u += 0.42) beam.push(bx(0.05, 0.08, 0.9, u, 2.66, 0.45, { uvs: 0.5, c: 0.5 }));   // rafters
       beam.push(bx(2.8, 0.16, 0.035, -4.4, 2.7, 0.92, { uvs: 0.5, c: 0.8 }));                 // eave fascia
       trim.push(bx(0.13, 2.9, 0.13, -3.02, 0.55, 0.07, { uvs: 0.5, c: 0.55 }));                // corner post
-      woodDark.push(bx(0.04, 0.8, 0.44, -2.99, 2.35, 0.22, { uvs: 0.5, c: 0.6 }));             // upper-storey end board
+      woodDark.push(bx(0.04, 0.8, 0.44, -2.99, 2.35, 0.22, { uvs: 0.5, c: 0.15 }));            // upper-storey end board
       woodDark.push(bx(3.2, 4.5, 0.1, -4.4, 5.0, -0.6, { uvs: 0.5, c: 0.35 }));                // setback upper wall / roof mass
       woodDark.push(bx(3.2, 0.06, 1.4, -4.4, 2.78, 0.1, { uvs: 0.5, c: 0.3 }));
       /* --- corrugated metal section with the recessed stair --- */
@@ -282,8 +287,15 @@ export default {
         woodDark.push(bx(c - a, d - b, 0.02, (a + c) / 2, (b + d) / 2, -0.06, { uvs: 0.5, c: 0.8 }));
         for (let u = a + 0.45; u < c; u += 0.9) woodDark.push(bx(0.04, d - b, 0.03, u, (b + d) / 2, -0.04, { uvs: 0.5, c: 1.2 }));
       }
+      // sheathing behind the boards / sheets (no sky leaks through gaps), with the stair recess left open
+      for (const [a, b, c, d] of [[-5.85, G0, -2.98, 8.4], [-1.56, G0, 10.65, 8.4], [-2.98, G0, -1.56, 1.37], [-2.98, 3.42, -1.56, 8.4]])
+        woodDark.push(bx(c - a, d - b, 0.06, (a + c) / 2, (b + d) / 2, -0.07, { uvs: 0.5, c: 0.25 }));
       // concrete gutter / kerb along the wall base
       conc.push(bx(17, 0.07, 0.42, 2.4, G0 + 0.03, 0.22, { uvs: 0.45, round: 0 }));
+      {   // concrete pier across the street (lower right)
+        const p = at(1238, 600, 10.5), q = p.clone().sub(PA.o), pu = q.dot(PA.d), pz = q.dot(PA.n), top = at(1238, 462, 10.5).y;
+        pierGeo.push(bx(0.95, top - G0, 0.95, pu, (top + G0) / 2, pz, { round: 0.04 }));
+      }
       /* --- ground-floor eave (hisashi) with fascia, rafters and a gutter --- */
       {
         const a = -0.75, b = 11.2, m = (a + b) / 2, w = b - a;
@@ -303,13 +315,13 @@ export default {
         beam.push(bx(w, 0.1, 0.06, m, 2.98, ZB + 0.03, { uvs: 0.5, c: 0.5 }));
         clapboards(woodDark, { u0: a, u1: b + 3, v0: 3.05, v1: 6.7, z: 0, seed: 9, maxLen: 2.2 });
         const sr = rng(19);
-        for (let u = a + 0.03; u < b - 0.02; u += 0.072) {
+        for (let u = a + 0.03; u < b - 0.02; u += 0.052) {
           if (sr() < 0.03) continue;
-          const k = 0.75 + 0.45 * sr(), lean = (sr() - 0.5) * 0.012;
-          slat.push(bx(0.034, 3.12, 0.022, u, 4.95, ZB + (sr() - 0.5) * 0.01, { rz: lean, uo: sr(), c: [k, k * 0.95, k * 0.9] }));
+          const k = 0.6 + 0.5 * sr(), lean = (sr() - 0.5) * 0.01;
+          slat.push(bx(0.024, 3.12, 0.02, u, 4.95, ZB + (sr() - 0.5) * 0.012, { rz: lean, uo: sr(), c: [k, k * 0.92, k * 0.86] }));
         }
         for (let z = 0.06; z < ZB; z += 0.072) slat.push(bx(0.022, 3.12, 0.034, a, 4.95, z, { uo: sr(), c: 0.8 }));
-        for (const v of [3.42, 4.62, 6.45]) beam.push(bx(w, 0.06, 0.05, m, v, ZB - 0.035, { uvs: 0.5, c: 0.75 }));
+        for (const v of [3.42, 4.1, 5.3, 6.45]) beam.push(bx(w, 0.06, 0.05, m, v, ZB - 0.035, { uvs: 0.5, c: 0.75 }));
         for (let u = a + 0.04; u < b; u += 2.0) beam.push(bx(0.1, 3.3, 0.1, u, 4.98, ZB, { uvs: 0.5, c: 0.7 }));
         // main roof eave over the balcony
         const ra = -1.2, rb = 5.2, rm = (ra + rb) / 2, rw = rb - ra;
@@ -320,6 +332,7 @@ export default {
       }
       add(FA, wood, M.board); add(FA, woodDark, M.boardDark); add(FA, beam, M.beam); add(FA, slat, M.slat);
       add(FA, trim, M.trim); add(FA, frame, M.frame); add(FA, glass, M.glass, false, true); add(FA, metal, M.metal);
+      add(FA, pierGeo, bm({ ...T.conc, roughness: 1, vertexColors: true }, uo));
       add(FA, dmetal, M.darkMetal); add(FA, sheet, M.sheetDark); add(FA, conc, M.conc, false, true);
     }
 
@@ -417,21 +430,19 @@ export default {
       const uvP = (px, py) => PO.uv(px, py);
       const [uA, vTop] = uvP(930, 382), [uB, vTopR] = uvP(1300, 328);
       const vBot = uvP(930, 482)[1];
-      const u0 = Math.min(uA, uB) - 6, u1 = Math.max(uA, uB) + 6, um = (u0 + u1) / 2, w = u1 - u0;
+      const u0 = Math.min(uA, uB) - 8, u1 = Math.max(uA, uB) + 24, um = (u0 + u1) / 2, w = u1 - u0;
       const vt = (vTop + vTopR) / 2, vb = vBot;
       const gl = G0 - PO.o.y;                           // street level in this frame
       const cm = bm({ ...T.conc, roughness: 1, vertexColors: true }, uo);
-      const cd = bm({ ...T.conc, color: '#57534c', roughness: 1, vertexColors: true }, uo);
+      const cd = bm({ ...T.conc, color: '#6a665e', roughness: 1, vertexColors: true }, uz);
       const conc = [], dark = [], rail = [], wd = [];
       conc.push(bx(w, vt - vb, 0.35, um, (vt + vb) / 2, -0.175, { round: 0.04 }));                    // parapet
       conc.push(bx(w, 0.12, 0.5, um, vt + 0.04, -0.2, { round: 0.04, c: 1.05 }));                     // coping
       conc.push(bx(w, 0.16, 0.14, um, vb - 0.03, 0.05, { round: 0.03, c: 1.1 }));                     // drip edge
       dark.push(bx(w, 0.5, 15, um, vb - 0.3, -7.5, { c: 0.6 }));                                        // deck slab
       for (let z = -1.0; z > -14; z -= 2.1) dark.push(bx(w, 1.0, 0.45, um, vb - 1.0, z, { c: 0.7 }));  // girders
-      dark.push(bx(w, vb - gl + 0.4, 0.6, um, (vb + gl) / 2, -14.5, { c: 0.32 }));                      // far abutment wall
-      // pier at the near (right) end
+      dark.push(bx(w, vb - gl + 3, 0.6, um, (vb + gl) / 2 - 1.5, -14.5, { c: 0.32 }));                  // far abutment wall
       const PP = PO.shift(-1.2); const [uP] = PP.uv(1236, 600);
-      conc.push(bx(1.5, vb - gl, 1.5, uP, (vb + gl) / 2 - 0.3, -1.2, { round: 0.05, c: 0.95 }));
       dark.push(bx(3.0, 0.9, 13, uP, vb - 1.2, -7.0, { c: 0.75 }));
       // railing on the parapet: posts + two rails (tubes)
       const zr = -0.18, rh = (vt - vb) * 0.85;
@@ -440,8 +451,8 @@ export default {
       add(FO, conc, cm); add(FO, dark, cd, false, true);
       add(FO, rail, bm({ color: '#e4e6e6', roughness: 0.35, metalness: 0.5, envMap: env, envMapIntensity: 0.5, vertexColors: true }, uo));
       // sunlit wooden fence on the far side, under the deck
-      const PW = PO.shift(-14.1); const [uW0, vW0] = PW.uv(1062, 628), [uW1, vW1] = PW.uv(1208, 574);
-      for (let u = Math.min(uW0, uW1); u < Math.max(uW0, uW1); u += 0.16) wd.push(bx(0.14, Math.abs(vW1 - vW0), 0.03, u, (vW0 + vW1) / 2, -14.1, { uvs: 0.5, uo: R(), c: 1.2 + 0.4 * R() }));
+      const PW = PO.shift(-6); const [uW0, vW0] = PW.uv(1062, 640), [uW1, vW1] = PW.uv(1208, 572);
+      for (let u = Math.min(uW0, uW1); u < Math.max(uW0, uW1); u += 0.16) wd.push(bx(0.14, Math.abs(vW1 - vW0), 0.03, u, (vW0 + vW1) / 2, -6, { uvs: 0.5, uo: R(), c: 1.2 + 0.4 * R() }));
       if (wd.length) add(FO, wd, bm({ ...T.slat, vertexColors: true, roughness: 1 }, uo));
     }
 
@@ -460,6 +471,32 @@ export default {
       }
       const c = sunB.shadow.camera; c.left = lo.x - 0.5; c.right = hi.x + 0.5; c.bottom = lo.y - 0.5; c.top = hi.y + 0.5;
       c.near = Math.max(0.5, -hi.z - 6); c.far = -lo.z + 6; c.updateProjectionMatrix();
+    }
+
+    /* ---------------- canopy: leaf clusters between the sun and the set — rendered ONLY into the set sun's shadow map ---------------- */
+    {
+      const leafA = canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.beginPath(); g.moveTo(w * 0.5, 2); g.quadraticCurveTo(w * 0.98, h * 0.42, w * 0.5, h - 2); g.quadraticCurveTo(w * 0.02, h * 0.42, w * 0.5, 2); g.fill(); }, false);
+      const cmat = new THREE.MeshBasicMaterial({ alphaMap: leafA, alphaTest: 0.5, side: THREE.DoubleSide });
+      // [px, py, facade offset, distance along the sun ray, radius, density] — the reference's big shade masses
+      const clusters = [[370, 610, 0.05, 2.2, 1.0, 1.1], [300, 470, 0.05, 2.4, 0.7, 0.9], [790, 120, 0.9, 3.4, 1.9, 0.75], [640, 40, 0.9, 3.0, 1.0, 0.7],
+        [700, 290, 0.0, 2.6, 1.0, 0.8], [60, 250, 0.0, 2.0, 0.6, 0.7], [880, 480, 0.0, 3.0, 1.3, 0.6]];
+      const r = rng(91), list = [];
+      const q = new THREE.Quaternion(), sc = new THREE.Vector3();
+      for (const [px, py, off, dist, rad, den] of clusters) {
+        const c = PA.shift(off).hit(px, py).addScaledVector(LB, dist);
+        const n = Math.round(520 * rad * rad * den);
+        for (let i = 0; i < n; i++) {
+          let x, y, z; do { x = r() * 2 - 1; y = r() * 2 - 1; z = r() * 2 - 1; } while (x * x + y * y + z * z > 1);
+          q.setFromEuler(E.set(r() * 6.28, r() * 6.28, r() * 6.28)); const k = 0.09 + r() * 0.1; sc.set(k * 0.62, k, k);
+          list.push(new THREE.Matrix4().compose(c.clone().add(V(x * rad, y * rad * 0.7, z * rad)), q, sc));
+        }
+      }
+      const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), cmat, list.length);
+      list.forEach((m, i) => im.setMatrixAt(i, m));
+      im.castShadow = true; im.frustumCulled = false; im.count = 0;            // invisible to the camera and to the car's sun
+      im.onBeforeShadow = (rr, o, cam, shCam) => { im.count = shCam === sunB.shadow.camera ? list.length : 0; };
+      im.onAfterShadow = () => { im.count = 0; };
+      scene.add(im);
     }
 
     /* ---------------- sky + clouds ---------------- */

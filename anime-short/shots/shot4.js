@@ -136,7 +136,7 @@ export default {
        in those materials rig.sun's own (unshadowed here) contribution is swapped for hsun's shadowed one. */
     const atZ = (px, py, d) => { const v = ray(px, py); return v.multiplyScalar(-d / v.z).add(camera.position); };
     const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
-    const HU = pbrUniforms({ sunDir: SUN, leafAmt: 0, sunGain: 1.35, rimAmt: 0, grime: 0 });
+    const HU = pbrUniforms({ sunDir: SUN, leafAmt: 0, sunGain: 2.0, rimAmt: 0, grime: 0 });
     const houseEnv = makeEnvMap('s4_house_env', {
       zenith: '#2f86c0', horizon: '#b9d4dc', ground: '#4a5a34', sunDir: SUN, sunColor: '#fff2dc', sunPower: 10,
       clouds: [{ dir: [-0.6, 0.45, -0.7], size: 8, power: 1.3 }],
@@ -152,14 +152,16 @@ export default {
       scene.add(hsun, hsun.target);
     }
     const uHSun = { value: rig.sun.color.clone().multiplyScalar(rig.sun.intensity) };
-    const uSunW = { value: sunV.clone() };
+    const uSunW = { value: sunV.clone() }, uHAmb = { value: 0.55 };
     const hmat = (key, o) => {
-      const m = pbr(HU, { envMap: houseEnv, envMapIntensity: 0.45, roughness: 0.85, metalness: 0, ...o }, null, 's4h_' + key);
+      const { bounce, ...oo } = o;
+      const m = pbr(HU, { envMap: houseEnv, envMapIntensity: 0.45, roughness: 0.85, metalness: 0, ...oo }, null, 's4h_' + key);
       const prev = m.onBeforeCompile;
       m.onBeforeCompile = (sh, r) => {
         prev(sh, r);
-        sh.uniforms.uHSun = uHSun; sh.uniforms.uSunW = uSunW;
-        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uHSun, uSunW;')
+        sh.uniforms.uHSun = uHSun; sh.uniforms.uSunW = uSunW; sh.uniforms.uHAmb = uHAmb; sh.uniforms.uHEmis = { value: col(o.bounce || '#000000') };
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uHSun, uSunW, uHEmis; uniform float uHAmb;')
+          .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n reflectedLight.indirectDiffuse = reflectedLight.indirectDiffuse * uHAmb + uHEmis * diffuseColor.rgb; reflectedLight.indirectSpecular *= uHAmb;')
           .replaceAll('getDirectionalLightInfo( directionalLight, directLight );', `getDirectionalLightInfo( directionalLight, directLight );
             if (dot(directLight.color, vec3(1.0)) < 1e-6) directLight.color = uHSun;
             else if (dot(directLight.direction, normalize((viewMatrix * vec4(uSunW, 0.0)).xyz)) > 0.9995) directLight.color = vec3(0.0);`);
@@ -187,7 +189,7 @@ export default {
     /* --- textures --- */
     const woodTex = texSet(128, 512, (g, w, h) => {
       const R = rng(5);
-      g.fillStyle = '#8a6a4c'; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#86705c'; g.fillRect(0, 0, w, h);
       for (let i = 0; i < 70; i++) {                       // long vertical grain streaks
         const x = R() * w, ww = 1 + R() * 4, a = 0.08 + R() * 0.22;
         g.fillStyle = R() < 0.6 ? `rgba(40,24,12,${a})` : `rgba(200,170,130,${a * 0.6})`;
@@ -200,14 +202,14 @@ export default {
     }, { normalStrength: 3.0, roughBase: 0.82, roughVar: 0.25 });
     const stoneTex = texSet(256, 128, (g, w, h) => {
       const R = rng(9);
-      g.fillStyle = '#4a4038'; g.fillRect(0, 0, w, h);
-      for (let i = 0; i < 90; i++) {
-        const x = R() * w, y = R() * h, rx = 9 + R() * 14, ry = 6 + R() * 8, v = 150 + R() * 70;
+      g.fillStyle = '#6e645a'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 110; i++) {
+        const x = R() * w, y = R() * h, rx = 9 + R() * 14, ry = 6 + R() * 8, v = 170 + R() * 70;
         g.fillStyle = `rgb(${v | 0},${(v * 0.93) | 0},${(v * 0.84) | 0})`;
         for (const dx of [-w, 0, w]) { g.beginPath(); g.ellipse(x + dx, y, rx, ry, R() * 0.6, 0, 7); g.fill(); }
       }
       for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(${R() < 0.5 ? '0,0,0' : '255,255,240'},${R() * 0.12})`; g.fillRect(R() * w, R() * h, 2, 2); }
-    }, { normalStrength: 4.0, roughBase: 0.9, roughVar: 0.1 });
+    }, { normalStrength: 2.2, roughBase: 0.9, roughVar: 0.1 });
     const concreteTex = texSet(64, 256, (g, w, h) => {
       const R = rng(13);
       g.fillStyle = '#d8d0c0'; g.fillRect(0, 0, w, h);
@@ -216,10 +218,11 @@ export default {
       g.fillStyle = 'rgba(40,30,20,0.6)'; for (let y = 20; y < h; y += 46) g.fillRect(0, y, w, 1);   // step-bolt rings
     }, { normalStrength: 1.5, roughBase: 0.9, roughVar: 0.1 });
 
-    const woodMat = hmat('wood', { color: '#d8c4b0', ...woodTex, normalScale: new THREE.Vector2(0.8, 0.8) });
-    const postMat = hmat('post', { color: '#d8c0a0', ...woodTex, normalScale: new THREE.Vector2(0.5, 0.5) });
+    const woodMat = hmat('wood', { color: '#ece4dc', ...woodTex, normalScale: new THREE.Vector2(0.8, 0.8) });
+    const postMat = hmat('post', { color: '#fff0dc', ...woodTex, normalScale: new THREE.Vector2(0.5, 0.5) });
     const darkWoodMat = hmat('dwood', { color: '#6a5a4c', ...woodTex });
-    const tileMat = hmat('tile', { color: '#c9bfae', roughness: 0.6, envMapIntensity: 0.6 });
+    const tileMat = hmat('tile', { color: '#c8bca6', roughness: 0.6, envMapIntensity: 0.6, vertexColors: true });
+    const vergeMat = hmat('verge', { color: '#a49a8a', roughness: 0.6, envMapIntensity: 0.6 });
     const stoneMat = hmat('stone', { color: '#ffffff', ...stoneTex });
     const voidMat = hmat('void', { color: '#140f0b', roughness: 1, envMapIntensity: 0.05 });
 
@@ -232,25 +235,33 @@ export default {
       const b = pos.length / 3;
       for (const [x, y] of P) pos.push(x, y, 1, x, y - 0.22, 1);
       for (let i = 0; i < S; i++) { const t0 = b + i * 2, t1 = b + i * 2 + 2; idx.push(t0, t0 + 1, t1, t1, t0 + 1, t1 + 1); }
+      // baked occlusion: the upper end tucks under the course above, the troughs between rolls are dark, lip underside dark
+      const cl = [];
+      for (const z of [0, 1]) for (const [x] of P) { const k = (z ? 1.0 : 0.3) * (1 - 0.55 * Math.pow(Math.abs(x) * 2, 3)); cl.push(k, k, k); }
+      for (const [x] of P) { const k = 1 - 0.5 * Math.pow(Math.abs(x) * 2, 3); cl.push(0.85 * k, 0.85 * k, 0.85 * k, 0.35 * k, 0.35 * k, 0.35 * k); }
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+      g.setAttribute('color', new THREE.Float32BufferAttribute(cl, 3));
       g.computeVertexNormals(); return g;
     })();
     // lay tiles over a roof patch given its left/right edges as functions of v (0 = eave, 1 = ridge) -> world points.
     // rows and columns are spaced in *screen pixels* (like the reference's ~9x7 px tile scale)
     const tileList = [], tileCols = [];
-    const roofTiles = (L, R, { rows, colPx = 9, seed = 1, base = '#bdb6aa', lift = 0.16, over = 1.55, wScale = 1.08 }) => {
+    // lay tiles over a roof surface S(u, v) (u along the courses, v = 0 at the eave -> 1 at the ridge), world points.
+    // rows and columns are spaced in *screen pixels* (like the reference's ~9x7 px tile scale)
+    const roofSurf = (S, { rows, colPx = 9, seed = 1, base = '#ffffff', lift = 0.16, over = 1.55, wScale = 1.08 }) => {
       const r = rng(seed), toPx = (p) => { const q = p.clone().project(camera); return new THREE.Vector2(q.x * 640, q.y * 360); };
       for (let j = 0; j < rows; j++) {
         const v = (j + 0.5) / rows, dv = 1 / rows;
-        const a = L(v), b = R(v), a2 = L(Math.min(1, v + dv)), b2 = R(Math.min(1, v + dv));
-        const n = Math.max(2, Math.round(toPx(a).distanceTo(toPx(b)) / colPx));
+        let sl = 0; for (let k = 0; k < 12; k++) sl += toPx(S(k / 12, v)).distanceTo(toPx(S((k + 1) / 12, v)));
+        const n = Math.max(2, Math.round(sl / colPx));
         for (let i = 0; i < n; i++) {
           const u = (i + 0.5 + (j % 2) * 0.5 - 0.25) / n; if (u > 1) continue;
-          const p = a.clone().lerp(b, u), pU = a2.clone().lerp(b2, u);
-          const U = b.clone().sub(a).normalize(), Vv = pU.clone().sub(p); const len = Vv.length() * over; Vv.normalize();
+          const p = S(u, v), pU = S(u, Math.min(1, v + dv));
+          const ua = S(Math.max(0, u - 0.5 / n), v), ub = S(Math.min(1, u + 0.5 / n), v);
+          const U = ub.clone().sub(ua).normalize(), Vv = pU.clone().sub(p); const len = Vv.length() * over; Vv.normalize();
           const N = U.clone().cross(Vv).normalize(); if (N.y < 0) N.negate();
           const Vp = N.clone().cross(U).normalize(); if (Vp.dot(Vv) < 0) Vp.negate();
-          const w = a.distanceTo(b) / n * wScale;
+          const w = Math.max(0.05, ua.distanceTo(ub) * wScale);
           const tl = lift + (r() - 0.5) * 0.06;
           const zAx = Vp.clone().negate().multiplyScalar(Math.cos(tl)).addScaledVector(N, Math.sin(tl));
           const yAx = N.clone().multiplyScalar(Math.cos(tl)).addScaledVector(Vp, Math.sin(tl));
@@ -261,6 +272,7 @@ export default {
         }
       }
     };
+    const roofTiles = (L, R, o) => roofSurf((u, v) => L(v).lerp(R(v), u), o);
     const linePts = (pts) => (v) => {      // polyline in v (pts given from eave (v=0) to ridge (v=1)), world points
       const f = clamp(v, 0, 1) * (pts.length - 1), i = Math.min(pts.length - 2, Math.floor(f));
       return pts[i].clone().lerp(pts[i + 1], f - i);
@@ -273,7 +285,15 @@ export default {
     // right edge is the gable rake running back to the ridge
     const AL = curvePts([atZ(975, 343, dEA), atZ(938, 322, dEA), atZ(905, 295, dEA), atZ(882, 268, dEA), atZ(866, 246, dEA)]);
     const AR = linePts([atZ(1106, 347, dEA), atZ(1104, 318, (dEA + dRA) / 2 - 0.4), atZ(1067, 243, dRA)]);
-    roofTiles(AL, AR, { rows: 15, colPx: 9, seed: 31, base: '#ffffff' });
+    const EA = (() => {
+      const P = [[866, 246], [882, 268], [905, 295], [938, 322], [975, 343], [1040, 345], [1106, 347]];
+      const W = P.map(([x, y]) => atZ(x, y, dEA)); const cum = [0];
+      for (let i = 1; i < P.length; i++) cum.push(cum[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+      return (u) => { const t = clamp(u, 0, 1) * cum[cum.length - 1]; let i = 0; while (i < P.length - 2 && cum[i + 1] < t) i++;
+        return W[i].clone().lerp(W[i + 1], (t - cum[i]) / (cum[i + 1] - cum[i])); };
+    })();
+    const RA = (u) => atZ(lerp(866, 1067, u), lerp(243, 242, u), lerp(19.6, dRA, Math.min(1, u * 1.15)));
+    roofSurf((u, v) => EA(u).lerp(RA(u), v), { rows: 15, colPx: 9, seed: 31, base: '#ffffff' });
     // ridge (noshi stack + round cap) along the top
     {
       const a = AL(1).add(V3(0, 0.05, 0)), b = AR(1).add(V3(0, 0.05, 0));
@@ -291,7 +311,6 @@ export default {
       const fas = new THREE.Mesh(boxGeo, darkWoodMat); fas.applyMatrix4(barMatrix(eL.clone().add(V3(0, -0.08, 0.02)), eR.clone().add(V3(0, -0.08, 0.02)), 0.08, 0.14, V3(0, 1, 0), 0.1)); scene.add(shade(fas));
       const raf = []; const n = 12;
       for (let i = 0; i <= n; i++) { const p = eL.clone().lerp(eR, i / n); raf.push(barMatrix(p.clone().add(V3(0, -0.16, 0)), V3(p.x, p.y - 0.02, -dWA), 0.08, 0.1)); }
-      const lc = []; for (let i = 0; i <= 16; i++) { const v = i / 16 * 0.85; const p = AL(v); raf.push(barMatrix(p.clone().add(V3(0, -0.14, 0)), V3(p.x + 0.2, p.y - 0.05, -dWA - 0.2), 0.07, 0.1)); }
       instanced(boxGeo, postMat, raf);
       // soffit board (underside of the roof between the eave and the wall)
       const sg = new THREE.BufferGeometry(); const sp = [];
@@ -309,7 +328,7 @@ export default {
       const bm = [], vt = [], vc = []; const r = rng(17);
       for (let i = 0; i < pts.length - 1; i++) {
         const a = pts[i], b = pts[i + 1];
-        bm.push(barMatrix(a.clone().add(V3(0, -0.17, 0)), b.clone().add(V3(0, -0.17, 0)), 0.1, 0.32, V3(1, 0, 0.6).normalize(), 0.04));
+        bm.push(barMatrix(a.clone().add(V3(0, -0.15, 0.04)), b.clone().add(V3(0, -0.15, 0.04)), 0.07, 0.3, V3(0, 1, 0), 0.04));
       }
       instanced(boxGeo, postMat, bm);
       const pts2 = curve.getPoints(22);
@@ -318,7 +337,7 @@ export default {
         vt.push(barMatrix(a.clone().add(V3(-0.04, 0.06, 0.05)), b.clone().add(V3(-0.04, 0.06, 0.05)), 0.24, 0.13, V3(-0.3, 1, 0.5).normalize(), 0.02));
         vc.push(tint('#e0dcd4', r, 0.12));
       }
-      instanced(boxGeo, tileMat, vt, vc);
+      instanced(boxGeo, vergeMat, vt, vc);
       // tile band behind the bargeboard (the left slope seen edge-on), fills the strip up to the ridge
       const BL = curvePts(bb.slice().reverse().map((p) => p.clone().add(V3(-0.02, 0.12, -0.25))));
       const BR = curvePts(bb.slice().reverse().map((p) => p.clone().add(V3(0.45, 0.32, -1.6))));
@@ -340,29 +359,30 @@ export default {
         pc.push(tint('#ffffff', r, 0.2, 0.02));
       }
       // left end wall (faces the camera side), boards running back in depth
-      const XL = xa - 0.06;
-      for (let z = dWA; z < dWA + 5.2; z += 0.21) {
+      const XL = xa - 0.06, ew = [], ec = [];
+      for (let z = dWA; z < dWA + 3.3; z += 0.21) {
         const zm = z + 0.105, pxm = 640 + XL * F / zm;
-        const yTop = lerp(4.6, 3.95, (zm - dWA) / 5.2);
-        pl.push(barMatrix(V3(XL + (r() - 0.5) * 0.02, 0.55, -zm), V3(XL, yTop, -zm), 0.035, 0.21, V3(0, 0, 1)));
-        pc.push(tint('#fff0e0', r, 0.15, 0.02).multiplyScalar(1.9));
+        const yTop = lerp(4.6, 4.1, (zm - dWA) / 3.3);
+        ew.push(barMatrix(V3(XL + (r() - 0.5) * 0.02, 0.55, -zm), V3(XL, yTop, -zm), 0.035, 0.21, V3(0, 0, 1)));
+        ec.push(tint('#ffffff', r, 0.15, 0.02));
       }
       instanced(boxGeo, woodMat, pl, pc);
+      instanced(boxGeo, hmat('endwall', { color: '#f8e8d8', ...woodTex, bounce: '#c09070' }), ew, ec);
       // posts + rails
       const pm = [];
       for (const px of [849, 986]) { const p = atZ(px, 500, dWA - 0.06); pm.push(barMatrix(V3(p.x, 0.5, p.z), V3(p.x, atZ(px, topA(px) + 4, dWA).y, p.z), 0.2, 0.2, V3(0, 0, 1))); }
       for (const py of [352, 402, 456]) { const a = atZ(848, py, dWA - 0.07), b = atZ(1000, py, dWA - 0.07); b.y = a.y; pm.push(barMatrix(a, b, 0.08, 0.13, V3(0, 1, 0), 0.1)); }
-      const ze = dWA + 5.2; pm.push(barMatrix(V3(XL - 0.03, 0.5, -ze), V3(XL - 0.03, 3.95, -ze), 0.2, 0.2, V3(0, 0, 1)));
+      const ze = dWA + 3.3; pm.push(barMatrix(V3(XL - 0.03, 0.5, -ze), V3(XL - 0.03, 3.95, -ze), 0.2, 0.2, V3(0, 0, 1)));
       pm.push(barMatrix(V3(XL - 0.04, 2.6, -dWA), V3(XL - 0.04, 2.6, -ze), 0.08, 0.12, V3(0, 1, 0)));
       instanced(boxGeo, postMat, pm);
       // stone base under A (front + left side), top catches the sun
       const sb = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), stoneMat);
       const s0 = atZ(802, 540, dWA - 0.35), s1 = atZ(1003, 540, dWA - 0.35);
-      sb.scale.set(s1.x - s0.x, 0.66, 5.9); sb.position.set((s0.x + s1.x) / 2, 0.29, -dWA + 0.4 - 2.95);
+      sb.scale.set(s1.x - s0.x, 0.66, 4.0); sb.position.set((s0.x + s1.x) / 2, 0.29, -dWA + 0.4 - 2.0);
       const uvs = sb.geometry.attributes.uv; for (let i = 0; i < uvs.count; i++) uvs.setX(i, uvs.getX(i) * 4);
       scene.add(shade(sb));
       const cap = new THREE.Mesh(boxGeo, hmat('stonecap', { color: '#a89c8c', roughness: 0.95 }));
-      cap.scale.set(s1.x - s0.x + 0.06, 0.06, 5.96); cap.position.set(sb.position.x, 0.63, sb.position.z); scene.add(shade(cap));
+      cap.scale.set(s1.x - s0.x + 0.06, 0.06, 4.06); cap.position.set(sb.position.x, 0.63, sb.position.z); scene.add(shade(cap));
     }
 
     /* ===== recess + doorway between A and B ===== */
@@ -421,12 +441,12 @@ export default {
       roofTiles(linePts([R0.clone().add(V3(-0.1, 0.05, 0.05)), atZ(1157, 256, 22.6)]), linePts([atZ(1300, 345, dG), atZ(1300, 246, 22.6)]),
         { rows: 15, colPx: 9, seed: 73, base: '#ffffff' });
       // pent roof (hisashi) wrapping left over the recess; its eave throws the dark band over B's upper wall
-      const dP = dWB - 1.45;
+      const dP = dWB - 0.95;
       roofTiles(linePts([atZ(990, 389, dP), atZ(1006, 345, dWB + 0.05)]), linePts([atZ(1300, 384, dP), atZ(1300, 340, dWB + 0.05)]),
-        { rows: 6, colPx: 8, seed: 74, base: '#f0ece4', lift: 0.14 });
+        { rows: 6, colPx: 8, seed: 74, base: '#d4ccc0', lift: 0.14 });
       const pe0 = atZ(990, 392, dP), pe1 = atZ(1300, 386, dP); pe1.y = pe0.y;
       const praf = [barMatrix(pe0.clone().add(V3(0, -0.06, 0)), pe1.clone().add(V3(0, -0.06, 0)), 0.07, 0.12, V3(0, 1, 0))];
-      { const s0 = atZ(990, 392, dP), s1 = atZ(1300, 392, dP); const so = new THREE.Mesh(boxGeo, darkWoodMat); so.scale.set(s1.x - s0.x, 0.03, dWB - dP); so.position.set((s0.x + s1.x) / 2, pe0.y + 0.12, -(dWB + dP) / 2); so.rotation.x = -Math.atan2(0.75, dWB - dP) * 0.9; scene.add(shade(so)); }
+      { const s0 = atZ(990, 392, dP), s1 = atZ(1300, 392, dP); const so = new THREE.Mesh(boxGeo, darkWoodMat); so.scale.set(s1.x - s0.x, 0.03, dWB - dP); so.position.set((s0.x + s1.x) / 2, (pe0.y + yWallTop) / 2 - 0.1, -(dWB + dP) / 2); so.rotation.x = Math.atan2(yWallTop - pe0.y, dWB - dP); scene.add(shade(so)); }
       instanced(boxGeo, postMat, praf);
       // little lower canopy over the doorway
       roofTiles(linePts([atZ(998, 413, dP - 0.3), atZ(996, 392, dP + 0.5)]), linePts([atZ(1062, 412, dP - 0.3), atZ(1068, 391, dP + 0.5)]),
@@ -493,7 +513,7 @@ export default {
       instanced(new THREE.CylinderGeometry(0.035, 0.05, 0.12, 8), porcMat, ins);
     }
     // pole B (wooden, near the house): crossarms with insulators + a street lamp on a curved arm
-    const pB = realPole(775, 213, 600, DB, 7, polWood);
+    const pB = realPole(775, 213, 600, DB, 7, hmat('concB', { color: '#d8ccb8', ...concreteTex, roughness: 0.9 }));
     {
       const y1 = atZ(760, 226, DB).y, y2 = atZ(760, 240, DB).y, x = pB.top.x;
       instanced(boxGeo, polWood, [
@@ -603,10 +623,10 @@ export default {
         const px = lerp(-80, 1360, r());
         const p = scr(px, HORIZON, z);
         const spike = r() < 0.08 ? 15 + r() * 30 : 0;
-        const tipY = 560 + (r() - 0.5) * 40 - spike + (px < 420 ? 10 : 0) + Math.max(0, (px - 980) * 0.06);
+        const tipY = 560 + (r() - 0.5) * 40 - spike + (px < 420 ? 10 : 0) + 18 * clamp((px - 740) / 80, 0, 1) + Math.max(0, (px - 1000) * 0.05);
         const h = Math.max(0.12, CAM_H - (tipY - HORIZON) * z / F);
-        const w = (0.05 + 0.014 * z) * lerp(0.65, 1.45, r());
-        aO.set([p.x, 0, p.z, (r() - 0.5) * 1.5], i * 4);
+        const w = (0.07 + 0.02 * z) * lerp(0.6, 1.5, r());
+        aO.set([p.x, 0, p.z, (r() - 0.5) * 1.2], i * 4);
         aS.set([h, w, r(), r()], i * 4);
         aC.set([px < 380 ? lerp(0.55, 0.8, clamp((px - 120) / 260, 0, 1)) : 1.0, z], i * 2);
       }
@@ -629,8 +649,8 @@ export default {
             // gusts roll across the field (low-frequency travelling noise) + per-blade flutter
             float gust = vnoise(aO.xz * 0.16 + vec2(-uTime * 0.85, uTime * 0.25));
             gust = smoothstep(0.35, 0.85, gust);
-            float sway = gust * 0.34 + sin(uTime * 2.3 + aO.x * 1.7 + aO.z * 0.9) * 0.045 + sin(uTime * 7.0 + aS.z * 40.) * 0.015 * t;
-            vec2 dir = vec2(0.08 + sway, -0.02 - gust * 0.08) + vec2(aS.z - 0.5, aS.w - 0.5) * 0.42;
+            float sway = gust * 0.2 + sin(uTime * 2.3 + aO.x * 1.7 + aO.z * 0.9) * 0.035 + sin(uTime * 7.0 + aS.z * 40.) * 0.012 * t;
+            vec2 dir = vec2(0.03 + sway, -0.02 - gust * 0.05) + vec2(aS.z - 0.5, aS.w - 0.5) * 0.3;
             vec3 p = W * position.x * aS.y + vec3(0., t * h, 0.);
             float L = length(dir);
             p.xz += dir * t * t * h;
@@ -639,7 +659,7 @@ export default {
             vec3 n = normalize(cross(W, T));
             // folded blade: each half tilts away from the midrib
             vSide = sign(position.x);
-            n = normalize(n + W * vSide * 0.55);
+            n = normalize(n + W * vSide * 0.25);
             vN = n;
             vec3 wp = aO.xyz + p; vW = wp;
             gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.);
@@ -658,7 +678,7 @@ export default {
             // clump colour: yellow-green / mid / cool blue-green patches
             vec3 alb = mix(cC, cA, smoothstep(0.25, 0.55, vClump));
             alb = mix(alb, cB, smoothstep(0.55, 0.85, vClump + (vR - 0.5) * 0.25));
-            alb *= 0.86 + 0.28 * vR2;
+            alb *= 0.72 + 0.5 * vR2 * vR2;
             float ao = mix(0.32, 1.0, smoothstep(0.0, 0.62, vT));
             float sky = 0.58 + 0.22 * n.y;
             vec3 c = alb * (sky + 0.62 * diff) + cTrans * alb * trans * 0.55;
