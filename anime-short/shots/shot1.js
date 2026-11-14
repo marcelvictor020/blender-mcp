@@ -303,10 +303,10 @@ export default {
           g.fillStyle = 'rgba(120,50,15,0.6)'; g.fillRect(0, y + 52, w, 6);
           g.fillStyle = 'rgba(255,248,210,0.8)'; g.fillRect(0, y + 58, w, 4);
         }
-        g.fillStyle = '#fbe2a0'; g.fillRect(0, 0, 14, h); g.fillRect(170, 0, 12, h);
+        g.fillStyle = '#fbe2a0'; g.fillRect(0, 0, 14, h); g.fillStyle = '#b8682c'; g.fillRect(170, 0, 14, h); g.fillRect(150, 0, 8, h);
       });
       towerTex.wrapT = THREE.RepeatWrapping;
-      const towerSide = flat({ color: '#c47a3a' });
+      const towerSide = flat({ color: '#9c5224' });
       const L = onPlane(226, 300, V3(0, 0, Z), V3(0, 0, 1)), R = onPlane(560, 300, V3(0, 0, Z), V3(0, 0, 1));
       const w = R.x - L.x, H = 120;
       towerTex.repeat.set(1, H / (8 * FL));
@@ -326,7 +326,7 @@ export default {
         }
       });
       wingTex.wrapT = THREE.RepeatWrapping; wingTex.repeat.set(1, H / (8 * FL));
-      const wing = box(Rw.x - Lw.x, H, 12, [flat({ color: '#d08844' }), towerSide, towerSide, towerSide, flat({ map: wingTex }), towerSide], (Lw.x + Rw.x) / 2, H / 2, Zw - 6);
+      const wing = box(Rw.x - Lw.x, H, 12, [flat({ color: '#a85a26' }), towerSide, towerSide, towerSide, flat({ map: wingTex }), towerSide], (Lw.x + Rw.x) / 2, H / 2, Zw - 6);
       scene.add(wing);
     }
 
@@ -506,22 +506,22 @@ export default {
         }
       }
       const tree = makeFoliage({ clumps, density: 3, cardSize: 0.42, kind: 'round', seed: 3, texSeed: 2,
-        dark: '#0b1108', mid: '#111a0c', light: '#1a2512', highlight: '#253219', wind: 0.02, shell: 0.6, lightWrap: 0.35, terminator: 0.0, sizeJitter: 0.6 });
+        dark: '#10180b', mid: '#18220f', light: '#222e15', highlight: '#2e3c1c', wind: 0.02, shell: 0.6, lightWrap: 0.35, terminator: 0.0, sizeJitter: 0.6 });
       scene.add(tree);
       // light olive blotches scattered over the dark mass (painterly highlight clusters)
       const bl = [];
-      for (let i = 0; i < 22; i++) {
-        const py = lerp(20, 720, r()), lo = Math.max(leftEdge(py), -60) + 10, hi = rightEdge(py) + 30;
-        const px = lerp(lo, hi, r());
-        const p = atDist(px, py, TD - 0.9); bl.push([p.x, p.y, p.z, lerp(0.16, 0.26, r())]);
+      for (let i = 0; i < 11; i++) {
+        const py = lerp(40, 520, Math.pow(r(), 1.3)), lo = rightEdge(py) - 130, hi = rightEdge(py) + 10;
+        const px = lerp(lo, hi, Math.sqrt(r()));
+        const p = atDist(px, py, TD - 0.9); bl.push([p.x, p.y, p.z, lerp(0.22, 0.32, r())]);
       }
       scene.add(makeFoliage({ clumps: bl, density: 0.5, cardSize: 0.24, kind: 'round', seed: 21, texSeed: 5, flatten: 0.6,
-        dark: '#3e4f26', mid: '#4f6230', light: '#5e7538', highlight: '#6b8442', wind: 0.025, shell: 0.5, lightWrap: 0.9, terminator: 0.2, sizeJitter: 0.4 }));
+        dark: '#4c5a34', mid: '#5c6c3e', light: '#6c7e45', highlight: '#7d8f4a', wind: 0.025, shell: 0.5, lightWrap: 0.9, terminator: 0.2, sizeJitter: 0.4 }));
       // warm backlit rim on the upper-left of the tree
       const rim = [];
-      for (let i = 0; i < 11; i++) { const py = lerp(60, 640, r()); const p = atDist(rightEdge(py) + lerp(55, 95, r()), py, TD - 0.2); rim.push([p.x, p.y, p.z, lerp(0.04, 0.07, r())]); }
+      for (let i = 0; i < 7; i++) { const py = lerp(60, 520, r()); const p = atDist(rightEdge(py) + lerp(55, 95, r()), py, TD - 0.2); rim.push([p.x, p.y, p.z, lerp(0.04, 0.07, r())]); }
       scene.add(makeFoliage({ clumps: rim, density: 1.2, cardSize: 0.12, kind: 'round', seed: 33, texSeed: 7,
-        dark: '#4a2a10', mid: '#8a4a1a', light: '#d0782c', highlight: '#f0a848', wind: 0.025, shell: 0.4, lightWrap: 0.7, terminator: 0.05 }));
+        dark: '#4a4420', mid: '#7a6a2c', light: '#a88a3a', highlight: '#c8a048', wind: 0.025, shell: 0.4, lightWrap: 0.7, terminator: 0.05 }));
       // lower-left broad leaves (very close)
       const lc = [];
       for (let py = 450; py < 780; py += 55) for (let px = -20; px < 70; px += 50) { if (px > 20 && py < 540) continue; const p = atDist(px + (r() - 0.5) * 20, py + (r() - 0.5) * 20, 4.0); lc.push([p.x, p.y, p.z, 0.12]); }

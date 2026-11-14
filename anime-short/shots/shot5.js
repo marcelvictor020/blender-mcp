@@ -153,25 +153,25 @@ export default {
 
     // left building (lantern facade): px 0..270
     surface('lfac', PA, [-40, -60, 300, 760], {
-      res: [512, 1024], shade: '#5e4a48', lit: '#d09060', cover: 0.56, scale: 7.0, seed: 3,
+      res: [512, 1024], shade: '#6e5650', lit: '#d09060', cover: 0.56, scale: 7.0, seed: 3, emit: '#3a1e10',
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#5e4a44'; g.fillRect(0, 0, w, h);
-        for (let y = -60; y < 760; y += 13) fillPoly(g, poly, [[-40, y], [300, y], [300, y + 1.6], [-40, y + 1.6]], 'rgba(25,12,6,0.45)');
+        for (let y = -60; y < 760; y += 13) fillPoly(g, poly, [[-40, y], [300, y], [300, y + 2.2], [-40, y + 2.2]], 'rgba(20,8,4,0.7)'); for (let y = -54; y < 760; y += 13) fillPoly(g, poly, [[-40, y], [300, y], [300, y + 1.2], [-40, y + 1.2]], 'rgba(200,150,110,0.3)');
         for (let i = 0; i < 70; i++) { const x = r() * 340 - 40, y = r() * 820 - 60, l = 40 + r() * 80; fillPoly(g, poly, [[x, y], [x + l, y], [x + l, y + 10], [x, y + 10]], `rgba(${r() < 0.5 ? '140,95,60' : '40,24,16'},0.25)`); }
         fillPoly(g, poly, [[-40, -60], [300, -60], [300, 70], [-40, 42]], '#120c0a');
       },
       maskPaint(g, C, poly) {
-        fillPoly(g, poly, [[-40, 52], [300, 112], [300, 192], [-40, 175]], '#f00');
+        fillPoly(g, poly, [[-40, 52], [300, 112], [300, 192], [-40, 175]], '#ff0');
         fillPoly(g, poly, [[-40, 300], [270, 318], [270, 760], [-40, 760]], '#800');
       },
     });
 
     // corrugated metal wall section px 262..540
     surface('corr', PA, [262, -60, 548, 760], {
-      res: [512, 1024], shade: '#3e3232', lit: '#d8a878', cover: 0.6, leaf: 0.4, scale: 7.0, seed: 7, off: 0.02,
+      res: [512, 1024], shade: '#584644', lit: '#d8a878', cover: 0.6, leaf: 0.4, scale: 7.0, seed: 7, off: 0.02,
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#c4b4a4'; g.fillRect(0, 0, w, h);
-        for (let x = 0; x < w; x += 7) { g.fillStyle = 'rgba(40,30,40,0.45)'; g.fillRect(x, 0, 2.5, h); g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(x + 3.5, 0, 1.2, h); }
+        for (let x = 0; x < w; x += 7) { g.fillStyle = 'rgba(30,20,24,0.65)'; g.fillRect(x, 0, 2.5, h); g.fillStyle = 'rgba(255,235,210,0.4)'; g.fillRect(x + 3.5, 0, 1.4, h); }
         // dark recessed stair / balcony structure
         fillPoly(g, poly, [[262, 150], [430, 125], [430, 330], [262, 352]], '#6a5c6c');
         for (let k = 0; k < 5; k++) { const y = 175 + k * 34; fillPoly(g, poly, [[262, y + 22], [430, y], [430, y + 4], [262, y + 26]], '#8a8ca0'); }
@@ -190,7 +190,7 @@ export default {
 
     // balcony house wall px 540..950 (first floor windows etc.)
     surface('hwall', PA, [532, -60, 960, 760], {
-      res: [768, 1024], shade: '#40343a', lit: '#d8a070', cover: 0.6, leaf: 0.4, scale: 7.0, seed: 11, off: -0.15,
+      res: [768, 1024], shade: '#4e4046', lit: '#d8a070', cover: 0.6, leaf: 0.4, scale: 7.0, seed: 11, off: -0.15,
       paint(g, C, poly, w, h, r) {
         g.fillStyle = '#5a5262'; g.fillRect(0, 0, w, h);
         // vertical boards
@@ -308,7 +308,7 @@ export default {
         for (let i = 0; i < 40; i++) { const x = 930 + r() * 370, y = 380 + r() * 90 - (x - 930) * 0.15; F_([[x, y], [x + 20, y - 3], [x + 20, y + 6], [x, y + 9]], `rgba(${r() < 0.5 ? '90,84,70' : '210,200,180'},0.25)`); }
         F_([[930, 482], [1300, 425], [1300, 800], [930, 800]], '#1c1e24');          // underside
         F_([[930, 478], [1300, 420], [1300, 428], [930, 487]], '#c8c4bc');          // slab edge
-        for (const [x0, y0, x1, y1] of [[945, 517], [960, 553], [1030, 573]].map(([x, y], k) => [x, y, 1195, [483, 523, 560][k]])) F_([[x0, y0], [x1, y1], [x1, y1 + 4], [x0, y0 + 5]], '#6a6e78');
+        for (const [x0, y0, x1, y1] of [[945, 517], [960, 553], [1030, 573]].map(([x, y], k) => [x, y, 1195, [483, 523, 560][k]])) F_([[x0, y0], [x1, y1], [x1, y1 + 4], [x0, y0 + 5]], '#9a9ca4');
         for (let k = 0; k < 4; k++) { const y = 492 + k * 12; F_([[930, y + 30], [1195, y - 8], [1195, y - 6], [930, y + 32]], '#2c2f38'); }
         F_([[1062, 582], [1208, 574], [1208, 622], [1062, 628]], '#b0805a');          // wooden panel
         for (let x = 1066; x < 1208; x += 9) F_([[x, 576], [x + 1.5, 576], [x + 1.5, 628], [x, 628]], '#5a3a28');
@@ -321,7 +321,7 @@ export default {
         fillPoly(g, poly, [[930, 478], [1300, 420], [1300, 428], [930, 487]], '#f0f');
         fillPoly(g, poly, [[1192, 462], [1300, 450], [1300, 695], [1192, 695]], '#f00');
         fillPoly(g, poly, [[1062, 582], [1208, 574], [1208, 622], [1062, 628]], '#f00');
-        fillPoly(g, poly, [[930, 482], [1300, 425], [1300, 800], [930, 800]], 'rgba(0,0,255,0.0)');
+        fillPoly(g, poly, [[930, 482], [1300, 425], [1300, 800], [930, 800]], 'rgb(0,0,90)');
       },
     });
     // railing on top of the overpass
@@ -409,8 +409,8 @@ export default {
       const pts = [[40, 420, 60], [120, 470, 70], [60, 560, 90], [180, 560, 70], [230, 650, 70], [100, 680, 90], [20, 640, 60], [200, 470, 40], [10, 360, 40]];
       for (const [x, y, rr] of pts) bushClumps.push(pxClump(x, y, 3.0, rr));
     }
-    const bush = makeFoliage({ clumps: bushClumps, density: 0.8, cardSize: 0.4, kind: 'broad', seed: 12, texSeed: 2,
-      dark: '#1a3a26', mid: '#2c5e3a', light: '#4c8a50', highlight: '#8cbc70', wind: 0.03, shell: 0.5, lightWrap: 0.3, sizeJitter: 0.5 });
+    const bush = makeFoliage({ clumps: bushClumps, density: 0.55, cardSize: 0.56, kind: 'broad', seed: 12, texSeed: 2,
+      dark: '#173622', mid: '#2e623c', light: '#5a9c58', highlight: '#acd47e', wind: 0.03, shell: 0.6, lightWrap: 0.5, sizeJitter: 0.5 });
     scene.add(bush);
 
     /* ---------------- butterflies + motes ---------------- */

@@ -51,7 +51,7 @@ export default {
       while (blobs.length < 32) blobs.push(new THREE.Vector3(9, 9, 0.0001));
       const mat = new THREE.ShaderMaterial({
         uniforms: { uBlobs: { value: blobs }, uSeed: { value: seed * 1.37 }, uAspect: { value: w / h }, uTime: shared.uTime,
-          cL: { value: col('#f2f4f4') }, cM: { value: col('#cdd6dc') }, cS: { value: col('#a6b9c6') }, cB: { value: col('#91aabb') } },
+          cL: { value: col('#f4f6f6') }, cM: { value: col('#c9d6e0') }, cS: { value: col('#b2c4d1') }, cB: { value: col('#9db3c4') } },
         vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
         fragmentShader: `varying vec2 vUv; uniform vec3 uBlobs[32]; uniform float uSeed, uAspect, uTime; uniform vec3 cL, cM, cS, cB;
           ${core.NOISE_GLSL}
@@ -64,17 +64,17 @@ export default {
           }
           void main(){
             vec2 p = vUv - 0.5; float d = dens(p);
-            float a = smoothstep(0.0, 0.09, d); if (a < 0.01) discard;
+            float a = smoothstep(0.0, 0.16, d) * 0.97; if (a < 0.01) discard;
             float e = 0.01;
             vec2 g = vec2(dens(p + vec2(e, 0.)) - dens(p - vec2(e, 0.)), dens(p + vec2(0., e)) - dens(p - vec2(0., e)));
             vec2 nOut = -normalize(g + 1e-6);
             float up = dot(nOut, normalize(vec2(0.35, 1.0)));
-            float rim = smoothstep(0.65, 0.05, d) * smoothstep(-0.1, 0.55, up);
+            float rim = smoothstep(0.3, 0.04, d) * smoothstep(0.4, 0.85, up) * smoothstep(-0.05, 0.25, p.y);
             float hgt = smoothstep(-0.32, 0.3, p.y);
             float n = fbm(p * vec2(uAspect, 1.) * 6. + uSeed * 2.);
-            vec3 c = mix(cB, cS, smoothstep(0.0, 0.5, hgt + (n - 0.5) * 0.4));
-            c = mix(c, cM, smoothstep(0.35, 0.75, hgt * 0.8 + up * 0.25 + (n - 0.5) * 0.3));
-            c = mix(c, cL, smoothstep(0.32, 0.5, rim + hgt * 0.12));
+            vec3 c = mix(cB, cS, smoothstep(0.0, 0.35, hgt + (n - 0.5) * 0.4));
+            c = mix(c, cM, smoothstep(0.2, 0.6, hgt * 0.7 + up * 0.15 + (n - 0.5) * 0.4));
+            c = mix(c, cL, smoothstep(0.45, 0.62, rim + (n - 0.5) * 0.2));
             gl_FragColor = vec4(c, a);
           }`,
         transparent: true, depthWrite: false,
@@ -88,9 +88,9 @@ export default {
       c.position.copy(scr(cx, cy, D)); return facing(c);
     };
     scene.add(cloudFromPx(150, 20, 830, 440, [
-      [255, 200, 58], [262, 290, 62], [335, 150, 58], [392, 110, 50], [445, 165, 62], [380, 240, 85], [300, 340, 60],
-      [525, 165, 62], [600, 170, 60], [668, 150, 50], [722, 180, 46], [700, 240, 66], [610, 260, 85], [500, 275, 90],
-      [420, 335, 80], [748, 262, 40], [560, 345, 80], [238, 250, 52],
+      [250, 205, 50], [258, 290, 55], [330, 155, 46], [392, 112, 44], [440, 170, 50], [370, 250, 70], [300, 345, 55],
+      [535, 175, 48], [612, 168, 50], [672, 150, 42], [724, 182, 40], [690, 245, 55], [600, 275, 70],
+      [480, 300, 70], [420, 345, 70], [748, 262, 34], [235, 255, 44],
     ], 4));
     scene.add(cloudFromPx(-60, 170, 190, 400, [
       [10, 255, 36], [62, 248, 38], [100, 275, 34], [40, 298, 44], [-10, 240, 36], [112, 318, 30], [62, 322, 40], [140, 300, 26],
@@ -539,7 +539,7 @@ export default {
     scene.add(leafLayer(canopy, { pal: ['#071110', '#1b3a30', '#33694c', '#5b946b'], wind: 0.015 }));
 
     // --- tall broad-leaf weed on the left edge (silhouetted against the sky)
-    const plantPoly = [[-10, 60], [50, 66], [92, 120], [150, 130], [210, 140], [262, 250], [256, 300], [300, 360], [352, 460], [290, 480], [240, 520], [-10, 540]];
+    const plantPoly = [[-10, 60], [50, 66], [92, 120], [150, 130], [210, 140], [262, 250], [256, 300], [300, 360], [345, 450], [280, 465], [200, 470], [-10, 470]];
     const plant = [];
     spray(plant, 201, plantPoly, 44, { d: 2.6, dz: 0.3, size: [54, 76], tone: (x, y, r) => 0.02 + r() * 0.22,
       rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.6, variant: 2 });
@@ -560,7 +560,7 @@ export default {
     scene.add(leafLayer(plant, { pal: ['#12211b', '#264434', '#4a7a50', '#76a070'], wind: 0.03 }));
 
     // --- dense dark bush, lower left (butterflies hover over it)
-    const bushPoly = [[-10, 510], [60, 505], [140, 520], [200, 548], [250, 585], [290, 625], [320, 670], [340, 730], [-10, 730]];
+    const bushPoly = [[-10, 540], [60, 536], [140, 550], [200, 575], [250, 605], [290, 640], [320, 680], [340, 730], [-10, 730]];
     const bush = [];
     spray(bush, 301, bushPoly, 120, { d: 1.15, dz: 0.15, size: [40, 62], tone: (x, y, r) => 0.01 + r() * 0.23,
       rot: (x, y, r) => (r() - 0.5) * 3.0 + Math.PI * (r() < 0.5 ? 1 : 0), variant: (r) => (r() < 0.6 ? 1 : 2) });

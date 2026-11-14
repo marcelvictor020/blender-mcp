@@ -256,22 +256,22 @@ export default {
       g.fillStyle = shade ? '#5a0810' : '#d43a3c'; g.fillRect(0, 0, w, h * 0.018);
       // glass display
       const gx0 = w * 0.045, gx1 = w * 0.86, gy0 = h * 0.03, gy1 = h * 0.6;
-      g.fillStyle = shade ? '#3a2c28' : '#dccfb6'; g.fillRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
+      g.fillStyle = shade ? '#2c3836' : '#d8cbb0'; g.fillRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
       const rows = 6, rh = (gy1 - gy0) / rows;
-      const cols = shade ? ['#9a443a', '#b8964e', '#5a7898', '#b4ac9c', '#6e9060', '#a86a7a', '#ba7a3c', '#8a90a0', '#c8c0b0'] :
+      const cols = shade ? ['#6a4a44', '#7a7050', '#4a6070', '#7a7a74', '#506a54', '#74586a', '#7a6040', '#606a74', '#8a8478'] :
         ['#e4d6bc', '#dfd0b4', '#e2c8b4', '#d8d4c0', '#e6d4b0', '#d4d2d0', '#e2c8a8', '#ebe0cc', '#e0d6c2'];
       for (let k = 0; k < rows; k++) {
         const y0 = gy0 + k * rh;
-        g.fillStyle = shade ? '#2a201e' : '#cfc2a8'; g.fillRect(gx0, y0, gx1 - gx0, rh * 0.1);
+        g.fillStyle = shade ? '#263030' : '#cdbfa4'; g.fillRect(gx0, y0, gx1 - gx0, rh * 0.1);
         const n = 13;
         for (let i = 0; i < n; i++) {
-          const bx = gx0 + (i + 0.5) * (gx1 - gx0) / n, bw = (gx1 - gx0) / n * 0.55, bh = rh * (0.45 + pr() * 0.12);
+          const bx = gx0 + (i + 0.5) * (gx1 - gx0) / n, bw = (gx1 - gx0) / n * 0.5, bh = rh * (0.34 + pr() * 0.08);
           g.fillStyle = cols[Math.floor(pr() * cols.length)];
           const by = y0 + rh * 0.78 - bh;
           g.fillRect(bx - bw / 2, by + bh * 0.25, bw, bh * 0.75);
           g.fillRect(bx - bw * 0.3, by + bh * 0.08, bw * 0.6, bh * 0.2);
-          g.fillStyle = shade ? '#a89888' : '#f4ecdc'; g.fillRect(bx - bw * 0.2, by, bw * 0.4, bh * 0.08);
-          g.fillStyle = shade ? '#9a8a7a' : '#fff8ec'; g.fillRect(bx - bw * 0.45, y0 + rh * 0.82, bw * 0.9, rh * 0.06);
+          g.fillStyle = shade ? '#8a8a80' : '#f4ecdc'; g.fillRect(bx - bw * 0.2, by, bw * 0.4, bh * 0.08);
+          g.fillStyle = shade ? '#5a605c' : '#eee4d2'; g.fillRect(bx - bw * 0.45, y0 + rh * 0.82, bw * 0.9, rh * 0.05);
           g.fillStyle = shade ? '#2a2a2a' : '#d8cfc0'; g.fillRect(bx - bw * 0.18, y0 + rh * 0.9, bw * 0.36, rh * 0.05);
         }
       }
@@ -332,7 +332,7 @@ export default {
           vec3 L = normalize(uSun); vec3 t1 = normalize(cross(L, vec3(0.,1.,0.))); vec3 t2 = cross(L, t1);
           vec2 q = vec2(dot(vW,t1), dot(vW,t2)) * uScale;
           q += vec2(sin(uTime*0.55 + q.y*0.35), cos(uTime*0.42 + q.x*0.3)) * 0.12 + vec2(uTime*0.06, -uTime*0.025);
-          float n = 0.8*fbm(q) + 0.2*vnoise(q*2.7 + vec2(3.1, uTime*0.12)) + 0.08*(vnoise(q*7.0 + uTime*0.3) - 0.5);
+          float n = 0.8*fbm(q) + 0.2*vnoise(q*2.7 + vec2(3.1, uTime*0.12)) + 0.14*(vnoise(q*7.0 + uTime*0.3) - 0.5);
           float gl = step(0.045, vUv.x) * step(vUv.x, 0.86) * step(0.4, vUv.y) * step(vUv.y, 0.97);
           float cv = uCover - uGlassBias * gl * (0.6 + 0.4 * vUv.y);
           float m = smoothstep(cv - 0.015, cv + 0.015, n);
@@ -342,7 +342,7 @@ export default {
     });
     {
       const A0 = MA.clone().setY(GROUND), B0 = MB.clone().setY(GROUND), C0 = MC.clone().setY(GROUND);
-      scene.add(quad(MA, MB, B0, A0, dappleMat(vmLit, vmSh, 0.53, 6.5, 0.06)));
+      scene.add(quad(MA, MB, B0, A0, dappleMat(vmLit, vmSh, 0.53, 6.5, 0.075)));
       scene.add(quad(MB, MC, C0, B0, dappleMat(sdLit, sdSh, 0.74, 6.5)));
       // top lid (dark) + small vent box
       const Dp = MA.clone().add(MC).sub(MB);
@@ -359,7 +359,7 @@ export default {
       g.fillStyle = '#16120f'; g.fillRect(0, 0, w, h);
       for (let x = 0; x < w; x += 64) { g.fillStyle = '#d6b052'; g.beginPath(); g.moveTo(x, h); g.lineTo(x + 20, 0); g.lineTo(x + 52, 0); g.lineTo(x + 32, h); g.fill(); }
     }, { repeat: true });
-    const ribbon = (pts, width) => {
+    const ribbon = (pts, width, tint = '#ffffff') => {
       const curve = new THREE.CatmullRomCurve3(pts); const rep = curve.getLength() / 0.32;
       const n = 80, pos = [], uv = [], idx = [];
       for (let i = 0; i <= n; i++) {
@@ -370,13 +370,13 @@ export default {
         if (i < n) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
       }
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
-      const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: tapeTex, side: THREE.DoubleSide, color: col('#ffffff') }));
+      const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: tapeTex, side: THREE.DoubleSide, color: col(tint) }));
       scene.add(m); return curve;
     };
     const bulbs = [];
     {
       const c1 = ribbon([at(-20, 700, 3.2), at(120, 680, 3.4), at(260, 668, 3.6), at(380, 645, 3.8), at(470, 612, 4.0), at(540, 565, 4.2), at(590, 530, 4.4)], 0.1);
-      const c2 = ribbon([at(980, 492, 4.0), at(1100, 482, 3.6), at(1220, 466, 3.2), at(1320, 455, 3.0)], 0.06);
+      const c2 = ribbon([at(980, 492, 4.0), at(1100, 482, 3.6), at(1220, 466, 3.2), at(1320, 455, 3.0)], 0.05, '#8a7a62');
       for (let i = 0; i < 9; i++) bulbs.push(c1.getPoint((i + 0.4) / 9));
       const bg = new THREE.BufferGeometry().setFromPoints(bulbs);
       const bm = new THREE.PointsMaterial({ size: 0.35, map: softDotTexture(), color: col('#ffe8a0'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
@@ -384,8 +384,8 @@ export default {
       // right tape: a few discrete bright bulbs (core + halo)
       const rb = [0.12, 0.42, 0.72].map(t => c2.getPoint(t));
       const rg = new THREE.BufferGeometry().setFromPoints(rb);
-      scene.add(new THREE.Points(rg, new THREE.PointsMaterial({ size: 0.42, map: softDotTexture(), color: col('#ffd890'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
-      scene.add(new THREE.Points(rg, new THREE.PointsMaterial({ size: 0.12, map: softDotTexture(), color: col('#fffbe8'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
+      scene.add(new THREE.Points(rg, new THREE.PointsMaterial({ size: 0.18, map: softDotTexture(), color: col('#ffd890'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
+      scene.add(new THREE.Points(rg, new THREE.PointsMaterial({ size: 0.06, map: softDotTexture(), color: col('#fffbe8'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
     }
 
     /* ---------------- traffic cone ---------------- */
