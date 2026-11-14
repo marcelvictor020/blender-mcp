@@ -128,7 +128,7 @@ function enhance(mat, u, zones = null, key = 'veh') {
   return mat;
 }
 
-function physical(u, o, zones, key) {
+export function physical(u, o, zones, key) {
   const { color = '#ffffff', ...rest } = o;
   return enhance(new THREE.MeshPhysicalMaterial({ color: new THREE.Color(color), ...rest }), u, zones, key);
 }
@@ -153,7 +153,7 @@ function archNotch(cf, cy, r, yb, n = 16) {
  * Returns geometry in vehicle-local space with rounded edges and creased normals.
  * taper(y) -> width scale (for tumblehome).
  */
-function profileExtrude(pts, width, { bevel = 0.04, segs = 3, taper = null, crease = 38 } = {}) {
+export function profileExtrude(pts, width, { bevel = 0.04, segs = 3, taper = null, crease = 38 } = {}) {
   const shape = new THREE.Shape(pts.map(([f, y]) => V2(f, y)));
   const depth = Math.max(0.002, width - 2 * bevel);
   let g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel, bevelOffset: -bevel, bevelSegments: segs, steps: 1, curveSegments: 4 });
@@ -200,7 +200,7 @@ function slopeQuad(a, b, wa, wb, off = 0.004, inset = 0.0) {
   return g;
 }
 
-function canvasTex(w, h, draw, srgb = true) {
+export function canvasTex(w, h, draw, srgb = true) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   draw(c.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(c);

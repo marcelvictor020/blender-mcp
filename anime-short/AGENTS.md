@@ -69,3 +69,28 @@ export default {
 - Foliage is the hero: layered clumps with dark interior, mid, light rim and yellow-green highlights; silhouettes made of leaf shapes.
 - Subtle life: leaf sway, dappled shadow drift, floating dust motes/pollen, glowing butterflies, gentle bloom.
 - Do not commit or push — the coordinator integrates.
+
+## REALISM PASS (current priority — supersedes the "painted card" approach)
+The user's verdict: houses, props, ground and grass look flat/"mid" — painted cards and unlit shaders. The original is a
+proper 3D render (Blender): real modelled geometry, physically based materials, real cast shadows + contact shadows,
+ambient occlusion in crevices, reflections, textured surfaces with relief. Match THAT, while keeping every shot's framing,
+composition, palette and motion exactly as now (do not move the camera; big shapes stay on the same pixels).
+
+Use `pbr.js` (see header) — the same toolkit that rebuilt the cars in shots 4/5 (`vehicles.js` is the worked example):
+- `const u = pbrUniforms({ sunDir, leafAmt, leafCover, leafScale, leafSharp, sunGain, rimAmt })` — one uniform block per shot.
+- `pbr(u, { color, map, normalMap, roughnessMap, roughness, metalness, envMap, ... })` → MeshPhysicalMaterial with leaf-shadow
+  dapple on direct light (set leafAmt>0 for shade under trees), rim light, grime. Use real UVs + `texSet()`/`heightNormalMap()`
+  for wood planks, roof tiles, concrete, corrugated metal, asphalt, rust, peeling paint, etc.
+- `makeEnvMap(key, {...})` for reflections/ambient; `addSunShadow(scene, {...})` for a shadow-casting sun; set
+  `mesh.castShadow = mesh.receiveShadow = true` on modelled geometry. Ground that must show shadows must be a lit material
+  (pbr) or use a ShadowMaterial catcher.
+- Model real geometry: plank boards (instanced boxes with jitter), kawara roof tiles (instanced curved tiles in rows),
+  eaves + rafters, window frames + glass + interiors, lattice slats, corrugated sheets (sine-displaced planes), pipes,
+  gutters, poles with crossarms/insulators/transformers, vending machines as boxes with recessed glass, buttons, coin slots,
+  product rows behind glass, signs with thickness and bolts, concrete with chamfers and stains, railings as tubes.
+- Grass: denser, wider, curved blades with per-blade normals lit by the sun (+ translucency when back-lit),
+  darker AO toward the roots, colour variation per clump, tips catching light, wind gusts. It must read as lush real grass
+  in the original's painted-anime palette.
+- Painterly foliage (makeFoliage) can stay but may be improved (more leaf-shape detail, depth layering).
+- Budget: ≤ ~8 s/frame at 1280x720 uncontended. Keep `update()` re-asserting shared uniforms.
+- Do NOT touch the vehicles in shots 4 and 5 (they are done) other than to make sure they still sit correctly.
