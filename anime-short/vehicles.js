@@ -33,6 +33,7 @@ export function vehicleUniforms(o = {}) {
     uRimAmt: { value: o.rimAmt ?? 0.0 },
     uRimPow: { value: o.rimPow ?? 4.0 },
     uGrime: { value: o.grime ?? 0.15 },
+    uSunGain: { value: o.sunGain ?? 1.0 },     // multiplies direct (sun) light on the vehicle only
   };
 }
 
@@ -91,11 +92,11 @@ function enhance(mat, u, zones = null, key = 'veh') {
           _wp = instanceMatrix * _wp;
         #endif
         vWPos = (modelMatrix * _wp).xyz;`);
-    const lightsChunk = THREE.ShaderChunk.lights_fragment_begin.replaceAll('RE_Direct( directLight', 'directLight.color *= _leafM; RE_Direct( directLight');
+    const lightsChunk = THREE.ShaderChunk.lights_fragment_begin.replaceAll('RE_Direct( directLight', 'directLight.color *= _leafM * uSunGain; RE_Direct( directLight');
     let fs = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         varying vec3 vWPos; varying vec3 vLocal;
-        uniform vec3 uRimColor; uniform float uRimAmt, uRimPow, uGrime;
+        uniform vec3 uRimColor; uniform float uRimAmt, uRimPow, uGrime, uSunGain;
         ${zu ? 'uniform float uSplit, uLowerRough, uStripeY, uStripeW; uniform vec3 uLower, uStripe;' : ''}
         ${NOISE_GLSL}
         ${LEAF_GLSL}`)
@@ -433,8 +434,6 @@ export function makeKeiTruck(o = {}) {
   for (const s of [-1, 1]) {
     // door window (front edge follows the A-pillar)
     group.add(mesh(sidePanel([[2.42, 1.17], [3.25, 1.17], [3.33, 1.24], [3.205, 1.69], [2.48, 1.69], [2.42, 1.62]], cabX, s, 0.004), glass, false, false));
-    // small rear quarter window
-    group.add(mesh(sidePanel([[2.13, 1.30], [2.32, 1.30], [2.32, 1.66], [2.13, 1.66]], cabX, s, 0.004), glass, false, false));
     // window rubber surround / door shut lines
     for (const f of [2.37, 3.33]) group.add(mesh(sidePanel([[f, 0.46], [f + 0.007, 0.46], [f + 0.007, 1.70], [f, 1.70]], cabX, s, 0.002), trim, false));
     group.add(mesh(sidePanel([[2.37, 1.145], [3.33, 1.145], [3.33, 1.152], [2.37, 1.152]], cabX, s, 0.002), trim, false));
@@ -461,15 +460,15 @@ export function makeKeiTruck(o = {}) {
       m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize()); group.add(m);
     };
     tube([-fx, y0, -f], [-fx, y1, -f]); tube([fx, y0, -f], [fx, y1, -f]);
-    tube([-fx, y1, -f], [fx, y1, -f]); tube([-fx, y0 + 0.05, -f], [fx, y0 + 0.05, -f]); tube([-fx, 1.42, -f], [fx, 1.42, -f], 0.016);
-    for (let i = 1; i < 8; i++) { const x = lerp(-fx, fx, i / 8); tube([x, y0 + 0.05, -f], [x, y1, -f], 0.011); }
+    tube([-fx, y1, -f], [fx, y1, -f]); tube([-fx, y0 + 0.05, -f], [fx, y0 + 0.05, -f]);
+    for (let i = 1; i < 4; i++) { const x = lerp(-fx, fx, i / 4); tube([x, y0 + 0.05, -f], [x, y1, -f], 0.02); }
     // cab back panel window
-    const bw = new THREE.PlaneGeometry(W * 0.62, 0.32); bw.rotateY(Math.PI); bw.translate(0, 1.47, -CAB0 + 0.004);
+    const bw = new THREE.PlaneGeometry(W * 0.84, 0.46); bw.translate(0, 1.45, -CAB0 + 0.006);
     group.add(mesh(bw, glass, false, false));
   }
 
   // ---- bed: deck, drop sides with pressed ribs, tail gate, stake posts ----
-  const DECK = 0.72, GATE_H = 0.31, BW = 1.40;
+  const DECK = 0.70, GATE_H = 0.37, BW = 1.40;
   { const dg = new THREE.BoxGeometry(BW, 0.04, CAB0 - 0.06); dg.translate(0, DECK, -(CAB0 - 0.06) / 2); group.add(mesh(dg, steel)); }
   const gate = (len, alongZ) => {
     const g = new THREE.Group();

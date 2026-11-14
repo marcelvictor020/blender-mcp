@@ -1,3 +1,4 @@
+import { makeKeiTruck, makeEnvMap, makeGroundShadow } from '../vehicles.js';
 // Shot 4 — rural summer field: low eye-level camera in tall grass. Weathered wooden farmhouse (right),
 // white kei truck driving off to the left, utility poles + sagging wires, big dark tree mass, overhanging leaves,
 // tall broad-leaf weed on the left, glowing butterflies over the lower-left bush.
@@ -42,7 +43,7 @@ export default {
     /* ---------------- sky, light ---------------- */
     scene.add(makeSky({ zenith: '#118fb2', mid: '#169ab8', horizon: '#5aa0b4', haze: 0.1 }));
     const SUN = [0.62, 0.55, 0.56];
-    lightRig(scene, { sunDir: SUN, sunColor: '#fff0d8', sunIntensity: 2.2, sky: '#9fd0e8', ground: '#6a8a4a', hemiIntensity: 0.9, ambient: '#3a5070', ambientIntensity: 0.3 });
+    const rig = lightRig(scene, { sunDir: SUN, sunColor: '#fff0d8', sunIntensity: 2.2, sky: '#9fd0e8', ground: '#6a8a4a', hemiIntensity: 0.9, ambient: '#3a5070', ambientIntensity: 0.3 });
     const sunV = new THREE.Vector3(...SUN).normalize();
 
     /* ---------------- clouds ---------------- */
@@ -311,37 +312,28 @@ export default {
     wire([218, 300, 70], [460, 350, 50], 12, 1.0);
     wire([140, 290, 60], [450, 450, 40], 30, 1.0);
 
-    /* ---------------- kei truck ---------------- */
+    /* ---------------- kei truck: modelled, PBR, real cast + contact shadow, faces its direction of travel ---------------- */
     const truck = new THREE.Group();
-    const paintMat = (key, w, h, draw) => new THREE.MeshBasicMaterial({ map: paintTexture(key, w, h, draw) });
-    const plain = (c) => new THREE.MeshBasicMaterial({ color: col(c) });
-    const cabSide = paintMat('s4_cab_side', 256, 200, (g, w, h) => {
-      g.fillStyle = '#dfd3c2'; g.fillRect(0, 0, w, h);
-      g.fillStyle = '#c9bdac'; g.fillRect(0, h * 0.78, w, h * 0.22);
-      // door window (front = left in texture)
-      g.fillStyle = '#342a30'; g.beginPath(); g.moveTo(w * 0.03, h * 0.5); g.quadraticCurveTo(w * 0.04, h * 0.1, w * 0.16, h * 0.07); g.lineTo(w * 0.36, h * 0.07); g.lineTo(w * 0.36, h * 0.5); g.closePath(); g.fill();
-      g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(w * 0.2, h * 0.1, w * 0.1, h * 0.3);
-      // barred rear section
-      g.fillStyle = '#c2b6a6'; g.fillRect(w * 0.44, h * 0.06, w * 0.54, h * 0.36);
-      g.fillStyle = '#4a3c3a';
-      for (let i = 0; i < 4; i++) g.fillRect(w * (0.47 + i * 0.13), h * 0.12, w * 0.1, h * 0.26);
-      g.fillStyle = 'rgba(80,70,60,0.5)'; g.fillRect(w * 0.41, 0, 2, h); g.fillRect(0, h * 0.5, w, 2);
+    const truckEnv = makeEnvMap('s4_env', {
+      zenith: '#3a9ad0', horizon: '#e8eef0', ground: '#9a9a78', sunDir: SUN, sunColor: '#fff2dc', sunPower: 26,
+      clouds: [{ dir: [-0.6, 0.45, -0.7], size: 8, power: 1.6 }, { dir: [-0.2, 0.35, -1], size: 7, power: 1.4 }],
+      blocks: [
+        { dir: [-0.5, -1], w: 34, h: 10, dist: 16, color: '#163128' }, { dir: [0.7, -1], w: 18, h: 7, dist: 12, color: '#4a3a2c' },
+        { dir: [1, 0.2], w: 20, h: 4, dist: 14, color: '#4a5a40' },
+      ],
     });
-    const bedSide = paintMat('s4_bed_side', 256, 64, (g, w, h) => {
-      g.fillStyle = '#e4dacb'; g.fillRect(0, 0, w, h);
-      g.fillStyle = 'rgba(120,105,90,0.35)'; g.fillRect(0, h * 0.5, w, 2); g.fillRect(0, h - 3, w, 3);
-      g.fillStyle = '#f2ebe0'; g.fillRect(0, 0, w, 4);
-    });
-    const cabMats = [plain('#cfc5b6'), plain('#c4baab'), plain('#ece6dc'), plain('#222'), cabSide, plain('#d8cebe')];
-    const cab = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.32, 1.4), cabMats); cab.position.set(-0.95, 1.1, 0); truck.add(cab);
-    const bed = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.46, 1.4), [plain('#eae2d6'), plain('#d2c8b8'), plain('#cbc2b4'), plain('#222'), bedSide, plain('#d8cebe')]);
-    bed.position.set(0.77, 0.87, 0); truck.add(bed);
-    const chassis = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.42, 1.2), plain('#26242a')); chassis.position.set(0, 0.4, 0); truck.add(chassis);
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.14), plain('#c43a2a')); tail.position.set(1.72, 0.55, 0.6); truck.add(tail);
-    for (const [x, z] of [[-1.0, 0.62], [1.0, 0.62], [-1.0, -0.62], [1.0, -0.62]]) {
-      const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.18, 12), plain('#141416')); wh.rotation.x = Math.PI / 2; wh.position.set(x, 0.27, z); truck.add(wh);
-    }
+    const kv = makeKeiTruck({ envMap: truckEnv, envIntensity: 1.25, sunDir: SUN, leafAmt: 0, grime: 0.22, color: '#e4d9c6', sunGain: 2.0 });
+    const truckBody = new THREE.Group(); truckBody.position.z = kv.length / 2;   // centre the vehicle on the path point
+    truckBody.add(kv.group, makeGroundShadow(kv, { contact: 0.75, cast: 0.6, color: '#0c140c' }));
+    truck.add(truckBody);
+    truck.traverse((m) => { if (m.isMesh) m.frustumCulled = false; });
     scene.add(truck);
+    {
+      const sun = rig.sun;
+      sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+      const sc = sun.shadow.camera; sc.left = sc.bottom = -9; sc.right = sc.top = 9; sc.near = 1; sc.far = 200;
+      sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+    }
     const kp = (px, d) => { const p = scr(px, HORIZON, d); p.y = 0; return p; };
     const P0 = kp(865, 14.2), P1 = kp(562, 16.9), P2 = kp(330, 20.6);
     const truckPos = (t) => {
@@ -612,11 +604,15 @@ export default {
         shared.uSunDir.value.copy(sunV);
         shared.uDapple.value = 0;
         shared.uFogMax.value = 0;
-        // the reference keeps the truck almost perfectly side-on while it recedes: face its flank to the camera
-        // (tiny yaw so a sliver of the cab front shows, as in the ref)
+        // the truck faces its direction of travel (away and to the left): the rear gate + cab guard face the camera
         const p = truckPos(t);
+        const d = truckPos(Math.min(t + 0.04, 3.2)).sub(truckPos(Math.max(t - 0.04, 0)));
         truck.position.copy(p);
-        truck.rotation.y = Math.atan2(-(p.x - camera.position.x), -(p.z - camera.position.z)) + 0.12;
+        truck.rotation.y = Math.atan2(-d.x, -d.z);
+        // spin the wheels by distance travelled (tyre radius 0.27 m)
+        let dist = 0; for (let k = 0; k < 24; k++) dist += truckPos(t * (k + 1) / 24).distanceTo(truckPos(t * k / 24));
+        for (const w of kv.wheels) w.rotation.x = -dist / 0.27;
+        rig.sun.target.position.copy(p); rig.sun.position.copy(p).addScaledVector(sunV, 60); rig.sun.target.updateMatrixWorld();
       },
     };
   },
