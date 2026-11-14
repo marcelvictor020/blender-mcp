@@ -193,7 +193,7 @@ export default {
       sheetDark: bm({ ...T.corr, color: '#55525a', roughness: 1, metalness: 0.3, vertexColors: true }),
       metal: bm({ color: '#c9ccd2', roughness: 0.38, metalness: 0.65, envMap: env, envMapIntensity: 0.45, vertexColors: true }),
       darkMetal: bm({ color: '#2e3036', roughness: 0.55, metalness: 0.5, envMap: amb, envMapIntensity: 0.5, vertexColors: true }),
-      glass: bm({ color: '#0a0d16', roughness: 0.04, metalness: 0, envMap: env, envMapIntensity: 0.55, vertexColors: true }),
+      glass: bm({ color: '#080c1c', roughness: 0.04, metalness: 0, envMap: env, envMapIntensity: 0.55, vertexColors: true }),
       interior: new THREE.MeshStandardMaterial({ color: col('#0c0b10'), roughness: 1, vertexColors: true }),
       conc: bm({ ...T.conc, roughness: 1, vertexColors: true }),
       asph: bm({ ...T.asph, roughness: 1 }),
@@ -378,7 +378,7 @@ export default {
       }
       add(FA, wood, M.board); add(FA, woodDark, M.boardDark); add(FA, beam, M.beam); add(FA, slat, M.slat);
       add(FA, trim, M.trim); add(FA, frame, M.frame); add(FA, glass, M.glass, false, true); add(FA, metal, M.metal);
-      add(FA, pierGeo, bm({ ...T.conc, roughness: 1, vertexColors: true }, uo));
+      add(FA, pierGeo, bm({ ...T.conc, color: '#b8ae9e', roughness: 1, vertexColors: true, envMap: amb, envMapIntensity: 0.5 }, uo));
       add(FA, dmetal, M.darkMetal); add(FA, sheet, M.sheetDark); add(FA, conc, M.conc, false, true);
     }
 
