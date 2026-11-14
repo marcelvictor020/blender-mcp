@@ -256,13 +256,13 @@ export default {
       g.fillStyle = shade ? '#5a0810' : '#d43a3c'; g.fillRect(0, 0, w, h * 0.018);
       // glass display
       const gx0 = w * 0.045, gx1 = w * 0.86, gy0 = h * 0.03, gy1 = h * 0.6;
-      g.fillStyle = shade ? '#2c3836' : '#d8cbb0'; g.fillRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
+      g.fillStyle = shade ? '#56707a' : '#d0c2a4'; g.fillRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
       const rows = 6, rh = (gy1 - gy0) / rows;
-      const cols = shade ? ['#6a4a44', '#7a7050', '#4a6070', '#7a7a74', '#506a54', '#74586a', '#7a6040', '#606a74', '#8a8478'] :
+      const cols = shade ? ['#7e6e6a', '#888468', '#647c88', '#8e9290', '#6e8674', '#8a7482', '#8e7e66', '#78848e', '#989488'] :
         ['#e4d6bc', '#dfd0b4', '#e2c8b4', '#d8d4c0', '#e6d4b0', '#d4d2d0', '#e2c8a8', '#ebe0cc', '#e0d6c2'];
       for (let k = 0; k < rows; k++) {
         const y0 = gy0 + k * rh;
-        g.fillStyle = shade ? '#263030' : '#cdbfa4'; g.fillRect(gx0, y0, gx1 - gx0, rh * 0.1);
+        g.fillStyle = shade ? '#4a6068' : '#cdbfa4'; g.fillRect(gx0, y0, gx1 - gx0, rh * 0.1);
         const n = 13;
         for (let i = 0; i < n; i++) {
           const bx = gx0 + (i + 0.5) * (gx1 - gx0) / n, bw = (gx1 - gx0) / n * 0.5, bh = rh * (0.34 + pr() * 0.08);
@@ -271,12 +271,12 @@ export default {
           g.fillRect(bx - bw / 2, by + bh * 0.25, bw, bh * 0.75);
           g.fillRect(bx - bw * 0.3, by + bh * 0.08, bw * 0.6, bh * 0.2);
           g.fillStyle = shade ? '#8a8a80' : '#f4ecdc'; g.fillRect(bx - bw * 0.2, by, bw * 0.4, bh * 0.08);
-          g.fillStyle = shade ? '#5a605c' : '#eee4d2'; g.fillRect(bx - bw * 0.45, y0 + rh * 0.82, bw * 0.9, rh * 0.05);
+          g.fillStyle = shade ? '#76848a' : '#eee4d2'; g.fillRect(bx - bw * 0.45, y0 + rh * 0.82, bw * 0.9, rh * 0.05);
           g.fillStyle = shade ? '#2a2a2a' : '#d8cfc0'; g.fillRect(bx - bw * 0.18, y0 + rh * 0.9, bw * 0.36, rh * 0.05);
         }
       }
       // glass reflection streaks
-      g.fillStyle = shade ? 'rgba(160,140,130,0.10)' : 'rgba(255,255,255,0.35)'; g.beginPath(); g.moveTo(gx0, gy1); g.lineTo(gx0 + w * 0.2, gy0); g.lineTo(gx0 + w * 0.32, gy0); g.lineTo(gx0 + w * 0.12, gy1); g.fill();
+      g.fillStyle = shade ? 'rgba(160,140,130,0.10)' : 'rgba(255,250,235,0.18)'; g.beginPath(); g.moveTo(gx0, gy1); g.lineTo(gx0 + w * 0.2, gy0); g.lineTo(gx0 + w * 0.32, gy0); g.lineTo(gx0 + w * 0.12, gy1); g.fill();
       g.strokeStyle = shade ? '#4a0810' : '#c43030'; g.lineWidth = 5; g.strokeRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
       // ledge under glass
       g.fillStyle = shade ? '#580a10' : '#d84040'; g.fillRect(gx0, gy1, gx1 - gx0, h * 0.012);
