@@ -263,6 +263,13 @@ export default {
     }
 
     const G0 = GROUND + 0.07;                         // street level (the car's ground)
+    function fitShadow(light, pts, margin = 6) {         // ortho shadow frustum tightly around world points
+      const dc = new THREE.OrthographicCamera(); dc.position.copy(light.position); dc.lookAt(light.target.position); dc.updateMatrixWorld(true);
+      const lo = V(1e9, 1e9, 1e9), hi = V(-1e9, -1e9, -1e9);
+      for (const p of pts) { const q = p.clone().applyMatrix4(dc.matrixWorldInverse); lo.min(q); hi.max(q); }
+      const c = light.shadow.camera; c.left = lo.x - 0.5; c.right = hi.x + 0.5; c.bottom = lo.y - 0.5; c.top = hi.y + 0.5;
+      c.near = Math.max(0.5, -hi.z - margin); c.far = -lo.z + margin; c.updateProjectionMatrix();
+    }
 
     /* ---------------- main street facade frame (x = along street, y = up, z = toward street) ---------------- */
     const PA = plane(at(570, 575, 8), dirTo(1320));
@@ -473,25 +480,44 @@ export default {
       const gl = G0 - PO.o.y;                           // street level in this frame
       const cm = bm({ ...T.conc, roughness: 1, vertexColors: true }, uo);
       const cd = bm({ ...T.conc, color: '#6a665e', roughness: 1, vertexColors: true }, uz);
+      const cd = bm({ ...T.conc, color: '#6a665e', roughness: 1, vertexColors: true, envMap: amb, envMapIntensity: 1.1 }, uz);
       const conc = [], dark = [], rail = [], wd = [];
-      conc.push(bx(w, vt - vb, 0.35, um, (vt + vb) / 2, -0.175, { round: 0.04 }));                    // parapet
-      conc.push(bx(w, 0.12, 0.5, um, vt + 0.04, -0.2, { round: 0.04, c: 1.05 }));                     // coping
-      conc.push(bx(w, 0.16, 0.14, um, vb - 0.03, 0.05, { round: 0.03, c: 1.1 }));                     // drip edge
-      dark.push(bx(w, 0.5, 15, um, vb - 0.3, -7.5, { c: 0.6 }));                                        // deck slab
-      for (let z = -1.0; z > -14; z -= 2.1) dark.push(bx(w, 1.0, 0.45, um, vb - 1.0, z, { c: 0.7 }));  // girders
+      conc.push(bx(w, vt - vb, 0.35, um, (vt + vb) / 2, -0.175, { round: 0.05 }));                    // parapet (chamfered)
+      conc.push(bx(w, 0.14, 0.52, um, vt + 0.05, -0.2, { round: 0.05, c: 1.05 }));                    // coping: casts a shadow line
+      conc.push(bx(w, 0.2, 0.17, um, vb - 0.05, 0.07, { round: 0.05, c: 1.1 }));                      // drip edge
+      for (let u = u0 + 3; u < u1; u += 6.5) dark.push(bx(0.05, vt - vb - 0.05, 0.02, u, (vt + vb) / 2, 0.004, { c: 0.25 }));   // expansion joints
+      dark.push(bx(w, 0.45, 15, um, vb - 0.3, -7.5, { c: 0.55 }));                                       // deck slab
+      for (let z = -0.9; z > -14; z -= 2.0) {                                                           // chamfered steel-concrete I-girders
+        dark.push(bx(w, 0.85, 0.2, um, vb - 0.95, z, { round: 0.03, c: 0.7 }));
+        dark.push(bx(w, 0.09, 0.55, um, vb - 1.38, z, { round: 0.03, c: 1.0 }));
+        dark.push(bx(w, 0.07, 0.45, um, vb - 0.55, z, { round: 0.02, c: 0.8 }));
+      }
+      for (let u = u0 + 2; u < u1; u += 5) dark.push(bx(0.25, 0.7, 12, u, vb - 0.9, -7, { round: 0.03, c: 0.6 }));   // cross diaphragms
       dark.push(bx(w, vb - gl + 3, 0.6, um, (vb + gl) / 2 - 1.5, -14.5, { c: 0.32 }));                  // far abutment wall
       const PP = PO.shift(-1.2); const [uP] = PP.uv(1236, 600);
-      dark.push(bx(3.0, 0.9, 13, uP, vb - 1.2, -7.0, { c: 0.75 }));
-      // railing on the parapet: posts + two rails (tubes)
-      const zr = -0.18, rh = (vt - vb) * 0.85;
-      for (let u = u0 + 0.5; u < u1; u += 2.2) rail.push(tube(V(u, vt + 0.1, zr), V(u, vt + rh, zr), 0.035));
-      for (const f of [1, 0.5]) rail.push(tube(V(u0, vt + rh * f, zr), V(u1, vt + rh * f, zr), f > 0.9 ? 0.035 : 0.025, { seg: 10 }));
+      dark.push(bx(3.0, 0.9, 13, uP, vb - 1.75, -7.0, { round: 0.05, c: 0.8 }));                       // pier crosshead
+      // railing on the parapet: posts with base plates + top and mid rails (tubes)
+      const zr = -0.2, rh = (vt - vb) * 0.85;
+      for (let u = u0 + 0.5; u < u1; u += 2.2) {
+        rail.push(tube(V(u, vt + 0.1, zr), V(u, vt + rh, zr), 0.045, { seg: 8 }));
+        rail.push(bx(0.2, 0.03, 0.2, u, vt + 0.13, zr));
+      }
+      for (const f of [1, 0.52]) rail.push(tube(V(u0, vt + rh * f, zr), V(u1, vt + rh * f, zr), f > 0.9 ? 0.05 : 0.032, { seg: 10 }));
       add(FO, conc, cm); add(FO, dark, cd, false, true);
-      add(FO, rail, bm({ color: '#e4e6e6', roughness: 0.35, metalness: 0.5, envMap: env, envMapIntensity: 0.5, vertexColors: true }, uo));
+      add(FO, rail, bm({ color: '#e8eaea', roughness: 0.3, metalness: 0.45, envMap: env, envMapIntensity: 0.6, vertexColors: true }, uo));
       // sunlit wooden fence on the far side, under the deck
       const PW = PO.shift(-6); const [uW0, vW0] = PW.uv(1062, 640), [uW1, vW1] = PW.uv(1208, 572);
       for (let u = Math.min(uW0, uW1); u < Math.max(uW0, uW1); u += 0.16) wd.push(bx(0.14, Math.abs(vW1 - vW0), 0.03, u, (vW0 + vW1) / 2, -6, { uvs: 0.5, uo: R(), c: 1.2 + 0.4 * R() }));
       if (wd.length) add(FO, wd, bm({ ...T.slat, vertexColors: true, roughness: 1 }, uo));
+      // the overpass's own shadow-casting sun (same direction as the car's), fitted to the visible span
+      sunC = new THREE.DirectionalLight(col('#ffe4c4'), SUN_EPS);
+      const tgt = FO.localToWorld(V((uA + uB) / 2, (vt + vb) / 2, 0));
+      sunC.position.copy(tgt).addScaledVector(L, 40); sunC.target.position.copy(tgt);
+      sunC.castShadow = true; sunC.shadow.mapSize.set(2048, 2048); sunC.shadow.bias = -0.0008; sunC.shadow.normalBias = 0.04;
+      scene.add(sunC, sunC.target);
+      const pts = [];
+      for (const u of [Math.min(uA, uB) - 3, Math.max(uA, uB) + 4]) for (const v of [gl, vt + rh + 0.3]) for (const z of [-15, 0.6]) pts.push(FO.localToWorld(V(u, v, z)));
+      fitShadow(sunC, pts, 4);
     }
 
     /* ---------------- the set's sun: shadow-casting, fitted to the facade ---------------- */
