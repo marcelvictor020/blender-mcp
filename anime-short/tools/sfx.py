@@ -267,3 +267,4 @@ def design(bus, place, H, rng, CUTS):
     flaps(a + 0.15, 1.333, 4, db(-24), -0.6, 0.05, 0.0)         # black bird ~0.1 s behind
     crow(a + 0.9, db(-25), -0.4, 2, 560); crow(a + 2.6, db(-31), 0.0, 1, 600)
     egret(a + 1.8, db(-29), -0.2)
+    higurashi(a + 3.4, 2.5, db(-33), 0.5)          # evening cicadas return as the film ends

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Original score for the anime short: a nostalgic 90s-console / J-RPG field theme.
+"""Original score for the anime short: a sad, nostalgic 90s-console / J-RPG theme in E minor.
 
-101.48 BPM so that 12 bars of 4/4 last exactly 28.375 s (the film length). Key: G major.
-Royal-road style progression, FM electric piano, warm strings, Karplus-Strong koto/harp arpeggio,
-celesta sparkle, flute lead, fretless bass, soft brushed drums, lo-fi 90s sampler grit + tape wobble,
+101.48 BPM so that 12 bars of 4/4 last exactly 28.375 s (the film length), played in a half-time feel. Key: E minor.
+i-VI-iv-V progression, soft FM piano, strings, Karplus-Strong koto/harp arpeggio, music box,
+breathy flute lead, long bass tones, brushes, lo-fi 90s sampler grit + tape wobble,
 and scene-synced ambience (cicadas, trains, birds, wind) that changes on the picture cuts.
 
 usage: python3 tools/compose_score.py out/score.wav
@@ -120,14 +120,14 @@ def bell(freq, vel=0.25):
 
 def flute(freq, dur, vel=0.32, prev=None):
     n = int((dur + 0.25) * SR); t = np.arange(n) / SR
-    vib = 0.006 * np.sin(2 * np.pi * 5.4 * t) * np.clip((t - 0.18) / 0.3, 0, 1)
+    vib = 0.008 * np.sin(2 * np.pi * 4.8 * t) * np.clip((t - 0.25) / 0.4, 0, 1)
     f = np.full(n, freq)
     if prev:  # short portamento from the previous note
         g = np.clip(t / 0.06, 0, 1); f = prev + (freq - prev) * (1 - (1 - g) ** 2)
     ph = 2 * np.pi * np.cumsum(f * (1 + vib)) / SR
     tone = np.sin(ph) + 0.22 * np.sin(2 * ph) + 0.07 * np.sin(3 * ph)
     breath = bp(rng.standard_normal(n), min(freq * 1.5, 8000), min(freq * 4, 15000), 2) * 0.12
-    e = np.clip(t / 0.045, 0, 1) * np.clip(1 - (t - dur) / 0.18, 0, 1)
+    e = np.clip(t / 0.08, 0, 1) * np.clip(1 - (t - dur) / 0.25, 0, 1)
     e *= 0.9 + 0.1 * np.sin(2 * np.pi * 0.7 * t)
     return (tone + breath * (0.6 + 0.4 * np.exp(-t * 8))) * e * vel
 
@@ -176,106 +176,90 @@ def swell(dur, vel=0.25):
 
 
 # ------------------------------------------------------------------ harmony
-CH = {  # pad / EP voicings, bass root (MIDI)
-    'Cmaj9': ([64, 67, 71, 74], 36), 'D69': ([66, 69, 71, 76], 38), 'Bm7': ([66, 69, 71, 74], 35),
-    'Em9': ([67, 71, 74, 78], 40), 'E7': ([68, 71, 74, 76], 40), 'Am9': ([67, 71, 72, 76], 33),
-    'D7': ([66, 69, 72, 76], 38), 'Gmaj9': ([71, 74, 78, 81], 31),
+CH = {  # pad / piano voicings, bass root (MIDI) — E minor, bittersweet
+    'Em9': ([67, 71, 74, 78], 40), 'Cmaj9': ([64, 67, 71, 74], 36), 'Am9': ([67, 71, 72, 76], 33),
+    'B7sus4': ([64, 66, 69, 71], 35), 'B7': ([63, 66, 69, 71], 35), 'D/F#': ([66, 69, 74, 76], 42),
+    'Bm7': ([66, 69, 71, 74], 35), 'Am7': ([67, 69, 72, 76], 33),
 }
-# (bar, beat offset, chord, beats)
-PROG = [(0, 0, 'Cmaj9', 4), (1, 0, 'D69', 4), (2, 0, 'Bm7', 4), (3, 0, 'Em9', 4),
-        (4, 0, 'Cmaj9', 4), (5, 0, 'D69', 4), (6, 0, 'Bm7', 4), (7, 0, 'Em9', 2), (7, 2, 'E7', 2),
-        (8, 0, 'Am9', 4), (9, 0, 'Bm7', 4), (10, 0, 'Cmaj9', 2), (10, 2, 'D7', 2), (11, 0, 'Gmaj9', 4)]
+# (bar, beat offset, chord, beats)   i - VI - iv - V   |   i - VI - iv - III/5   |   VI - v i - iv V - i
+PROG = [(0, 0, 'Em9', 4), (1, 0, 'Cmaj9', 4), (2, 0, 'Am9', 4), (3, 0, 'B7sus4', 2), (3, 2, 'B7', 2),
+        (4, 0, 'Em9', 4), (5, 0, 'Cmaj9', 4), (6, 0, 'Am9', 4), (7, 0, 'D/F#', 4),
+        (8, 0, 'Cmaj9', 4), (9, 0, 'Bm7', 2), (9, 2, 'Em9', 2), (10, 0, 'Am7', 2), (10, 2, 'B7', 2), (11, 0, 'Em9', 4)]
 
-# melody: (bar, 8th-step, midi, length in 8ths)
-MEL = [(3, 6, 71, 1), (3, 7, 74, 1),
-       (4, 0, 76, 3), (4, 3, 74, 1), (4, 4, 76, 2), (4, 6, 79, 2),
-       (5, 0, 78, 3), (5, 3, 76, 1), (5, 4, 74, 2), (5, 6, 69, 1), (5, 7, 71, 1),
-       (6, 0, 74, 3), (6, 3, 76, 1), (6, 4, 78, 3), (6, 7, 76, 1),
-       (7, 0, 76, 4), (7, 4, 74, 1), (7, 5, 71, 1), (7, 6, 68, 2),
-       (8, 0, 69, 2), (8, 2, 72, 1), (8, 3, 76, 3), (8, 6, 74, 1), (8, 7, 72, 1),
-       (9, 0, 71, 2), (9, 2, 74, 1), (9, 3, 78, 3), (9, 6, 81, 2),
-       (10, 0, 79, 3), (10, 3, 78, 1), (10, 4, 76, 1), (10, 5, 78, 1), (10, 6, 81, 2),
-       (11, 0, 79, 8)]
+# melody: (bar, 8th-step, midi, length in 8ths) — long, sighing notes (half-time feel)
+MEL = [(3, 6, 66, 1), (3, 7, 67, 1),
+       (4, 0, 71, 3), (4, 3, 69, 1), (4, 4, 71, 2), (4, 6, 76, 2),
+       (5, 0, 74, 3), (5, 3, 72, 1), (5, 4, 71, 4),
+       (6, 0, 72, 3), (6, 3, 71, 1), (6, 4, 69, 2), (6, 6, 76, 2),
+       (7, 0, 78, 4), (7, 4, 76, 2), (7, 6, 74, 2),
+       (8, 0, 76, 3), (8, 3, 74, 1), (8, 4, 76, 2), (8, 6, 79, 2),
+       (9, 0, 78, 3), (9, 3, 76, 1), (9, 4, 74, 2), (9, 6, 71, 2),
+       (10, 0, 72, 3), (10, 3, 71, 1), (10, 4, 69, 2), (10, 6, 75, 2),
+       (11, 0, 76, 8)]
 
 T = lambda bar, beat=0.0: bar * BAR + beat * BEAT
 
 
 def render():
     b = {k: buf() for k in ['pad', 'ep', 'pluck', 'bell', 'lead', 'bass', 'drums', 'amb']}
-    sends = {'pad': 0.35, 'ep': 0.25, 'pluck': 0.3, 'bell': 0.55, 'lead': 0.32, 'bass': 0.0, 'drums': 0.12}
+    sends = {'pad': 0.42, 'ep': 0.38, 'pluck': 0.4, 'bell': 0.65, 'lead': 0.42, 'bass': 0.0, 'drums': 0.2}
 
     for bar, beat, name, beats in PROG:
         voic, root = CH[name]
         t0, dur = T(bar, beat), beats * BEAT
-        pv = 0.11 if bar < 2 else (0.15 if bar < 8 else 0.18)
-        place(b['pad'], pad([mtof(m) for m in voic], dur + 0.05, pv * 1.7), t0)
-        if bar >= 8:  # strings an octave up for the lift
-            place(b['pad'], pad([mtof(m + 12) for m in voic[1:]], dur + 0.05, 0.07), t0)
-        # EP comp: syncopated stabs
-        hits = [(0, 2, 0.5)] if bar < 2 else [(0, 2, 0.55), (3, 1, 0.35), (5, 2, 0.42)]
+        pv = 0.14 if bar < 4 else (0.17 if bar < 8 else 0.21)
+        place(b['pad'], pad([mtof(m) for m in voic], dur + 0.05, pv * 1.9), t0)
+        if bar >= 8:  # strings an octave up for the swell
+            place(b['pad'], pad([mtof(m + 12) for m in voic[1:]], dur + 0.05, 0.09), t0)
+        # soft piano: whole/half-bar chords, gently rolled
+        hits = [(0, 8, 0.42)] if bar == 0 else ([(0, 4, 0.42), (4, 4, 0.28)] if beats == 4 else [(0, 4, 0.38)])
         for st, ln, v in hits:
             if st * 0.5 < beats:
-                for m in voic[:3]:
-                    place(b['ep'], ep(mtof(m), ln * STEP8 * 0.95, v * 0.33), t0 + st * STEP8, gain=1.0)
-        # koto/harp arpeggio from bar 1
-        if bar >= 1 and bar < 11:
-            tones = sorted(voic) + [voic[0] + 12, voic[1] + 12]
-            pat = [0, 1, 2, 3, 4, 3, 2, 1]
-            for st in range(int(beats * 2)):
-                m = tones[pat[(st + int(beat * 2)) % 8] % len(tones)]
-                v = 0.42 if st % 2 == 0 else 0.3
-                place(b['pluck'], pluck(mtof(m), STEP8 * 1.6, v * 1.35, 0.55 if st % 4 else 0.7), t0 + st * STEP8 + rng.normal(0, 0.004), pan=-0.3)
-        # bass from bar 2
+                for k, m in enumerate(voic[:3]):
+                    place(b['ep'], ep(mtof(m), min(ln * STEP8, dur) * 0.98, v * 0.3), t0 + st * STEP8 + k * 0.03)
+        # harp: slow quarter-note arpeggio, bars 2..10
         if 2 <= bar < 11:
-            pat = [(0, 3, root), (3, 1, root + 12), (4, 2, root + 7), (6, 2, root)] if beats == 4 else [(0, 3, root), (3, 1, root + 7)]
-            for st, ln, m in pat:
-                place(b['bass'], bass(mtof(m + 12), ln * STEP8 * 0.92, 0.26), t0 + st * STEP8)
-        if bar == 11:  # final chord: deep root + arpeggiated harp roll
-            place(b['bass'], bass(mtof(root + 12), 3.4, 0.3), t0)
-            place(b['bass'], bass(mtof(root), 3.4, 0.16), t0)
+            tones = sorted(voic) + [voic[0] + 12, voic[1] + 12]
+            pat = [0, 2, 1, 3, 4, 3, 2, 1]
+            for st in range(0, int(beats * 2), 2):
+                m = tones[pat[((st + int(beat * 2)) // 2) % 8] % len(tones)]
+                place(b['pluck'], pluck(mtof(m), STEP8 * 3, 0.5 if st % 4 == 0 else 0.36, 0.45), t0 + st * STEP8 + rng.normal(0, 0.006), pan=-0.3)
+        # bass: long tones from bar 2
+        if 2 <= bar < 11:
+            place(b['bass'], bass(mtof(root + 12), dur * 0.97, 0.2), t0)
+        if bar == 11:  # final chord: deep root + slow harp roll down to silence
+            place(b['bass'], bass(mtof(root + 12), 3.6, 0.22), t0)
             for i, m in enumerate(sorted(voic) + [voic[0] + 12, voic[2] + 12]):
-                place(b['pluck'], pluck(mtof(m - 12 if i < 2 else m), 2.6, 0.45, 0.5), t0 + i * 0.07, pan=-0.2 + 0.1 * i)
+                place(b['pluck'], pluck(mtof(m - 12 if i < 2 else m), 3.0, 0.42, 0.42), t0 + i * 0.11, pan=-0.25 + 0.1 * i)
 
-    # celesta sparkle: intro + doubling the melody softly + final cascade
-    for bar, notes in [(0, [79, 83, 86, 88]), (1, [88, 83, 81, 78]), (2, [86, 83]), (3, [83, 86])]:
+    # music box: falling sighs in the intro, faint doubling at the climax, slow cascade at the end
+    for bar, notes in [(0, [83, 79, 78, 76]), (1, [86, 83, 79, 76]), (2, [84, 83, 81, 76]), (3, [78, 75])]:
         for i, m in enumerate(notes):
-            place(b['bell'], bell(mtof(m), 0.2), T(bar) + (4 + i) * STEP8, pan=0.35)
-    for bar, st, m, ln in MEL[2:-1]:
-        place(b['bell'], bell(mtof(m + 12), 0.06), T(bar) + st * STEP8, pan=0.4)
-    for i, m in enumerate([93, 90, 86, 83, 81, 79, 78, 74]):
-        place(b['bell'], bell(mtof(m), 0.17 - i * 0.012), T(11) + i * STEP8 * 0.75, pan=0.45 - i * 0.08)
+            place(b['bell'], bell(mtof(m), 0.19 - 0.02 * i), T(bar) + (4 + i) * STEP8, pan=0.35)
+    for bar, st, m, ln in MEL:
+        if 8 <= bar <= 10:
+            place(b['bell'], bell(mtof(m + 12), 0.05), T(bar) + st * STEP8, pan=0.4)
+    for i, m in enumerate([88, 83, 79, 78, 76, 71, 67, 66]):
+        place(b['bell'], bell(mtof(m), 0.15 - i * 0.011), T(11) + 0.4 + i * STEP8 * 1.1, pan=0.45 - i * 0.08)
 
-    # flute lead
+    # flute lead (breathy, slow vibrato feel comes from the long notes)
     prev = None
     for bar, st, m, ln in MEL:
-        dur = ln * STEP8 * (0.98 if ln > 1 else 0.9) + (1.6 if bar == 11 else 0)
-        v = 0.25 if bar < 8 else 0.29
+        dur = ln * STEP8 * (0.99 if ln > 1 else 0.92) + (1.9 if bar == 11 else 0)
+        v = 0.23 if bar < 8 else 0.27
         place(b['lead'], flute(mtof(m), dur, v, prev), T(bar) + st * STEP8, pan=0.05)
         prev = mtof(m)
 
-    # drums
-    swing = 0.035 * BEAT
-    for bar in range(2, 12):
-        for st in range(16):
-            t = T(bar) + st * STEP16 + (swing if st % 4 == 2 else 0)
-            full = bar >= 4 and bar < 11
-            if bar == 11:
-                if st == 0: place(b['drums'], kick(0.45), t); place(b['drums'], crash(0.32, 3.5), t, pan=0.2)
-                continue
-            if st in (0,) or (full and st in (6, 10)) or (bar == 3 and st == 10):
-                place(b['drums'], kick(0.42 if st == 0 else 0.3), t)
-            if (full or bar == 3) and st in (4, 12) and not (bar == 3 and st == 4):
-                place(b['drums'], snare(0.38), t, pan=0.05)
-            if (full or (bar == 3 and st >= 8)) and st % 2 == 0:
-                place(b['drums'], hat(0.16 if st % 4 == 0 else 0.11, open_=(st == 14 and bar % 2 == 1)), t, pan=0.25)
-            if st % 1 == 0 and (bar >= 2):
-                place(b['drums'], shaker(0.07 if st % 2 else 0.05), t, pan=-0.35)
-        if bar in (3, 7):
-            for st in (13, 14, 15): place(b['drums'], snare(0.18 + 0.06 * (st - 13)), T(bar) + st * STEP16, pan=0.1)
-        if bar == 10:
-            for st in range(8, 16): place(b['drums'], snare(0.1 + 0.035 * (st - 8)), T(bar) + st * STEP16, pan=0.1)
-            place(b['drums'], swell(BAR * 0.5, 0.2), T(10, 2), pan=0.0)
-        if bar == 8: place(b['drums'], crash(0.22, 2.6), T(8), pan=-0.2)
+    # brushes only: half-time heartbeat (kick on 1, soft rim on 3), quiet shaker; bars 4..10
+    for bar in range(4, 11):
+        place(b['drums'], kick(0.26), T(bar))
+        place(b['drums'], snare(0.16), T(bar, 2), pan=0.05)
+        for st in range(0, 16, 2):
+            place(b['drums'], shaker(0.035 if st % 4 else 0.045), T(bar) + st * STEP16, pan=-0.35)
+        if bar == 7: place(b['drums'], swell(BAR * 0.5, 0.12), T(7, 2))
+        if bar == 10: place(b['drums'], swell(BAR * 0.5, 0.14), T(10, 2))
+    place(b['drums'], crash(0.12, 3.0), T(8), pan=-0.2)
+    place(b['drums'], crash(0.1, 3.6), T(11), pan=0.2)
 
     # ------------------------------------------------------------ sound design (cut-synced, see tools/sfx.py)
     import os, importlib.util
