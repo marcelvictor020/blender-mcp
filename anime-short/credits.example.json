@@ -1,0 +1,8 @@
+{
+  "1": { "role": "CREATED BY", "name": "YOUR NAME" },
+  "2": { "role": "CREATIVE DIRECTOR", "name": "YOUR NAME" },
+  "3": { "role": "3D ANIMATION", "name": "YOUR NAME" },
+  "5": { "role": "EDITING", "name": "YOUR NAME" },
+  "7": { "role": "ORIGINAL SCORE", "name": "YOUR NAME" },
+  "8": { "role": "A FILM BY", "name": "YOUR NAME", "cx": 0.5, "ry": 0.465, "ny": 0.525, "from": 3.9, "to": 6.125, "fade": 0.6 }
+}

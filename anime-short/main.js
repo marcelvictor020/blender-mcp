@@ -24,6 +24,10 @@ const credit = document.getElementById('credit');
 const roleEl = credit.querySelector('.role'), nameEl = credit.querySelector('.name');
 nameEl.textContent = NAME;
 
+// Optional per-shot credit overrides: credits.json = { "<shot number>": { role, name, cx, ry, ny, from, to, fade } }
+let CREDITS = {};
+try { const r = await fetch('credits.json', { cache: 'no-store' }); if (r.ok) CREDITS = await r.json(); } catch (e) { /* none */ }
+
 const mods = await Promise.all(SHOTS.map(s => import('./shots/' + s.file).then(m => m.default).catch(e => { console.error(s.file, e); return null; })));
 const built = new Map();
 function getShot(i) {
@@ -45,7 +49,11 @@ function locate(t) {
   return { i: 0, lt: t };
 }
 
-let lastShot = -1;
+let lastShot = -1, curCredit = null;
+function creditFor(i) {
+  const c = { ...(mods[i]?.credit || {}), ...(CREDITS[String(i + 1)] || {}) };
+  return (c.role || c.name) ? c : null;
+}
 function renderAt(t) {
   const { i, lt } = locate(t);
   const shot = getShot(i);
@@ -53,14 +61,24 @@ function renderAt(t) {
   if (!shot) { engine.renderer.setClearColor(0x000000); engine.renderer.clear(); return; }
   if (i !== lastShot) {
     engine.applyPost(m.post);
-    if (m.credit) {
+    curCredit = creditFor(i);
+    if (curCredit) {
+      const c = curCredit;
       credit.style.display = 'block';
-      roleEl.textContent = m.credit.role;
-      credit.style.left = (m.credit.cx * 100) + '%';
-      roleEl.style.top = (m.credit.ry * 100) + '%';
-      nameEl.style.top = (m.credit.ny * 100) + '%';
+      roleEl.textContent = c.role || '';
+      nameEl.textContent = (q.has('name') ? NAME : (c.name || NAME));
+      credit.style.left = (c.cx * 100) + '%';
+      roleEl.style.top = (c.ry * 100) + '%';
+      nameEl.style.top = (c.ny * 100) + '%';
     } else credit.style.display = 'none';
     lastShot = i;
+  }
+  if (curCredit) {
+    const c = curCredit, f = c.fade ?? 0.5;
+    let o = 1;
+    if (c.from != null) o = Math.min(1, Math.max(0, (lt - c.from) / f));
+    if (c.to != null) o *= Math.min(1, Math.max(0, (c.to - lt) / f));
+    credit.style.opacity = String(o);
   }
   shared.uTime.value = lt + 10;
   shot.update?.(lt, core);
@@ -94,8 +112,27 @@ if (RENDER) {
   const NAMES = ['Viaduct at golden hour', 'Vending machine under the overpass', 'Flower garden', 'Field and farmhouse',
     'Old shop-house', 'Vending machine row', 'Inside the car', 'Meadow from above'];
   const fmt = (x) => Math.floor(x / 60) + ':' + String(Math.floor(x % 60)).padStart(2, '0');
+  const audio = document.getElementById('music'), soundBtn = document.getElementById('sound');
+  let soundOn = false;
+  const curT = () => paused ? pausedAt : ((performance.now() - t0) / 1000) % dur;
+  if (audio && soundBtn && ONLY < 0) {
+    soundBtn.hidden = false;
+    soundBtn.onclick = () => {
+      soundOn = !soundOn;
+      soundBtn.setAttribute('aria-pressed', String(soundOn));
+      soundBtn.textContent = soundOn ? 'Sound on' : 'Sound off';
+      if (soundOn) { audio.currentTime = curT(); if (!paused) audio.play().catch(() => {}); } else audio.pause();
+    };
+    const oldPlay = btn.onclick; btn.onclick = () => { oldPlay(); if (soundOn) { if (paused) audio.pause(); else { audio.currentTime = curT(); audio.play().catch(() => {}); } } };
+    const oldSeek = bar.onclick; bar.onclick = (e) => { oldSeek(e); if (soundOn) audio.currentTime = curT(); };
+  }
   const loop = () => {
-    const t = paused ? pausedAt : ((performance.now() - t0) / 1000) % dur;
+    let t = curT();
+    if (audio && soundOn && !paused && !audio.paused) {   // audio is the master clock while sound is on
+      const at = audio.currentTime % dur;
+      if (Math.abs(at - t) > 0.06 && Math.abs(at - t) < dur - 0.2) setT(at);
+      t = at;
+    }
     renderAt(t); fill.style.width = (t / dur * 100) + '%';
     if (timeEl) timeEl.textContent = fmt(t) + ' / ' + fmt(dur);
     if (shotEl) { const i = locate(t).i; shotEl.textContent = 'Shot ' + (i + 1) + ' · ' + NAMES[i]; }

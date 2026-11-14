@@ -2,3 +2,6 @@ tools/node_modules/
 out/
 ref/
 *.mp4
+credits.json
+*.wav
+credits_preview.jpg
