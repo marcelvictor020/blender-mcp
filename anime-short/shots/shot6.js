@@ -407,8 +407,8 @@ export default {
 
     /* ---------------- fence: galvanised pipe posts, rails, X braces, chain-link mesh ---------------- */
     const fenceD = 12.2;
-    const steel = M(UF, { color: '#aab6c4', roughness: 0.5, metalness: 0.55 }, 's6steel');
-    const steelDark = M(UF, { color: '#8e9aaa', roughness: 0.55, metalness: 0.5 }, 's6steel');
+    const steel = M(UF, { color: '#9fb4d2', roughness: 0.45, metalness: 0.35 }, 's6steel');
+    const steelDark = M(UF, { color: '#8c9ec0', roughness: 0.5, metalness: 0.35 }, 's6steel');
     const fenceBase = 616;
     for (const px of [425, 828, 1250]) {
       const a = P(px, 296, fenceD), b = P(px, fenceBase + 4, fenceD); b.y = -0.05;
@@ -771,7 +771,7 @@ export default {
       return mergeGeometries(parts);
     };
     const lightWood = woodT(97, '#dcbb84', false);
-    const lwM = M(UM, { color: '#ffffff', map: lightWood.map, normalMap: lightWood.normalMap, roughnessMap: lightWood.roughnessMap, envMapIntensity: 0.5 }, 's6wood');
+    const lwM = M(UF, { color: '#ffffff', map: lightWood.map, normalMap: lightWood.normalMap, roughnessMap: lightWood.roughnessMap, envMapIntensity: 0.9 }, 's6wood');
     const woodCrate = (W, H, Dp) => {
       const parts = []; const pl = (w, h, d, x, y, z) => { const b = new THREE.BoxGeometry(w, h, d).translate(x, y, z);
         const p = b.attributes.position, uv = b.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + p.getZ(i)) / 0.5, p.getY(i) / 0.5 + 0.02); parts.push(b); };
@@ -793,8 +793,8 @@ export default {
     propAt(woodCrate(S(84, palD), wH, 0.38), lwM, 868, 952, 624, palD, 0.38, -0.03);
     contact(P(870, 624, palD).x, -palD - 0.19, S(170, palD), 0.55, 0.7);
     const crD = palD + 0.05;
-    const gCr = M(UM, { color: '#2a8a48', roughness: 0.5, clearcoat: 0.2, envMapIntensity: 0.6 }, 's6crate');
-    const rCr = M(UM, { color: '#cc2a38', roughness: 0.5, clearcoat: 0.2, envMapIntensity: 0.6 }, 's6crate');
+    const gCr = M(UF, { color: '#2a8a48', roughness: 0.5, clearcoat: 0.2, envMapIntensity: 0.6 }, 's6crate');
+    const rCr = M(UF, { color: '#cc2a38', roughness: 0.5, clearcoat: 0.2, envMapIntensity: 0.6 }, 's6crate');
     const cy = wH;
     { const m = add(slatCrate(S(70, crD), S(53, crD), 0.3), gCr); m.position.set(P(838, 0, crD).x, cy, -crD - 0.16); m.rotation.y = -0.04; }
     { const m = add(slatCrate(S(57, crD), S(53, crD), 0.3), rCr); m.position.set(P(908, 0, crD).x, cy, -crD - 0.16); m.rotation.y = 0.05; }
@@ -965,14 +965,14 @@ export default {
       const mid = smooth01(140, 320, x) * smooth01(320, 140, y);
       const patch = vn(x / 55, y / 55);
       const gapRim = tlGaps.some(([gx, gy, gr]) => Math.hypot(x - gx, y - gy) < gr + 26) ? 0.18 : 0;
-      return Math.min(1, Math.max(0, 0.06 + 0.52 * Math.max(edge, top * 0.6, mid * 0.42) + gapRim * 0.7 + (patch - 0.5) * 0.36 + (r() - 0.5) * 0.18));
+      return Math.min(1, Math.max(0, 0.12 + 0.5 * Math.max(edge, top * 0.6, mid * 0.42) + gapRim * 0.7 + (patch - 0.5) * 0.5 + (r() - 0.5) * 0.22));
     };
     leafSpray(sprayPoly(tlPoly, 230, 101, (x, y, r) => { const sz = lerp(60, 100, r());
       return (x + 0.85 * y > 480 || inGap(x, y, sz * 0.45)) ? null : { size: sz, rot: r() * 6.28, cell: 2, tone: tlTone(x, y, r) * 0.7 }; }), 7.2,
       ['#06120c', '#0c1e15', '#183a28', '#356a40'], 0.6);
     leafSpray(sprayPoly(tlPoly, 2600, 103, (x, y, r) => { const sz = lerp(18, 32, r());
       return ((x + 0.85 * y > 470 && r() < 0.3) || inGap(x, y, sz * 0.3)) ? null : { size: sz, rot: r() * 6.28, cell: r() < 0.6 ? 0 : 1, tone: tlTone(x, y, r) }; }), 7.0,
-      ['#08150e', '#122c1e', '#28583e', '#5a9658'], 1.0);
+      ['#0a170f', '#132a1d', '#265438', '#5a9658'], 1.0);
     // top-right: dark core at right, bright lime leaves toward the left / bottom
     const trPoly = [[690, -40], [1320, -40], [1320, 215], [1230, 225], [1160, 205], [1090, 180], [1040, 205], [990, 255], [945, 280], [915, 240], [902, 170], [900, 90], [870, 75], [800, 90], [720, 85], [690, 50]];
     const trTone = (x, y, r) => {

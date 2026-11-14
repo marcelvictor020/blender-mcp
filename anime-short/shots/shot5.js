@@ -66,7 +66,7 @@ export default {
     // set material: pbr() + per-light gain so the set is lit only by its own shadow-casting sun (+ hemisphere fill)
     // far set (overpass) sits outside the canopy shade: lit by the car's sun L instead, bigger softer leaf shadows
     const uo = pbrUniforms({ sunDir: [L.x, L.y, L.z], leafAmt: 0.55, leafCover: 0.5, leafScale: 2.6, leafSharp: 0.06, leafSeed: 2.1, grime: 0, rimAmt: 0 });
-    const O_INT = 4.6; let sunC = null, PO = null, FO = null;
+    const O_INT = 6.0; let sunC = null, PO = null, FO = null;
     uo.uDirGain = { value: [0, 0, 0, 0] };
     const uz = pbrUniforms({ leafAmt: 0, grime: 0 }); uz.uDirGain = { value: [0, 0, 0, 0] };   // parts in deep shadow (no direct sun)
     const LEAF_AA = /* glsl */`
@@ -99,7 +99,8 @@ export default {
         float l2 = leafCellsAA(q * 0.57 + vec2(3.1, 7.7), fw * 0.57);
         vec2 qw = q * 0.42 + vec2(fbm(q * 0.2 + 3.0), fbm(q * 0.2 + 8.0)) * 1.6;
         float tw = 1.0 - smoothstep(0.01 + fw * 0.3, 0.07 + fw * 0.4, abs(vnoise(qw) - 0.5));
-        float lit = open * (1.0 - 0.9 * l1) * (1.0 - 0.55 * l2) * (1.0 - 0.8 * tw);
+        float l3 = leafCellsAA(q * 1.85 + vec2(5.3, 1.9), fw * 1.85);
+        float lit = open * (1.0 - 0.9 * l1) * (1.0 - 0.55 * l2) * (1.0 - 0.8 * tw) * (1.0 - 0.75 * l3);
         float sh = uLeafSharp + 0.05 + fw * 0.35;                      // softer, anti-aliased penumbra
         float m = smoothstep(0.5 - sh, 0.5 + sh, lit);
         m = mix(m, open * 0.4, smoothstep(0.45, 1.1, fw));            // sub-pixel leaves -> their average
@@ -191,7 +192,7 @@ export default {
       corr: bm({ ...T.corr, color: '#d8c8c8', roughness: 1, metalness: 0.15, envMap: amb, envMapIntensity: 0.6, side: THREE.DoubleSide }),
       sheetDark: bm({ ...T.corr, color: '#55525a', roughness: 1, metalness: 0.3, vertexColors: true }),
       metal: bm({ color: '#c9ccd2', roughness: 0.38, metalness: 0.65, envMap: env, envMapIntensity: 0.45, vertexColors: true }),
-      darkMetal: bm({ color: '#3a3c44', roughness: 0.5, metalness: 0.5, envMap: env, envMapIntensity: 0.3, vertexColors: true }),
+      darkMetal: bm({ color: '#2e3036', roughness: 0.55, metalness: 0.5, envMap: amb, envMapIntensity: 0.5, vertexColors: true }),
       glass: bm({ color: '#0a0d16', roughness: 0.04, metalness: 0, envMap: env, envMapIntensity: 0.55, vertexColors: true }),
       interior: new THREE.MeshStandardMaterial({ color: col('#0c0b10'), roughness: 1, vertexColors: true }),
       conc: bm({ ...T.conc, roughness: 1, vertexColors: true }),
@@ -390,10 +391,10 @@ export default {
     /* ---------------- paper lantern (ribbed chōchin, translucent glow, kanji) ---------------- */
     {
       const lanTex = canvasTex(512, 512, (g, w, h) => {
-        g.fillStyle = '#f1ebe2'; g.fillRect(0, 0, w, h);
+        g.fillStyle = '#f6f3ee'; g.fillRect(0, 0, w, h);
         const r = rng(5);
         for (let i = 0; i < 300; i++) { g.fillStyle = `rgba(${r() < 0.5 ? '150,130,110' : '255,250,240'},${0.04 + r() * 0.06})`; g.fillRect(r() * w, r() * h, 6 + r() * 40, 2 + r() * 8); }
-        g.fillStyle = '#7a1612'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillStyle = '#6a120e'; g.textAlign = 'center'; g.textBaseline = 'middle';
         g.save(); g.translate(w * 0.5, h * 0.5); g.scale(0.5, 1);       // u wraps the full circumference: squeeze horizontally
         g.font = 'bold 150px serif'; g.fillText('串', 0, -h * 0.17); g.fillText('焼', 0, h * 0.15);
         g.font = 'bold 34px serif'; ['や', 'き', 'と', 'り'].forEach((c, i) => g.fillText(c, w * 0.22, -h * 0.24 + i * 38));
@@ -407,7 +408,7 @@ export default {
         prof.push(new THREE.Vector2(RAD * Math.pow(s, 0.6) * rib, y));
       }
       const lg = new THREE.LatheGeometry(prof, 56);
-      const paper = bm({ map: lanTex, roughness: 0.9, emissive: '#ffb27a', emissiveMap: lanTex, emissiveIntensity: 0.4, side: THREE.DoubleSide });
+      const paper = bm({ map: lanTex, roughness: 0.9, emissive: '#ffe2c8', emissiveMap: lanTex, emissiveIntensity: 0.3, side: THREE.DoubleSide });
       const cap = bm({ color: '#4a1210', roughness: 0.35, clearcoat: 0.6, envMap: env, envMapIntensity: 0.4 });
       const lan = new THREE.Group();
       const body = new THREE.Mesh(lg, paper); body.castShadow = true; body.receiveShadow = true; lan.add(body);
@@ -479,7 +480,6 @@ export default {
       const vt = (vTop + vTopR) / 2, vb = vBot;
       const gl = G0 - PO.o.y;                           // street level in this frame
       const cm = bm({ ...T.conc, roughness: 1, vertexColors: true }, uo);
-      const cd = bm({ ...T.conc, color: '#6a665e', roughness: 1, vertexColors: true }, uz);
       const cd = bm({ ...T.conc, color: '#6a665e', roughness: 1, vertexColors: true, envMap: amb, envMapIntensity: 1.1 }, uz);
       const conc = [], dark = [], rail = [], wd = [];
       conc.push(bx(w, vt - vb, 0.35, um, (vt + vb) / 2, -0.175, { round: 0.05 }));                    // parapet (chamfered)
@@ -537,31 +537,34 @@ export default {
       c.near = Math.max(0.5, -hi.z - 6); c.far = -lo.z + 6; c.updateProjectionMatrix();
     }
 
-    /* ---------------- canopy: leaf clusters between the sun and the set — rendered ONLY into the set sun's shadow map ---------------- */
-    {
-      const leafA = canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.beginPath(); g.moveTo(w * 0.5, 2); g.quadraticCurveTo(w * 0.98, h * 0.42, w * 0.5, h - 2); g.quadraticCurveTo(w * 0.02, h * 0.42, w * 0.5, 2); g.fill(); }, false);
-      const cmat = new THREE.MeshBasicMaterial({ alphaMap: leafA, alphaTest: 0.5, side: THREE.DoubleSide });
-      // [px, py, facade offset, distance along the sun ray, radius, density] — the reference's big shade masses
-      const clusters = [[370, 610, 0.05, 2.2, 1.0, 1.1], [300, 470, 0.05, 2.4, 0.7, 0.9], [790, 120, 0.9, 3.4, 1.9, 0.75], [640, 40, 0.9, 3.0, 1.0, 0.7],
-        [700, 290, 0.0, 2.6, 1.0, 0.8], [60, 250, 0.0, 2.0, 0.6, 0.7], [880, 480, 0.0, 3.0, 1.3, 0.6]];
-      const r = rng(91), list = [];
-      const q = new THREE.Quaternion(), sc = new THREE.Vector3();
-      for (const [px, py, off, dist, rad, den] of clusters) {
-        const c = PA.shift(off).hit(px, py).addScaledVector(LB, dist);
-        const n = Math.round(520 * rad * rad * den);
+    /* ---------------- canopy: leaf clusters between a sun and the set — rendered ONLY into that sun's shadow map ----------------
+       (real, leaf-edged shade masses with sun slivers through the gaps; invisible to the camera and to the car's sun) */
+    const canopies = [];
+    const leafA = canvasTex(64, 64, (g, w, h) => { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.beginPath(); g.moveTo(w * 0.5, 2); g.quadraticCurveTo(w * 0.98, h * 0.42, w * 0.5, h - 2); g.quadraticCurveTo(w * 0.02, h * 0.42, w * 0.5, 2); g.fill(); }, false);
+    function canopy(P, dir, light, clusters, seed, { per = 520, size = [0.09, 0.1] } = {}) {
+      const r = rng(seed), list = [], q = new THREE.Quaternion(), sc = new THREE.Vector3();
+      for (const [px, py, off, dist, rad, den] of clusters) {   // [px, py, plane offset, distance along the sun ray, radius, density]
+        const c = P.shift(off).hit(px, py).addScaledVector(dir, dist);
+        const n = Math.round(per * rad * rad * den);
         for (let i = 0; i < n; i++) {
           let x, y, z; do { x = r() * 2 - 1; y = r() * 2 - 1; z = r() * 2 - 1; } while (x * x + y * y + z * z > 1);
-          q.setFromEuler(E.set(r() * 6.28, r() * 6.28, r() * 6.28)); const k = 0.09 + r() * 0.1; sc.set(k * 0.62, k, k);
+          q.setFromEuler(E.set(r() * 6.28, r() * 6.28, r() * 6.28)); const k = size[0] + r() * size[1]; sc.set(k * 0.62, k, k);
           list.push(new THREE.Matrix4().compose(c.clone().add(V(x * rad, y * rad * 0.7, z * rad)), q, sc));
         }
       }
-      const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), cmat, list.length);
+      const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ alphaMap: leafA, alphaTest: 0.5, side: THREE.DoubleSide }), list.length);
       list.forEach((m, i) => im.setMatrixAt(i, m));
-      im.castShadow = true; im.frustumCulled = false; im.count = 0;            // invisible to the camera and to the car's sun
-      im.onBeforeShadow = (rr, o, cam, shCam) => { im.count = shCam === sunB.shadow.camera ? list.length : 0; };
+      im.castShadow = true; im.frustumCulled = false; im.count = 0;
+      im.onBeforeShadow = (rr, o, cam, shCam) => { im.count = shCam === light.shadow.camera ? list.length : 0; };
       im.onAfterShadow = () => { im.count = 0; };
-      scene.add(im);
+      scene.add(im); canopies.push(im);
     }
+    // the reference's shade masses on the shop-house (deep shade, sparse warm slivers)
+    canopy(PA, LB, sunB, [[370, 610, 0.05, 2.2, 1.1, 1.5], [300, 470, 0.05, 2.4, 0.8, 1.1], [470, 560, 0.05, 2.0, 0.6, 1.0],
+      [790, 120, 0.9, 3.4, 2.0, 1.3], [640, 40, 0.9, 3.0, 1.1, 1.1], [880, 230, 0.9, 3.2, 1.4, 1.2], [600, 170, 0.9, 2.6, 0.8, 0.9], [740, 30, 0.9, 3.6, 1.2, 1.0], [700, 290, 0.0, 2.6, 1.1, 1.0], [60, 250, 0.0, 2.0, 0.8, 1.2],
+      [880, 480, 0.0, 3.0, 1.4, 1.0], [690, 500, 0.0, 2.6, 1.0, 0.7], [150, 420, 0.0, 2.2, 0.8, 0.7], [180, 90, 0.42, 2.2, 0.7, 0.55]], 91);
+    // tree shadows across the overpass parapet (the car's sun direction)
+    canopy(PO, L, sunC, [[990, 430, 0, 4, 1.8, 0.45], [1110, 400, 0, 4, 1.6, 0.6], [1240, 380, 0, 4, 2.0, 0.5]], 92, { per: 300, size: [0.25, 0.3] });
 
     /* ---------------- sky + clouds ---------------- */
     scene.add(makeSky({ zenith: '#0c5e80', mid: '#1a809c', horizon: '#2a90a8', haze: 0.2, horizonY: 0.0 }));
@@ -640,6 +643,7 @@ export default {
       update(t) {
         shared.uSunDir.value.copy(V(-0.45, -0.1, 0.9).normalize());
         shared.uDapple.value = 0;
+        canopies.forEach((c, i) => c.position.set(Math.sin(t * 0.8 + i) * 0.025, Math.sin(t * 0.6 + i * 2) * 0.012, Math.cos(t * 0.7 + i) * 0.02));
       },
     };
   },
