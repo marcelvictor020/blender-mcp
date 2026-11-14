@@ -41,19 +41,19 @@ export default {
     });
     const UNI = (o) => pbrUniforms({ sunDir: SUN.toArray(), leafScale: 6.5, leafSharp: 0.2, leafSeed: 4.0, grime: 0, ...o });
     const UG = UNI({ leafAmt: 1, leafCover: 0.38, leafScale: 6.5, leafSharp: 0.14, leafSeed: 9.0 });               // ground under the canopy
-    const UM = UNI({ leafAmt: 1, leafCover: 0.3, grime: 0.1, leafSeed: 9.0 });   // machines / props
+    const UM = UNI({ leafAmt: 0.86, leafCover: 0.52, leafSharp: 0.24, grime: 0.1, leafSeed: 9.0 });   // machines / props
     const UF = UNI({ leafAmt: 0.5, leafCover: 0.35 });
-    const UP = UNI({ leafAmt: 1, leafCover: 0.3, leafSeed: 9.0, sunGain: 0.55 });  // products behind (dusty) glass           // fence / bike (mostly open sun)
+    const UP = UNI({ leafAmt: 0.86, leafCover: 0.52, leafSharp: 0.24, leafSeed: 9.0, sunGain: 0.55 });  // products behind (dusty) glass           // fence / bike (mostly open sun)
     const UO = UNI({ leafAmt: 0 });                               // pole (full sun)
-    const sunLight = addSunShadow(scene, { sunDir: SUN.toArray(), color: '#ffe8cc', intensity: 3.4,
+    const sunLight = addSunShadow(scene, { sunDir: SUN.toArray(), color: '#ffd9a6', intensity: 3.6,
       target: new THREE.Vector3(0.4, 1.0, -11.8), radius: 6.5, mapSize: 2048 });
     sunLight.shadow.bias = -0.0003; sunLight.shadow.normalBias = 0.01;
-    scene.add(new THREE.HemisphereLight(col('#9db4d8'), col('#3b3440'), 0.35));
+    scene.add(new THREE.HemisphereLight(col('#8eaee6'), col('#463c4c'), 0.6));
     // pbr material with an anisotropic (diagonal, streaky) leaf-shadow cookie like the reference's dapple
     const M = (u, o, key = 's6') => {
       const m = pbr(u, { envMap: env, envMapIntensity: 0.9, ...o }, null, key); const ob = m.onBeforeCompile;
       m.onBeforeCompile = (sh, r) => { ob(sh, r); sh.fragmentShader = sh.fragmentShader.replace('vec2 q = vec2(dot(p, t1), dot(p, t2)) * uLeafScale + uLeafSeed;',
-        'vec2 q = mat2(0.8, 0.6, -0.6, 0.8) * vec2(dot(p, t1), dot(p, t2)); q = q * uLeafScale * vec2(0.6, 1.3) + uLeafSeed;')
+        'vec2 q = mat2(0.8, 0.6, -0.6, 0.8) * vec2(dot(p, t1), dot(p, t2)); q = q * uLeafScale * vec2(0.85, 1.12) + uLeafSeed;')
         .replace('float lit = open * (1.0 - 0.9 * l1) * (1.0 - 0.55 * l2) * (1.0 - 0.8 * tw);',
           'float l3 = leafCells(q * 1.45 + vec2(5.3, 1.9)); float lit = open * (1.0 - 0.95 * l1) * (1.0 - 0.9 * l2) * (1.0 - 0.85 * l3) * (1.0 - 0.8 * tw);'); };
       m.customProgramCacheKey = () => key + '_s6a'; return m;
@@ -225,9 +225,9 @@ export default {
     /* ---------------- lush grass field behind the fence: instanced curved blades, sun-lit per blade ---------------- */
     const grassUniforms = {
       uTime: shared.uTime, uSun: { value: SUN.clone() },
-      cRoot: { value: col('#2a4a2a') }, cMid: { value: col('#4a9840') }, cTip: { value: col('#8ecc62') }, cDry: { value: col('#9cc464') },
+      cRoot: { value: col('#2c5230') }, cMid: { value: col('#50a646') }, cTip: { value: col('#9ad86a') }, cDry: { value: col('#a4cc66') },
       cDark: { value: col('#2c5a2a') }, cSky: { value: col('#5d86a8') }, cSunC: { value: col('#fff0d2') }, cHaze: { value: col('#9cc0b8') },
-      uSunI: { value: 1.0 }, uSkyI: { value: 0.62 },
+      uSunI: { value: 1.2 }, uSkyI: { value: 0.66 },
     };
     const grassField = (blades) => {
       const n = blades.length; const segs = 5; const pos = [], idx = [];
@@ -284,7 +284,7 @@ export default {
             float diff = max(ndl, 0.0) * 0.8 + 0.2 * (ndl * 0.5 + 0.5);
             float trans = max(-ndl, 0.0) * 0.35;
             float ao = mix(0.35, 1.0, smoothstep(0.0, 0.7, vT));
-            float self = mix(0.62, 1.0, smoothstep(0.05, 0.75, vT));                      // canopy self-shadowing toward roots
+            float self = mix(0.7, 1.0, smoothstep(0.05, 0.75, vT));                      // canopy self-shadowing toward roots
             float cloud = mix(0.42, 1.0, smoothstep(0.34, 0.6, fbm(vW.xz * vec2(0.07, 0.11) + vec2(uTime * 0.04, 0.0) + 4.0)));
             vec3 sunC = cSunC * uSunI * cloud * self;
             vec3 col = alb * (sunC * (diff + trans * vec3(1.1, 1.25, 0.6)) + cSky * uSkyI * ao);
@@ -322,7 +322,7 @@ export default {
     const poleTop = P(882, 88, poleD), poleBot = P(882, 560, poleD);
     {
       const woodPole = texSet(64, 512, (g, w, h) => {
-        g.fillStyle = '#86847e'; g.fillRect(0, 0, w, h); const r = rng(17);
+        g.fillStyle = '#868a8c'; g.fillRect(0, 0, w, h); const r = rng(17);
         for (let i = 0; i < 70; i++) { const x = r() * w; g.fillStyle = `rgba(${40 + r() * 50},${30 + r() * 40},${25 + r() * 30},${0.25 + r() * 0.35})`; g.fillRect(x, 0, 1 + r() * 2.5, h); }
         for (let i = 0; i < 30; i++) { g.fillStyle = `rgba(20,16,12,${0.3 + r() * 0.3})`; g.fillRect(r() * w, r() * h, 1, 8 + r() * 40); }
       }, { normalStrength: 2.5, roughBase: 0.85 });
@@ -407,8 +407,8 @@ export default {
 
     /* ---------------- fence: galvanised pipe posts, rails, X braces, chain-link mesh ---------------- */
     const fenceD = 12.2;
-    const steel = M(UF, { color: '#a7b0ba', roughness: 0.42, metalness: 0.75 }, 's6steel');
-    const steelDark = M(UF, { color: '#8c97a4', roughness: 0.5, metalness: 0.7 }, 's6steel');
+    const steel = M(UF, { color: '#aab6c4', roughness: 0.5, metalness: 0.55 }, 's6steel');
+    const steelDark = M(UF, { color: '#8e9aaa', roughness: 0.55, metalness: 0.5 }, 's6steel');
     const fenceBase = 616;
     for (const px of [425, 828, 1250]) {
       const a = P(px, 296, fenceD), b = P(px, fenceBase + 4, fenceD); b.y = -0.05;
@@ -955,17 +955,24 @@ export default {
     };
 
     /* ---------------- overhanging canopy (top corners) ---------------- */
-    // top-left: near-black mass; lit leaves toward the sky opening (lower-right edge)
+    // top-left: dark canopy with leaf-cluster tones throughout, lit clusters along the top + sky edge, and sky gaps
     const tlPoly = [[-40, -40], [545, -40], [530, 40], [500, 110], [455, 170], [420, 215], [370, 260], [310, 300], [200, 296], [100, 300], [-40, 310]];
+    const tlGaps = [[86, 146, 17], [140, 112, 8], [300, 150, 11], [210, 42, 8], [418, 66, 10], [356, 212, 9], [42, 236, 9], [250, 250, 7]];
+    const inGap = (x, y, pad) => tlGaps.some(([gx, gy, gr]) => Math.hypot(x - gx, y - gy) < gr + pad);
     const tlTone = (x, y, r) => {
       const edge = smooth01(0.62, 0.95, (x + 0.85 * y) / 560);
-      const patch = vn(x / 90, y / 90);
-      return Math.min(1, Math.max(0, edge * 0.62 + (patch - 0.5) * 0.18 * edge + (r() - 0.5) * 0.16 - 0.04));
+      const top = smooth01(175, 25, y) * smooth01(60, 240, x);
+      const mid = smooth01(140, 320, x) * smooth01(320, 140, y);
+      const patch = vn(x / 55, y / 55);
+      const gapRim = tlGaps.some(([gx, gy, gr]) => Math.hypot(x - gx, y - gy) < gr + 26) ? 0.18 : 0;
+      return Math.min(1, Math.max(0, 0.06 + 0.52 * Math.max(edge, top * 0.6, mid * 0.42) + gapRim * 0.7 + (patch - 0.5) * 0.36 + (r() - 0.5) * 0.18));
     };
-    leafSpray(sprayPoly(tlPoly, 260, 101, (x, y, r) => (x + 0.85 * y > 480 ? null : { size: lerp(70, 110, r()), rot: r() * 6.28, cell: 2, tone: tlTone(x, y, r) * 0.6 })), 7.2,
-      ['#06110c', '#0b1d14', '#1a3c24', '#3f7a40'], 0.6);
-    leafSpray(sprayPoly(tlPoly, 1600, 103, (x, y, r) => ((x + 0.85 * y > 470 && r() < 0.3) ? null : { size: lerp(20, 34, r()), rot: r() * 6.28, cell: r() < 0.6 ? 0 : 1, tone: tlTone(x, y, r) })), 7.0,
-      ['#07130d', '#10291b', '#2c6040', '#5e9a5a'], 1.0);
+    leafSpray(sprayPoly(tlPoly, 230, 101, (x, y, r) => { const sz = lerp(60, 100, r());
+      return (x + 0.85 * y > 480 || inGap(x, y, sz * 0.45)) ? null : { size: sz, rot: r() * 6.28, cell: 2, tone: tlTone(x, y, r) * 0.7 }; }), 7.2,
+      ['#06120c', '#0c1e15', '#183a28', '#356a40'], 0.6);
+    leafSpray(sprayPoly(tlPoly, 2600, 103, (x, y, r) => { const sz = lerp(18, 32, r());
+      return ((x + 0.85 * y > 470 && r() < 0.3) || inGap(x, y, sz * 0.3)) ? null : { size: sz, rot: r() * 6.28, cell: r() < 0.6 ? 0 : 1, tone: tlTone(x, y, r) }; }), 7.0,
+      ['#08150e', '#122c1e', '#28583e', '#5a9658'], 1.0);
     // top-right: dark core at right, bright lime leaves toward the left / bottom
     const trPoly = [[690, -40], [1320, -40], [1320, 215], [1230, 225], [1160, 205], [1090, 180], [1040, 205], [990, 255], [945, 280], [915, 240], [902, 170], [900, 90], [870, 75], [800, 90], [720, 85], [690, 50]];
     const trTone = (x, y, r) => {

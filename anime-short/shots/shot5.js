@@ -65,18 +65,56 @@ export default {
     ub.uDirGain = { value: [0, SUN_INT / SUN_EPS, 0, 0] };   // per directional light (fixed up once the lights exist)
     // set material: pbr() + per-light gain so the set is lit only by its own shadow-casting sun (+ hemisphere fill)
     // far set (overpass) sits outside the canopy shade: lit by the car's sun L instead, bigger softer leaf shadows
-    const uo = pbrUniforms({ sunDir: [L.x, L.y, L.z], leafAmt: 0.8, leafCover: 0.45, leafScale: 1.4, leafSharp: 0.08, leafSeed: 2.1, grime: 0, rimAmt: 0 });
+    const uo = pbrUniforms({ sunDir: [L.x, L.y, L.z], leafAmt: 0.55, leafCover: 0.5, leafScale: 2.6, leafSharp: 0.06, leafSeed: 2.1, grime: 0, rimAmt: 0 });
+    const O_INT = 4.6; let sunC = null, PO = null, FO = null;
     uo.uDirGain = { value: [0, 0, 0, 0] };
     const uz = pbrUniforms({ leafAmt: 0, grime: 0 }); uz.uDirGain = { value: [0, 0, 0, 0] };   // parts in deep shadow (no direct sun)
+    const LEAF_AA = /* glsl */`
+      float leafCellsAA(vec2 q, float fw){
+        vec2 i = floor(q), f = fract(q); float s = 0.;
+        for (int y=-1; y<=1; y++) for (int x=-1; x<=1; x++){
+          vec2 c = vec2(float(x), float(y)); vec2 id = i + c;
+          vec2 h = vec2(hash12(id), hash12(id + 17.3));
+          vec2 o = c + h - f;
+          float a = hash12(id + 5.1) * 6.283 + sin(uTime*1.4 + h.x*9.0) * 0.12;
+          vec2 r = mat2(cos(a), -sin(a), sin(a), cos(a)) * o;
+          float k = 0.30 + 0.18 * hash12(id + 9.7);
+          float yy = clamp(abs(r.y) / k, 0., 1.);
+          float w = 0.20 * pow(1.0 - yy * yy, 0.7);
+          float e = fw * 0.75 + 0.02;
+          s = max(s, (1.0 - smoothstep(w - e, w + e, abs(r.x))) * (1.0 - smoothstep(k - e, k + e, abs(r.y))));
+        }
+        return clamp(s, 0., 1.);
+      }
+      float leafMaskAA(vec3 p){
+        if (uLeafAmt <= 0.001) return 1.0;
+        vec3 L = normalize(uLeafSun);
+        vec3 t1 = normalize(cross(L, abs(L.y) > 0.95 ? vec3(1,0,0) : vec3(0,1,0)));
+        vec3 t2 = cross(L, t1);
+        vec2 q = vec2(dot(p, t1), dot(p, t2)) * uLeafScale + uLeafSeed;
+        q += vec2(sin(uTime*0.55 + q.y*0.15), cos(uTime*0.43 + q.x*0.15)) * 0.05;
+        float fw = length(fwidth(q));
+        float open = smoothstep(uLeafCover - 0.09, uLeafCover + 0.09, fbm(q * 0.28 + 11.0));
+        float l1 = leafCellsAA(q, fw);
+        float l2 = leafCellsAA(q * 0.57 + vec2(3.1, 7.7), fw * 0.57);
+        vec2 qw = q * 0.42 + vec2(fbm(q * 0.2 + 3.0), fbm(q * 0.2 + 8.0)) * 1.6;
+        float tw = 1.0 - smoothstep(0.01 + fw * 0.3, 0.07 + fw * 0.4, abs(vnoise(qw) - 0.5));
+        float lit = open * (1.0 - 0.9 * l1) * (1.0 - 0.55 * l2) * (1.0 - 0.8 * tw);
+        float sh = uLeafSharp + 0.05 + fw * 0.35;                      // softer, anti-aliased penumbra
+        float m = smoothstep(0.5 - sh, 0.5 + sh, lit);
+        m = mix(m, open * 0.4, smoothstep(0.45, 1.1, fw));            // sub-pixel leaves -> their average
+        return mix(1.0, m, uLeafAmt);
+      }`;
     function bm(o, u = ub) {
       const m = pbr(u, o, null, 's5set');
       const ob = m.onBeforeCompile;
       m.onBeforeCompile = (sh, r) => {
         ob(sh, r);
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uDirGain[4];')
+          .replace('void main() {', LEAF_AA + '\nvoid main() {').replace('float _leafM = leafMask(vWPos);', 'float _leafM = leafMaskAA(vWPos);')
           .replace('getDirectionalLightInfo( directionalLight, directLight );', 'getDirectionalLightInfo( directionalLight, directLight );\n\t\tdirectLight.color *= uDirGain[ i ];');
       };
-      m.customProgramCacheKey = () => 's5set';
+      m.customProgramCacheKey = () => 's5setAA';
       return m;
     }
     const env = makeEnvMap('s5_env', {
@@ -425,8 +463,8 @@ export default {
 
     /* ---------------- overpass: chamfered concrete deck, girders, pier, railing tubes ---------------- */
     {
-      const PO = plane(at(1100, 470, 24), dirTo(250));
-      const FO = PO.frame();
+      PO = plane(at(1100, 470, 24), dirTo(250));
+      FO = PO.frame();
       const uvP = (px, py) => PO.uv(px, py);
       const [uA, vTop] = uvP(930, 382), [uB, vTopR] = uvP(1300, 328);
       const vBot = uvP(930, 482)[1];
@@ -567,7 +605,7 @@ export default {
       const dl = []; scene.traverse((o) => { if (o.isDirectionalLight) dl.push(o); });
       dl.sort((a, b) => (b.castShadow ? 1 : 0) - (a.castShadow ? 1 : 0));
       ub.uDirGain.value = [0, 1, 2, 3].map((i) => (dl[i] === sunB ? SUN_INT / SUN_EPS : 0));
-      uo.uDirGain.value = [0, 1, 2, 3].map((i) => (dl[i] && dl[i] !== sunB ? 1.9 : 0));
+      uo.uDirGain.value = [0, 1, 2, 3].map((i) => (dl[i] === sunC ? O_INT / SUN_EPS : 0));
     }
 
     const sunDir = L.clone().negate().setY(0.3).normalize(); // foliage lit from behind (back-light)
