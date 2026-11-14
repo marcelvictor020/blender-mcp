@@ -216,10 +216,10 @@ export default {
       g.fillStyle = 'rgba(40,30,20,0.6)'; for (let y = 20; y < h; y += 46) g.fillRect(0, y, w, 1);   // step-bolt rings
     }, { normalStrength: 1.5, roughBase: 0.9, roughVar: 0.1 });
 
-    const woodMat = hmat('wood', { color: '#a88a6c', ...woodTex, normalScale: new THREE.Vector2(0.8, 0.8) });
+    const woodMat = hmat('wood', { color: '#d8c4b0', ...woodTex, normalScale: new THREE.Vector2(0.8, 0.8) });
     const postMat = hmat('post', { color: '#d8c0a0', ...woodTex, normalScale: new THREE.Vector2(0.5, 0.5) });
-    const darkWoodMat = hmat('dwood', { color: '#5a4636', ...woodTex });
-    const tileMat = hmat('tile', { color: '#bdb6aa', roughness: 0.55, envMapIntensity: 0.6 });
+    const darkWoodMat = hmat('dwood', { color: '#6a5a4c', ...woodTex });
+    const tileMat = hmat('tile', { color: '#c9bfae', roughness: 0.6, envMapIntensity: 0.6 });
     const stoneMat = hmat('stone', { color: '#ffffff', ...stoneTex });
     const voidMat = hmat('void', { color: '#140f0b', roughness: 1, envMapIntensity: 0.05 });
 
@@ -257,7 +257,7 @@ export default {
           const xAx = yAx.clone().cross(zAx).normalize();
           const top = p.clone().addScaledVector(Vp, len * 0.92).addScaledVector(N, 0.01);
           const m = new THREE.Matrix4().makeBasis(xAx.multiplyScalar(w), yAx.multiplyScalar(w * 0.9), zAx.multiplyScalar(len)).setPosition(top);
-          tileList.push(m); tileCols.push(tint(base, r, 0.1, 0.01));
+          tileList.push(m); tileCols.push(tint(base, r, 0.12, 0.01));
         }
       }
     };
@@ -273,17 +273,17 @@ export default {
     // right edge is the gable rake running back to the ridge
     const AL = curvePts([atZ(975, 343, dEA), atZ(938, 322, dEA), atZ(905, 295, dEA), atZ(882, 268, dEA), atZ(866, 246, dEA)]);
     const AR = linePts([atZ(1106, 347, dEA), atZ(1104, 318, (dEA + dRA) / 2 - 0.4), atZ(1067, 243, dRA)]);
-    roofTiles(AL, AR, { rows: 15, colPx: 9, seed: 31, base: '#c4bdb0' });
+    roofTiles(AL, AR, { rows: 15, colPx: 9, seed: 31, base: '#ffffff' });
     // ridge (noshi stack + round cap) along the top
     {
       const a = AL(1).add(V3(0, 0.05, 0)), b = AR(1).add(V3(0, 0.05, 0));
       const ridgeMat = hmat('ridge', { color: '#8e877c', roughness: 0.5, envMapIntensity: 0.6 });
-      const rk = []; for (let k = 0; k < 3; k++) rk.push(barMatrix(a.clone().add(V3(0, k * 0.07, 0)), b.clone().add(V3(0, k * 0.07, 0)), 0.3 - k * 0.04, 0.075, V3(0, 1, 0), 0.2));
+      const rk = []; for (let k = 0; k < 2; k++) rk.push(barMatrix(a.clone().add(V3(0, k * 0.05 - 0.03, 0)), b.clone().add(V3(0, k * 0.05 - 0.03, 0)), 0.26 - k * 0.05, 0.05, V3(0, 1, 0), 0.2));
       instanced(boxGeo, ridgeMat, rk);
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1, 10, 1, false, 0, Math.PI), ridgeMat);
-      const capM = barMatrix(a.clone().add(V3(0, 0.22, 0)), b.clone().add(V3(0, 0.22, 0)), 1, 1, V3(0, 1, 0), 0.25);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 1, 10, 1, false, 0, Math.PI), ridgeMat);
+      const capM = barMatrix(a.clone().add(V3(0, 0.05, 0)), b.clone().add(V3(0, 0.05, 0)), 1, 1, V3(0, 1, 0), 0.25);
       cap.geometry.rotateX(Math.PI / 2); cap.geometry.rotateZ(Math.PI / 2); cap.applyMatrix4(capM); scene.add(shade(cap));
-      for (const e of [a, b]) { const o = new THREE.Mesh(boxGeo, ridgeMat); o.scale.set(0.34, 0.42, 0.3); o.position.copy(e).add(V3(0, 0.2, 0)); scene.add(shade(o)); }
+      for (const e of [a, b]) { const o = new THREE.Mesh(boxGeo, ridgeMat); o.scale.set(0.26, 0.24, 0.24); o.position.copy(e).add(V3(0, 0.06, 0)); scene.add(shade(o)); }
     }
     // eave line: fascia + rafter ends + soffit (deep eave; casts the shadow band onto the wall)
     {
@@ -316,13 +316,13 @@ export default {
       for (let i = 0; i < pts2.length - 1; i++) {
         const a = pts2[i], b = pts2[i + 1];
         vt.push(barMatrix(a.clone().add(V3(-0.04, 0.06, 0.05)), b.clone().add(V3(-0.04, 0.06, 0.05)), 0.24, 0.13, V3(-0.3, 1, 0.5).normalize(), 0.02));
-        vc.push(tint('#a8a296', r, 0.12));
+        vc.push(tint('#e0dcd4', r, 0.12));
       }
       instanced(boxGeo, tileMat, vt, vc);
       // tile band behind the bargeboard (the left slope seen edge-on), fills the strip up to the ridge
       const BL = curvePts(bb.slice().reverse().map((p) => p.clone().add(V3(-0.02, 0.12, -0.25))));
       const BR = curvePts(bb.slice().reverse().map((p) => p.clone().add(V3(0.45, 0.32, -1.6))));
-      roofTiles(BL, BR, { rows: 16, colPx: 8, seed: 33, base: '#9c968a' });
+      roofTiles(BL, BR, { rows: 16, colPx: 8, seed: 33, base: '#d0ccc4' });
     }
     // walls of A: vertical boards (instanced, jittered) + posts + rails
     const topA = (px) => {                  // top of A's front wall on screen (follows the sweep of the roof edge)
@@ -337,7 +337,7 @@ export default {
         const xm = x + 0.1, pxm = 640 + xm * F / dWA;
         const yTop = atZ(pxm, topA(pxm) - 3, dWA).y, yBot = 0.55;
         pl.push(barMatrix(V3(xm, yBot, -dWA + (r() - 0.5) * 0.02), V3(xm, yTop, -dWA + (r() - 0.5) * 0.02), 0.205, 0.035, V3(0, 0, 1)));
-        pc.push(tint('#6e5038', r, 0.16, 0.02));
+        pc.push(tint('#ffffff', r, 0.2, 0.02));
       }
       // left end wall (faces the camera side), boards running back in depth
       const XL = xa - 0.06;
@@ -345,7 +345,7 @@ export default {
         const zm = z + 0.105, pxm = 640 + XL * F / zm;
         const yTop = lerp(4.6, 3.95, (zm - dWA) / 5.2);
         pl.push(barMatrix(V3(XL + (r() - 0.5) * 0.02, 0.55, -zm), V3(XL, yTop, -zm), 0.035, 0.21, V3(0, 0, 1)));
-        pc.push(tint('#8a6a4c', r, 0.16, 0.02));
+        pc.push(tint('#fff0e0', r, 0.15, 0.02).multiplyScalar(1.9));
       }
       instanced(boxGeo, woodMat, pl, pc);
       // posts + rails
@@ -373,12 +373,12 @@ export default {
       // B's left side wall (in shade, faces the camera side) with a dark doorway
       const xB = atZ(1092, 450, dWB).x;
       const r = rng(61), sw = [], sc = [];
-      for (let z = dWB; z < 21.5; z += 0.21) { sw.push(barMatrix(V3(xB, 0, -z - 0.105), V3(xB, 3.5, -z - 0.105), 0.035, 0.21, V3(0, 0, 1))); sc.push(tint('#4a3828', r, 0.15)); }
+      for (let z = dWB; z < 21.5; z += 0.21) { sw.push(barMatrix(V3(xB, 0, -z - 0.105), V3(xB, 3.5, -z - 0.105), 0.035, 0.21, V3(0, 0, 1))); sc.push(tint('#ffffff', r, 0.15)); }
       instanced(boxGeo, darkWoodMat, sw, sc);
       const door = new THREE.Mesh(boxGeo, voidMat); door.scale.set(0.06, 1.9, 1.15); door.position.set(xB - 0.02, 0.95, -dWB - 1.35); scene.add(door);
       const dfr = []; for (const z of [dWB + 0.75, dWB + 1.95]) dfr.push(barMatrix(V3(xB - 0.05, 0, -z), V3(xB - 0.05, 2.0, -z), 0.08, 0.1, V3(0, 0, 1)));
       dfr.push(barMatrix(V3(xB - 0.05, 2.0, -dWB - 0.7), V3(xB - 0.05, 2.0, -dWB - 2.0), 0.08, 0.12, V3(0, 1, 0)));
-      instanced(boxGeo, postMat, dfr);
+      instanced(boxGeo, darkWoodMat, dfr);
     }
 
     /* ===== building B (right): cross gable + wing roof + pent roof (hisashi) over a plank wall ===== */
@@ -391,7 +391,7 @@ export default {
       for (let x = xa; x < xb; x += 0.2) {
         const xm = x + 0.1, j = (r() - 0.5) * 0.02;
         pl.push(barMatrix(V3(xm, -0.1, -dWB + j), V3(xm, yWallTop, -dWB + j), 0.205, 0.035, V3(0, 0, 1)));
-        pc.push(tint('#5c4430', r, 0.18, 0.02));
+        pc.push(tint('#ffffff', r, 0.22, 0.02));
       }
       // gable triangle boards
       const ap = atZ(1153, 266, dWB), gl = atZ(1094, 342, dWB), gr = atZ(1216, 342, dWB);
@@ -399,7 +399,7 @@ export default {
         const xm = x + 0.095, t = xm < ap.x ? (xm - gl.x) / (ap.x - gl.x) : (gr.x - xm) / (gr.x - ap.x);
         const yt = lerp(gl.y, ap.y, clamp(t, 0, 1));
         pl.push(barMatrix(V3(xm, gl.y - 0.05, -dWB + 0.02), V3(xm, yt, -dWB + 0.02), 0.19, 0.03, V3(0, 0, 1)));
-        pc.push(tint('#8a6644', r, 0.15, 0.02));
+        pc.push(tint('#ffffff', r, 0.18, 0.02));
       }
       instanced(boxGeo, woodMat, pl, pc);
       // posts, rails, battens on the upper (shaded) band
@@ -417,20 +417,20 @@ export default {
       // left slope of the cross gable (seen at a grazing angle) + right wing roof
       const back = 4.0;
       roofTiles(linePts([L0.clone().add(V3(-0.08, 0.1, 0.12)), A0.clone().add(V3(0, 0.14, 0.12))]),
-        linePts([L0.clone().add(V3(0.75, 0.75, -back)), A0.clone().add(V3(0, 0.14, -back))]), { rows: 14, colPx: 8, seed: 72, base: '#a8a194' });
+        linePts([L0.clone().add(V3(0.75, 0.75, -back)), A0.clone().add(V3(0, 0.14, -back))]), { rows: 14, colPx: 8, seed: 72, base: '#dcd8d0' });
       roofTiles(linePts([R0.clone().add(V3(-0.1, 0.05, 0.05)), atZ(1157, 256, 22.6)]), linePts([atZ(1300, 345, dG), atZ(1300, 246, 22.6)]),
-        { rows: 15, colPx: 9, seed: 73, base: '#c2bbae' });
+        { rows: 15, colPx: 9, seed: 73, base: '#ffffff' });
       // pent roof (hisashi) wrapping left over the recess; its eave throws the dark band over B's upper wall
       const dP = dWB - 1.45;
       roofTiles(linePts([atZ(990, 389, dP), atZ(1006, 345, dWB + 0.05)]), linePts([atZ(1300, 384, dP), atZ(1300, 340, dWB + 0.05)]),
-        { rows: 6, colPx: 8, seed: 74, base: '#b2ab9e', lift: 0.12 });
+        { rows: 6, colPx: 8, seed: 74, base: '#f0ece4', lift: 0.14 });
       const pe0 = atZ(990, 392, dP), pe1 = atZ(1300, 386, dP); pe1.y = pe0.y;
       const praf = [barMatrix(pe0.clone().add(V3(0, -0.06, 0)), pe1.clone().add(V3(0, -0.06, 0)), 0.07, 0.12, V3(0, 1, 0))];
-      for (let px = 996; px < 1300; px += 18) { const a = atZ(px, 392, dP); praf.push(barMatrix(V3(a.x, pe0.y - 0.08, a.z), V3(a.x, pe0.y + 0.3, -dWB), 0.05, 0.07)); }
+      { const s0 = atZ(990, 392, dP), s1 = atZ(1300, 392, dP); const so = new THREE.Mesh(boxGeo, darkWoodMat); so.scale.set(s1.x - s0.x, 0.03, dWB - dP); so.position.set((s0.x + s1.x) / 2, pe0.y + 0.12, -(dWB + dP) / 2); so.rotation.x = -Math.atan2(0.75, dWB - dP) * 0.9; scene.add(shade(so)); }
       instanced(boxGeo, postMat, praf);
       // little lower canopy over the doorway
       roofTiles(linePts([atZ(998, 413, dP - 0.3), atZ(996, 392, dP + 0.5)]), linePts([atZ(1062, 412, dP - 0.3), atZ(1068, 391, dP + 0.5)]),
-        { rows: 3, colPx: 7, seed: 75, base: '#b8b1a4', lift: 0.1 });
+        { rows: 3, colPx: 7, seed: 75, base: '#ffffff', lift: 0.12 });
     }
     instanced(tileGeo, tileMat, tileList, tileCols);
 

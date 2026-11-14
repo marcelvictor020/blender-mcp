@@ -39,8 +39,8 @@ export default {
         { dir: [1, -0.6], w: 20, h: 9, dist: 30, color: '#1d4a3a' },
       ],
     });
-    const UNI = (o) => pbrUniforms({ sunDir: SUN.toArray(), leafScale: 3.4, leafSharp: 0.05, leafSeed: 4.0, grime: 0, ...o });
-    const UG = UNI({ leafAmt: 1, leafCover: 0.5 });               // ground under the canopy
+    const UNI = (o) => pbrUniforms({ sunDir: SUN.toArray(), leafScale: 7.0, leafSharp: 0.06, leafSeed: 4.0, grime: 0, ...o });
+    const UG = UNI({ leafAmt: 1, leafCover: 0.46 });               // ground under the canopy
     const UM = UNI({ leafAmt: 1, leafCover: 0.36, grime: 0.1 });   // machines / props
     const UF = UNI({ leafAmt: 0.5, leafCover: 0.35 });           // fence / bike (mostly open sun)
     const UO = UNI({ leafAmt: 0 });                               // pole (full sun)
@@ -216,9 +216,9 @@ export default {
     /* ---------------- lush grass field behind the fence: instanced curved blades, sun-lit per blade ---------------- */
     const grassUniforms = {
       uTime: shared.uTime, uSun: { value: SUN.clone() },
-      cRoot: { value: col('#1f3a1c') }, cMid: { value: col('#4f9a34') }, cTip: { value: col('#9fd25a') }, cDry: { value: col('#b7c95a') },
+      cRoot: { value: col('#24401f') }, cMid: { value: col('#4a963c') }, cTip: { value: col('#92ca5e') }, cDry: { value: col('#a8c460') },
       cDark: { value: col('#2c5a2a') }, cSky: { value: col('#5d86a8') }, cSunC: { value: col('#fff0d2') }, cHaze: { value: col('#9cc0b8') },
-      uSunI: { value: 1.15 }, uSkyI: { value: 0.45 },
+      uSunI: { value: 1.0 }, uSkyI: { value: 0.62 },
     };
     const grassField = (blades) => {
       const n = blades.length; const segs = 5; const pos = [], idx = [];
@@ -273,8 +273,8 @@ export default {
             float ndl = dot(N, L);
             float diff = max(ndl, 0.0) * 0.8 + 0.2 * (ndl * 0.5 + 0.5);
             float trans = max(-ndl, 0.0) * 0.35;
-            float ao = mix(0.12, 1.0, smoothstep(0.0, 0.75, vT));
-            float self = mix(0.25, 1.0, smoothstep(0.1, 0.8, vT));                      // canopy self-shadowing toward roots
+            float ao = mix(0.22, 1.0, smoothstep(0.0, 0.7, vT));
+            float self = mix(0.4, 1.0, smoothstep(0.05, 0.75, vT));                      // canopy self-shadowing toward roots
             float cloud = mix(0.55, 1.0, smoothstep(0.32, 0.62, fbm(vW.xz * vec2(0.07, 0.11) + vec2(uTime * 0.04, 0.0) + 4.0)));
             vec3 sunC = cSunC * uSunI * cloud * self;
             vec3 col = alb * (sunC * (diff + trans * vec3(1.1, 1.25, 0.6)) + cSky * uSkyI * ao);
@@ -312,7 +312,7 @@ export default {
     const poleTop = P(882, 88, poleD), poleBot = P(882, 560, poleD);
     {
       const woodPole = texSet(64, 512, (g, w, h) => {
-        g.fillStyle = '#6a5848'; g.fillRect(0, 0, w, h); const r = rng(17);
+        g.fillStyle = '#857a70'; g.fillRect(0, 0, w, h); const r = rng(17);
         for (let i = 0; i < 70; i++) { const x = r() * w; g.fillStyle = `rgba(${40 + r() * 50},${30 + r() * 40},${25 + r() * 30},${0.25 + r() * 0.35})`; g.fillRect(x, 0, 1 + r() * 2.5, h); }
         for (let i = 0; i < 30; i++) { g.fillStyle = `rgba(20,16,12,${0.3 + r() * 0.3})`; g.fillRect(r() * w, r() * h, 1, 8 + r() * 40); }
       }, { normalStrength: 2.5, roughBase: 0.85 });
@@ -377,7 +377,7 @@ export default {
       g.strokeStyle = 'rgba(18,18,22,0.55)'; g.lineWidth = 1.3;
       for (let i = 0; i < 4; i++) { g.beginPath(); let x = r() * w, y = r() * h; g.moveTo(x, y); for (let k = 0; k < 14; k++) { x += (r() - 0.5) * 36; y += (r() - 0.4) * 26; g.lineTo(x, y); } g.stroke(); }
     }, { normalStrength: 2.2, roughBase: 0.88, roughVar: 0.25 });
-    const swT = asphalt(61, '#5c5a5c', 110), rdT = asphalt(67, '#4a4a50', 95);
+    const swT = asphalt(61, '#706a6c', 120), rdT = asphalt(67, '#5c5a60', 105);
     const swGeo = worldUV(new THREE.PlaneGeometry(40, swFar - sidewalkD0 - kerbW).rotateX(-Math.PI / 2).translate(0, 0, -(sidewalkD0 + kerbW + swFar) / 2), 1.6);
     add(swGeo, M(UG, { map: swT.map, normalMap: swT.normalMap, roughnessMap: swT.roughnessMap, color: '#ffffff', envMapIntensity: 0.55 }, 's6gnd'), scene, false, true);
     const rdGeo = worldUV(new THREE.PlaneGeometry(40, sidewalkD0 - 2.5).rotateX(-Math.PI / 2).translate(0, -kerbH, -(sidewalkD0 + 2.5) / 2), 2.0);
@@ -528,7 +528,7 @@ export default {
     const bottlePal = ['#f4f4f0', '#a7d6e6', '#e9dc6a', '#7fc98d', '#5c8fd0', '#f0b25a', '#cfe6f0', '#3f9b8a', '#e65a4a'];
     // white machine
     vmBuild({ x0: 365, x1: 492, top: 375, d: groundD(632), depth: 0.62, side: '#cfd3d8', cap: '#c4c8ce', seed: 11,
-      win: [0.05, 0.06, 0.93, 0.52], glow: 0.4,
+      win: [0.05, 0.06, 0.93, 0.52], glow: 0.16,
       rows: [{ y: 0.215, h: 0.2, n: 10, pal: bottlePal, strip: '#4d62a6' }, { y: 0.37, h: 0.2, n: 10, pal: bottlePal, strip: '#4d62a6' },
         { y: 0.52, h: 0.19, n: 11, pal: bottlePal, strip: '#4d62a6' }],
       back: (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#dfe8ee'); gr.addColorStop(1, '#a9b8c4'); g.fillStyle = gr; g.fillRect(0, 0, w, h); },
@@ -550,7 +550,7 @@ export default {
     });
     // navy hot/cold cup machine
     vmBuild({ x0: 506, x1: 630, top: 360, d: groundD(626), depth: 0.46, side: '#c3c7cf', cap: '#2a2f55', seed: 23,
-      win: [0.03, 0.03, 0.665, 0.49], glow: 0.45,
+      win: [0.03, 0.03, 0.665, 0.49], glow: 0.2,
       rows: [{ y: 0.37, h: 0.075, n: 6, kind: 'cup', pal: ['#c03030', '#2a4fa0'], strip: '#c33d48' }, { y: 0.43, h: 0.075, n: 6, kind: 'cup', pal: ['#c03030', '#d8a040'], strip: '#c33d48' },
         { y: 0.49, h: 0.075, n: 6, kind: 'cup', pal: ['#c03030', '#2a4fa0'], strip: '#c33d48' }],
       back: (g, w, h) => {
@@ -590,7 +590,7 @@ export default {
     });
     // red drinks machine
     vmBuild({ x0: 637, x1: 787, top: 383, d: groundD(640), depth: 0.72, side: '#c4252d', cap: '#b2202a', seed: 37,
-      win: [0.04, 0.05, 0.845, 0.575], glow: 0.4,
+      win: [0.04, 0.05, 0.845, 0.575], glow: 0.16,
       rows: [{ y: 0.2, h: 0.2, n: 12, pal: ['#f4f4f0', '#d63a3a', '#7a4a2a', '#e8c35a', '#3b8f5a', '#5a7ed0', '#c25a2a', '#2f2f3a'], strip: '#b52a32' },
         { y: 0.35, h: 0.2, n: 12, pal: ['#f4f4f0', '#d63a3a', '#e8c35a', '#5a7ed0', '#f0f0f0', '#c25a2a'], strip: '#b52a32' },
         { y: 0.5, h: 0.19, n: 12, pal: ['#e8c35a', '#3b8f5a', '#f4f4f0', '#d63a3a', '#7a4a2a'], strip: '#b52a32' },
@@ -634,7 +634,7 @@ export default {
         list.forEach(([m4, c], i) => { im.setMatrixAt(i, m4); im.setColorAt(i, c); });
         im.castShadow = true; im.receiveShadow = true; scene.add(im); return im;
       };
-      mk(lathe, prod.bottle, M(UM, { color: '#ffffff', roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05, emissive: '#303438', envMapIntensity: 1.2 }, 's6prod'));
+      mk(lathe, prod.bottle, M(UM, { color: '#ffffff', roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05, emissive: '#15181a', envMapIntensity: 1.2 }, 's6prod'));
       mk(label, prod.label, M(UM, { color: '#ffffff', roughness: 0.4, emissive: '#26282a' }, 's6prod'));
       mk(capG, prod.cap, M(UM, { color: '#ffffff', roughness: 0.4, emissive: '#26282a' }, 's6prod'));
       mk(canG, prod.can, M(UM, { color: '#ffffff', roughness: 0.25, metalness: 0.5, emissive: '#202224' }, 's6prod'));
@@ -648,7 +648,7 @@ export default {
 
     /* ---------------- cardboard boxes + wooden boxes (left of the white machine) ---------------- */
     const cardT = texSet(256, 256, (g, w, h) => {
-      const r = rng(81); g.fillStyle = '#ad9877'; g.fillRect(0, 0, w, h);
+      const r = rng(81); g.fillStyle = '#9c8f7e'; g.fillRect(0, 0, w, h);
       for (let i = 0; i < 120; i++) { g.fillStyle = `rgba(${90 + r() * 40},${75 + r() * 30},${55 + r() * 20},${r() * 0.14})`; g.fillRect(r() * w, r() * h, 10 + r() * 40, 2 + r() * 8); }
       for (let x = 0; x < w; x += 3) { g.fillStyle = 'rgba(80,65,45,0.05)'; g.fillRect(x, 0, 1, h); }   // corrugation
       g.fillStyle = 'rgba(60,48,36,0.55)'; g.fillRect(0, h * 0.5 - 1, w, 2);                              // flap seam
@@ -659,7 +659,7 @@ export default {
       g.fillStyle = 'rgba(40,40,40,0.5)'; g.font = '14px sans-serif'; g.fillText('↑↑  取扱注意', 12, h * 0.8);
     }, { normalStrength: 2.5, roughBase: 0.9 });
     const cardM = M(UM, { color: '#ffffff', map: cardT.map, normalMap: cardT.normalMap, roughnessMap: cardT.roughnessMap, envMapIntensity: 0.6 }, 's6card');
-    const cardM2 = M(UM, { color: '#c8c0bc', map: cardT.map, normalMap: cardT.normalMap, roughnessMap: cardT.roughnessMap, envMapIntensity: 0.6 }, 's6card');
+    const cardM2 = M(UM, { color: '#b8b4b4', map: cardT.map, normalMap: cardT.normalMap, roughnessMap: cardT.roughnessMap, envMapIntensity: 0.6 }, 's6card');
     const woodT = (seed, base) => texSet(256, 256, (g, w, h) => {
       const r = rng(seed); g.fillStyle = base; g.fillRect(0, 0, w, h);
       const nb = 4; for (let i = 0; i < nb; i++) {
