@@ -64,8 +64,11 @@ export default {
       rimColor: '#ff9a62', rimAmt: 0.0, rimPow: 5, grime: 0, sunGain: 1 });
     ub.uDirGain = { value: [0, SUN_INT / SUN_EPS, 0, 0] };   // per directional light (fixed up once the lights exist)
     // set material: pbr() + per-light gain so the set is lit only by its own shadow-casting sun (+ hemisphere fill)
-    function bm(o) {
-      const m = pbr(ub, o, null, 's5set');
+    // far set (overpass) sits outside the canopy shade: lit by the car's sun L instead, bigger softer leaf shadows
+    const uo = pbrUniforms({ sunDir: [L.x, L.y, L.z], leafAmt: 0.8, leafCover: 0.45, leafScale: 1.4, leafSharp: 0.08, leafSeed: 2.1, grime: 0, rimAmt: 0 });
+    uo.uDirGain = { value: [0, 0, 0, 0] };
+    function bm(o, u = ub) {
+      const m = pbr(u, o, null, 's5set');
       const ob = m.onBeforeCompile;
       m.onBeforeCompile = (sh, r) => {
         ob(sh, r);
@@ -105,11 +108,11 @@ export default {
     }
     const T = {
       board: texSet(1024, 256, woodDraw('#6a5446', '#2a1a12', '#a08068', 11), { normalStrength: 2.4, roughBase: 0.82 }),
-      slat: texSet(256, 1024, woodDraw('#7a5440', '#2c1810', '#b08060', 23, true), { normalStrength: 2.0, roughBase: 0.8 }),
+      slat: texSet(256, 1024, woodDraw('#5e3a2c', '#24120c', '#9a6a50', 23, true), { normalStrength: 2.0, roughBase: 0.8 }),
       beam: texSet(1024, 256, woodDraw('#8a4a30', '#3a1a10', '#c08060', 31), { normalStrength: 2.0, roughBase: 0.7 }),
       corr: texSet(512, 512, (g, w, h) => {
         const r = rng(41);
-        g.fillStyle = '#a9a2a6'; g.fillRect(0, 0, w, h);
+        g.fillStyle = '#857c80'; g.fillRect(0, 0, w, h);
         for (let i = 0; i < 70; i++) {               // rust / dirt streaks running down from laps & fixings
           const x = r() * w, y = r() * h * 0.8, l = 40 + r() * 260, wd = 2 + r() * 10;
           const gr = g.createLinearGradient(0, y, 0, y + l); const c = r() < 0.5 ? '120,64,40' : '70,62,66';
@@ -128,7 +131,7 @@ export default {
       }, { normalStrength: 1.5, roughBase: 0.9, roughVar: 0.2 }),
       asph: texSet(512, 512, (g, w, h) => {
         const r = rng(61);
-        g.fillStyle = '#3c3b3e'; g.fillRect(0, 0, w, h);
+        g.fillStyle = '#2c2b2e'; g.fillRect(0, 0, w, h);
         for (let i = 0; i < 6000; i++) { const v = 30 + r() * 110 | 0; g.fillStyle = `rgba(${v},${v},${v + 4},${0.4 + r() * 0.5})`; g.fillRect(r() * w, r() * h, 1 + r() * 2.5, 1 + r() * 2.5); }
         for (let i = 0; i < 30; i++) { g.fillStyle = `rgba(20,20,22,${0.1 + r() * 0.15})`; g.beginPath(); g.arc(r() * w, r() * h, 10 + r() * 60, 0, 7); g.fill(); }
       }, { normalStrength: 2.5, roughBase: 0.9, roughVar: 0.15 }),
@@ -137,7 +140,7 @@ export default {
 
     const M = {
       board: bm({ ...T.board, vertexColors: true, roughness: 1 }),
-      boardDark: bm({ ...T.board, color: '#6a5a58', vertexColors: true, roughness: 1 }),
+      boardDark: bm({ ...T.board, color: '#4a3e3e', vertexColors: true, roughness: 1 }),
       slat: bm({ ...T.slat, vertexColors: true, roughness: 1 }),
       beam: bm({ ...T.beam, vertexColors: true, roughness: 1 }),
       trim: bm({ ...T.board, color: '#d6cfc8', vertexColors: true, roughness: 0.9 }),
@@ -232,6 +235,9 @@ export default {
       for (let u = -5.7; u < -3.0; u += 0.42) beam.push(bx(0.05, 0.08, 0.9, u, 2.66, 0.45, { uvs: 0.5, c: 0.5 }));   // rafters
       beam.push(bx(2.8, 0.16, 0.035, -4.4, 2.7, 0.92, { uvs: 0.5, c: 0.8 }));                 // eave fascia
       trim.push(bx(0.13, 2.9, 0.13, -3.02, 0.55, 0.07, { uvs: 0.5, c: 0.55 }));                // corner post
+      woodDark.push(bx(0.04, 0.8, 0.44, -2.99, 2.35, 0.22, { uvs: 0.5, c: 0.6 }));             // upper-storey end board
+      woodDark.push(bx(3.2, 4.5, 0.1, -4.4, 5.0, -0.6, { uvs: 0.5, c: 0.35 }));                // setback upper wall / roof mass
+      woodDark.push(bx(3.2, 0.06, 1.4, -4.4, 2.78, 0.1, { uvs: 0.5, c: 0.3 }));
       /* --- corrugated metal section with the recessed stair --- */
       const panels = (a, b, v0, v1, seed) => { const r = rng(seed); for (let u = a, i = 0; u < b - 0.01; u += 0.8, i++) corrSheet(FA, u - 0.02, Math.min(b, u + 0.82), v0, v1, 0.02 + 0.009 * (i % 2), { tilt: (r() - 0.5) * 0.02 }); };
       panels(-2.98, -0.36, G0, 1.42, 5);
@@ -243,8 +249,8 @@ export default {
       woodDark.push(bx(1.36, 0.06, 1.2, -2.25, 3.4, -0.6, { uvs: 0.5, c: 0.3 }), bx(1.36, 0.08, 1.2, -2.25, 1.38, -0.6, { uvs: 0.5, c: 0.5 }));
       for (let k = 0; k < 7; k++) dmetal.push(bx(0.24, 0.035, 0.85, -2.82 + k * 0.19, 1.5 + k * 0.27, -0.62));
       dmetal.push(bx(0.06, 0.06, 2.4, -2.25, 2.3, -0.2, { rz: 0, ry: 0, rx: 0 }));
-      for (const [dz, dv] of [[0.08, 0], [0.08, 0.32]]) metal.push(tube(V(-2.95, 1.42 + dv, dz), V(-1.55, 2.06 + dv, dz), 0.022, { c: 0.85 }));
-      for (let k = 0; k < 4; k++) { const u = -2.85 + k * 0.4, v = 1.46 + (u + 2.95) * 0.457; metal.push(tube(V(u, v - 0.02, 0.08), V(u, v + 0.35, 0.08), 0.014, { c: 0.8 })); }
+      for (const [dz, dv] of [[0.08, 0], [0.08, 0.32]]) dmetal.push(tube(V(-2.95, 1.42 + dv, dz), V(-1.55, 2.06 + dv, dz), 0.02, { c: 0.7 }));
+      for (let k = 0; k < 4; k++) { const u = -2.85 + k * 0.4, v = 1.46 + (u + 2.95) * 0.457; dmetal.push(tube(V(u, v - 0.02, 0.08), V(u, v + 0.35, 0.08), 0.013, { c: 0.6 })); }
       metal.push(tube(V(-0.7, G0, 0.12), V(-0.7, 6.6, 0.12), 0.045, { c: 1 }));             // white downpipe
       for (const v of [0.6, 2.2, 3.9, 5.5]) dmetal.push(bx(0.03, 0.03, 0.12, -0.7, v, 0.06));
       /* --- main house: ground floor --- */
@@ -343,7 +349,7 @@ export default {
         prof.push(new THREE.Vector2(RAD * Math.pow(s, 0.6) * rib, y));
       }
       const lg = new THREE.LatheGeometry(prof, 56);
-      const paper = bm({ map: lanTex, roughness: 0.9, emissive: '#ffb27a', emissiveMap: lanTex, emissiveIntensity: 0.22, side: THREE.DoubleSide });
+      const paper = bm({ map: lanTex, roughness: 0.9, emissive: '#ffb27a', emissiveMap: lanTex, emissiveIntensity: 0.4, side: THREE.DoubleSide });
       const cap = bm({ color: '#4a1210', roughness: 0.35, clearcoat: 0.6, envMap: env, envMapIntensity: 0.4 });
       const lan = new THREE.Group();
       const body = new THREE.Mesh(lg, paper); body.castShadow = true; body.receiveShadow = true; lan.add(body);
@@ -413,27 +419,30 @@ export default {
       const vBot = uvP(930, 482)[1];
       const u0 = Math.min(uA, uB) - 6, u1 = Math.max(uA, uB) + 6, um = (u0 + u1) / 2, w = u1 - u0;
       const vt = (vTop + vTopR) / 2, vb = vBot;
-      const cm = bm({ ...T.conc, roughness: 1, vertexColors: true });
-      const cd = bm({ ...T.conc, color: '#8a8478', roughness: 1, vertexColors: true });
+      const gl = G0 - PO.o.y;                           // street level in this frame
+      const cm = bm({ ...T.conc, roughness: 1, vertexColors: true }, uo);
+      const cd = bm({ ...T.conc, color: '#57534c', roughness: 1, vertexColors: true }, uo);
       const conc = [], dark = [], rail = [], wd = [];
       conc.push(bx(w, vt - vb, 0.35, um, (vt + vb) / 2, -0.175, { round: 0.04 }));                    // parapet
-      conc.push(bx(w, 0.14, 0.12, um, vb - 0.02, 0.04, { round: 0.03, c: 1.1 }));                     // drip edge
-      dark.push(bx(w, 0.5, 9, um, vb - 0.3, -4.6, { c: 0.6 }));                                         // deck slab
-      for (const z of [-1.0, -3.2, -5.6]) dark.push(bx(w, 0.9, 0.4, um, vb - 0.95, z, { c: 0.75 }));   // girders
-      // pier + crosshead at the right
-      const [uP] = uvP(1250, 600);
-      conc.push(bx(1.6, vb + 2.5, 1.6, uP, (vb - 2.5) / 2 - 1.0, -3.0, { round: 0.06, c: 0.95 }));
-      dark.push(bx(2.6, 0.8, 9, uP, vb - 1.1, -4.5, { c: 0.8 }));
+      conc.push(bx(w, 0.12, 0.5, um, vt + 0.04, -0.2, { round: 0.04, c: 1.05 }));                     // coping
+      conc.push(bx(w, 0.16, 0.14, um, vb - 0.03, 0.05, { round: 0.03, c: 1.1 }));                     // drip edge
+      dark.push(bx(w, 0.5, 15, um, vb - 0.3, -7.5, { c: 0.6 }));                                        // deck slab
+      for (let z = -1.0; z > -14; z -= 2.1) dark.push(bx(w, 1.0, 0.45, um, vb - 1.0, z, { c: 0.7 }));  // girders
+      dark.push(bx(w, vb - gl + 0.4, 0.6, um, (vb + gl) / 2, -14.5, { c: 0.32 }));                      // far abutment wall
+      // pier at the near (right) end
+      const PP = PO.shift(-1.2); const [uP] = PP.uv(1236, 600);
+      conc.push(bx(1.5, vb - gl, 1.5, uP, (vb + gl) / 2 - 0.3, -1.2, { round: 0.05, c: 0.95 }));
+      dark.push(bx(3.0, 0.9, 13, uP, vb - 1.2, -7.0, { c: 0.75 }));
       // railing on the parapet: posts + two rails (tubes)
-      const zr = -0.16;
-      for (let u = u0 + 0.5; u < u1; u += 2.0) rail.push(tube(V(u, vt, zr), V(u, vt + 1.1, zr), 0.03));
-      for (const dv of [1.1, 0.55]) rail.push(tube(V(u0, vt + dv, zr), V(u1, vt + dv, zr), dv > 1 ? 0.03 : 0.022, { seg: 10 }));
+      const zr = -0.18, rh = (vt - vb) * 0.85;
+      for (let u = u0 + 0.5; u < u1; u += 2.2) rail.push(tube(V(u, vt + 0.1, zr), V(u, vt + rh, zr), 0.035));
+      for (const f of [1, 0.5]) rail.push(tube(V(u0, vt + rh * f, zr), V(u1, vt + rh * f, zr), f > 0.9 ? 0.035 : 0.025, { seg: 10 }));
       add(FO, conc, cm); add(FO, dark, cd, false, true);
-      add(FO, rail, bm({ color: '#e4e6e6', roughness: 0.35, metalness: 0.5, envMap: env, envMapIntensity: 0.5, vertexColors: true }));
-      // wooden fence panel under the deck
-      const [uW0, vW0] = uvP(1062, 628), [uW1, vW1] = uvP(1208, 574);
-      for (let u = Math.min(uW0, uW1); u < Math.max(uW0, uW1); u += 0.14) wd.push(bx(0.12, vW1 - vW0, 0.03, u, (vW0 + vW1) / 2, -0.4, { uvs: 0.5, uo: R(), c: 0.8 + 0.3 * R() }));
-      if (wd.length) add(FO, wd, M.slat);
+      add(FO, rail, bm({ color: '#e4e6e6', roughness: 0.35, metalness: 0.5, envMap: env, envMapIntensity: 0.5, vertexColors: true }, uo));
+      // sunlit wooden fence on the far side, under the deck
+      const PW = PO.shift(-14.1); const [uW0, vW0] = PW.uv(1062, 628), [uW1, vW1] = PW.uv(1208, 574);
+      for (let u = Math.min(uW0, uW1); u < Math.max(uW0, uW1); u += 0.16) wd.push(bx(0.14, Math.abs(vW1 - vW0), 0.03, u, (vW0 + vW1) / 2, -14.1, { uvs: 0.5, uo: R(), c: 1.2 + 0.4 * R() }));
+      if (wd.length) add(FO, wd, bm({ ...T.slat, vertexColors: true, roughness: 1 }, uo));
     }
 
     /* ---------------- the set's sun: shadow-casting, fitted to the facade ---------------- */
@@ -521,6 +530,7 @@ export default {
       const dl = []; scene.traverse((o) => { if (o.isDirectionalLight) dl.push(o); });
       dl.sort((a, b) => (b.castShadow ? 1 : 0) - (a.castShadow ? 1 : 0));
       ub.uDirGain.value = [0, 1, 2, 3].map((i) => (dl[i] === sunB ? SUN_INT / SUN_EPS : 0));
+      uo.uDirGain.value = [0, 1, 2, 3].map((i) => (dl[i] && dl[i] !== sunB ? 1.9 : 0));
     }
 
     const sunDir = L.clone().negate().setY(0.3).normalize(); // foliage lit from behind (back-light)

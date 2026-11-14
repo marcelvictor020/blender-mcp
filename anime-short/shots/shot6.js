@@ -39,16 +39,22 @@ export default {
         { dir: [1, -0.6], w: 20, h: 9, dist: 30, color: '#1d4a3a' },
       ],
     });
-    const UNI = (o) => pbrUniforms({ sunDir: SUN.toArray(), leafScale: 7.0, leafSharp: 0.06, leafSeed: 4.0, grime: 0, ...o });
-    const UG = UNI({ leafAmt: 1, leafCover: 0.46 });               // ground under the canopy
-    const UM = UNI({ leafAmt: 1, leafCover: 0.36, grime: 0.1 });   // machines / props
+    const UNI = (o) => pbrUniforms({ sunDir: SUN.toArray(), leafScale: 6.0, leafSharp: 0.12, leafSeed: 4.0, grime: 0, ...o });
+    const UG = UNI({ leafAmt: 1, leafCover: 0.5 });               // ground under the canopy
+    const UM = UNI({ leafAmt: 1, leafCover: 0.42, grime: 0.1 });   // machines / props
     const UF = UNI({ leafAmt: 0.5, leafCover: 0.35 });           // fence / bike (mostly open sun)
     const UO = UNI({ leafAmt: 0 });                               // pole (full sun)
     const sunLight = addSunShadow(scene, { sunDir: SUN.toArray(), color: '#ffe8cc', intensity: 3.4,
       target: new THREE.Vector3(0.4, 1.0, -11.8), radius: 6.5, mapSize: 2048 });
     sunLight.shadow.bias = -0.0003; sunLight.shadow.normalBias = 0.01;
     scene.add(new THREE.HemisphereLight(col('#9db4d8'), col('#3b3440'), 0.35));
-    const M = (u, o, key = 's6') => pbr(u, { envMap: env, envMapIntensity: 0.9, ...o }, null, key);
+    // pbr material with an anisotropic (diagonal, streaky) leaf-shadow cookie like the reference's dapple
+    const M = (u, o, key = 's6') => {
+      const m = pbr(u, { envMap: env, envMapIntensity: 0.9, ...o }, null, key); const ob = m.onBeforeCompile;
+      m.onBeforeCompile = (sh, r) => { ob(sh, r); sh.fragmentShader = sh.fragmentShader.replace('vec2 q = vec2(dot(p, t1), dot(p, t2)) * uLeafScale + uLeafSeed;',
+        'vec2 q = mat2(0.8, 0.6, -0.6, 0.8) * vec2(dot(p, t1), dot(p, t2)); q = q * uLeafScale * vec2(0.55, 1.35) + uLeafSeed;'); };
+      m.customProgramCacheKey = () => key + '_s6a'; return m;
+    };
     const add = (geo, mat, parent = scene, cast = true, recv = true) => {
       const m = new THREE.Mesh(geo, mat); m.castShadow = cast; m.receiveShadow = recv; parent.add(m); return m; };
     const rbox = (w, h, d, r = 0.01, seg = 2) => new RoundedBoxGeometry(w, h, d, seg, Math.max(1e-4, Math.min(r, w / 2 - 1e-4, h / 2 - 1e-4, d / 2 - 1e-4)));
