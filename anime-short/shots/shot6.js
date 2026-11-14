@@ -27,7 +27,7 @@ export default {
     const groundD = (py) => CAMY * F / (py - 360);        // depth at which ground (y=0) appears at row py
 
     /* ---------------- lighting: one shadow-casting sun + sky env + leaf-shadow dapple ---------------- */
-    const SUN = new THREE.Vector3(-0.35, 0.6, 0.75).normalize();
+    const SUN = new THREE.Vector3(-0.5, 0.58, 0.64).normalize();
     shared.uSunDir.value.copy(SUN);
     const env = makeEnvMap('s6_env', {
       zenith: '#3b82bc', horizon: '#b4ccd8', ground: '#262830', sunDir: SUN.toArray(), sunColor: '#ffeed8', sunPower: 18,
@@ -39,10 +39,10 @@ export default {
         { dir: [1, -0.6], w: 20, h: 9, dist: 30, color: '#1d4a3a' },
       ],
     });
-    const UNI = (o) => pbrUniforms({ sunDir: SUN.toArray(), leafScale: 2.6, leafSharp: 0.05, leafSeed: 4.0, grime: 0, ...o, leafAmt: 0 });
-    const UG = UNI({ leafAmt: 1, leafCover: 0.6 });               // ground under the canopy
-    const UM = UNI({ leafAmt: 1, leafCover: 0.5, grime: 0.1 });   // machines / props
-    const UF = UNI({ leafAmt: 0.45, leafCover: 0.45 });           // fence / bike (mostly open sun)
+    const UNI = (o) => pbrUniforms({ sunDir: SUN.toArray(), leafScale: 3.4, leafSharp: 0.05, leafSeed: 4.0, grime: 0, ...o });
+    const UG = UNI({ leafAmt: 1, leafCover: 0.5 });               // ground under the canopy
+    const UM = UNI({ leafAmt: 1, leafCover: 0.36, grime: 0.1 });   // machines / props
+    const UF = UNI({ leafAmt: 0.5, leafCover: 0.35 });           // fence / bike (mostly open sun)
     const UO = UNI({ leafAmt: 0 });                               // pole (full sun)
     const sunLight = addSunShadow(scene, { sunDir: SUN.toArray(), color: '#ffe8cc', intensity: 3.4,
       target: new THREE.Vector3(0.4, 1.0, -11.8), radius: 6.5, mapSize: 2048 });
@@ -218,7 +218,7 @@ export default {
       uTime: shared.uTime, uSun: { value: SUN.clone() },
       cRoot: { value: col('#1f3a1c') }, cMid: { value: col('#4f9a34') }, cTip: { value: col('#9fd25a') }, cDry: { value: col('#b7c95a') },
       cDark: { value: col('#2c5a2a') }, cSky: { value: col('#5d86a8') }, cSunC: { value: col('#fff0d2') }, cHaze: { value: col('#9cc0b8') },
-      uSunI: { value: 1.55 }, uSkyI: { value: 0.55 },
+      uSunI: { value: 1.15 }, uSkyI: { value: 0.45 },
     };
     const grassField = (blades) => {
       const n = blades.length; const segs = 5; const pos = [], idx = [];
@@ -706,7 +706,7 @@ export default {
     cone(996, 658, 70, 0.2);
     { // fallen cone at left
       const d = groundD(645); const p = P(335, 645, d); const h = S(70, d);
-      const g = makeCone(h); g.rotation.set(0, 0.4, Math.PI / 2 + 0.32, 'YXZ'); g.position.set(p.x + 0.12, h * 0.21, -d); scene.add(g);
+      const g = makeCone(h); g.rotation.set(0, 0.4, Math.PI / 2 + 0.28, 'YXZ'); g.position.set(p.x + 0.12, h * 0.28, -d); scene.add(g);
       contact(p.x, -d, h * 1.0, h * 0.5, 0.45);
     }
 
@@ -759,7 +759,7 @@ export default {
     const woodCrate = (W, H, Dp) => {
       const parts = []; const pl = (w, h, d, x, y, z) => { const b = new THREE.BoxGeometry(w, h, d).translate(x, y, z);
         const p = b.attributes.position, uv = b.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + p.getZ(i)) / 0.5, p.getY(i) / 0.5 + 0.02); parts.push(b); };
-      const n = 3, gap = 0.018, ph = (H - gap * (n - 1)) / n, t = 0.016;
+      const n = 2, gap = 0.07, ph = (H - gap * (n - 1)) / n, t = 0.016;
       for (let i = 0; i < n; i++) { const y = ph / 2 + i * (ph + gap);
         for (const sz of [-1, 1]) pl(W, ph, t, 0, y, sz * (Dp / 2 - t / 2));
         for (const sx of [-1, 1]) pl(t, ph, Dp - 2 * t, sx * (W / 2 - t / 2), y, 0); }
