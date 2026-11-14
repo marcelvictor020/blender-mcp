@@ -107,16 +107,16 @@ export default {
     bridge.rotation.y = -40 * Math.PI / 180;
     scene.add(bridge);
     // local: x along bridge (+x = near/right), y up (deck surface 0), z toward camera (front face z=0)
-    const faceMat = paintMat({ shadow: '#2c2421', lit: '#8e6c50', map: concreteTex, cover: 0.8, scale: 0.6, varAmt: 0.12, soft: 0.03, coverX: [4, 20, 0.07] });
+    const faceMat = paintMat({ shadow: '#2e2623', lit: '#7e604a', map: concreteTex, cover: 0.86, scale: 0.45, varAmt: 0.06, soft: 0.07, litMax: 0.55, coverX: [4, 20, 0.04] });
     const slab = new THREE.Mesh(new THREE.BoxGeometry(260, 4.6, 11), faceMat);
     slab.position.set(-100, -2.2, -5.5); bridge.add(slab);
-    const lowerMat = paintMat({ shadow: '#362c26', lit: '#82644c', map: concreteTex, cover: 0.79, scale: 0.55, varAmt: 0.12, soft: 0.03, coverX: [4, 20, 0.06] });
+    const lowerMat = paintMat({ shadow: '#362d28', lit: '#76604c', map: concreteTex, cover: 0.86, scale: 0.4, varAmt: 0.06, soft: 0.07, litMax: 0.5, coverX: [4, 20, 0.04] });
     const lower = new THREE.Mesh(new THREE.BoxGeometry(94, 20, 9), lowerMat);
     lower.position.set(-10, -14.5, -6.5); bridge.add(lower);
     const pier = new THREE.Mesh(new THREE.BoxGeometry(40, 20, 3), lowerMat);
     pier.position.set(-106, -14.5, -3.5); bridge.add(pier);
     // shaded fascia band just under the railing
-    const fascia = new THREE.Mesh(new THREE.BoxGeometry(260, 1.5, 0.4), paintMat({ shadow: '#241b1e', lit: '#7a5a48', map: concreteTex, cover: 0.84, scale: 0.6, varAmt: 0.1, soft: 0.03 }));
+    const fascia = new THREE.Mesh(new THREE.BoxGeometry(260, 1.5, 0.4), paintMat({ shadow: '#261e1f', lit: '#6a5040', map: concreteTex, cover: 0.9, scale: 0.45, varAmt: 0.05, soft: 0.07, litMax: 0.5 }));
     fascia.position.set(-100, -0.75, 0.2); bridge.add(fascia);
     // dark underside of the slab
     const under = new THREE.Mesh(new THREE.BoxGeometry(260, 0.3, 10), new THREE.MeshBasicMaterial({ color: col('#1c1718') }));
@@ -134,20 +134,20 @@ export default {
 
     /* ---------------- train ---------------- */
     const trainTex = paintTexture('s7_train', 1024, 128, (g, w, h, r) => {
-      g.fillStyle = '#1f1b33'; g.fillRect(0, 0, w, h);             // navy/indigo body (in shade)
-      g.fillStyle = '#3c4888'; g.fillRect(0, 0, w, 8);             // pale roof rim
+      g.fillStyle = '#1a1632'; g.fillRect(0, 0, w, h);             // navy/indigo body (in shade)
+      g.fillStyle = '#b8c2dc'; g.fillRect(0, 0, w, 8);             // pale roof rim
       g.fillStyle = '#2c2c58'; g.fillRect(0, 8, w, 8);
-      g.fillStyle = '#41445a'; g.fillRect(0, 32, w, 48);           // pale window band
+      g.fillStyle = '#26263e'; g.fillRect(0, 32, w, 48);           // window band
       for (let i = 0; i < 8; i++) {                                // windows
         const x = 40 + i * 122;
-        g.fillStyle = '#2c2e40'; g.fillRect(x + 4, 37, 84, 38);
-        g.fillStyle = 'rgba(150,160,185,0.45)'; g.fillRect(x + 6, 39, 34, 6);
+        g.fillStyle = '#16162a'; g.fillRect(x + 4, 37, 84, 38);
+        g.fillStyle = 'rgba(120,130,170,0.35)'; g.fillRect(x + 6, 39, 34, 5);
       }
       g.fillStyle = '#1e1c36'; g.fillRect(0, 98, w, 30);
       g.strokeStyle = '#17152c'; g.lineWidth = 3;
       for (const x of [20, w - 20]) { g.beginPath(); g.moveTo(x, 16); g.lineTo(x, h); g.stroke(); }
     });
-    const trainMat = paintMat({ shadow: '#ffffff', lit: '#ffd2a8', boost: 2.4, litMax: 0.75, soft: 0.07, map: trainTex, cover: 0.7, scale: 0.5, varAmt: 0.08 });
+    const trainMat = paintMat({ shadow: '#ffffff', lit: '#ffd2a8', boost: 2.0, litMax: 0.5, soft: 0.08, map: trainTex, cover: 0.78, scale: 0.45, varAmt: 0.05 });
     const train = new THREE.Group();
     bridge.add(train);
     const CAR = 20, NCARS = 14;
@@ -164,7 +164,7 @@ export default {
 
     /* ---------------- catenary gantries ---------------- */
     const rustMat = paintMat({ shadow: '#33231f', lit: '#a87650', map: latWhite, cover: 0.62, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
-    const redMat = paintMat({ shadow: '#5e2e2e', lit: '#b07068', map: latWhite, cover: 0.55, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
+    const redMat = paintMat({ shadow: '#3a2420', lit: '#7e4e40', map: latWhite, cover: 0.55, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
     const greyMat = paintMat({ shadow: '#4c4a5a', lit: '#c8a060', map: latWhite, cover: 0.62, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
     const yelMat = paintMat({ shadow: '#9a8048', lit: '#e0c27a', map: latWhite, cover: 0.4, scale: 0.6, side: THREE.DoubleSide, varAmt: 0.1 });
     function beam(a, b, wid, dep, mat, seg = 1.5) {
@@ -220,22 +220,33 @@ export default {
         const r = rng(seed * 13 + 5);
         g.clearRect(0, 0, W2, H2);
         const puffs = [];
-        for (let i = 0; i < nP; i++) {
-          const x = lerp(0.12, 0.88, r());
-          const xn = (x - 0.5) / 0.4;
-          const top = 0.62 - 0.38 * Math.max(0, 1 - xn * xn) * lerp(0.6, 1.0, r());
-          const y = lerp(0.68, top, Math.pow(r(), 0.6));
-          const rad = lerp(0.07, 0.16, r()) * (1 - 0.35 * Math.abs(xn));
-          puffs.push([x * W2, y * H2, rad * H2 * 1.4]);
+        // a few slanted streak rows of flattened, irregular puffs (broken cumulus)
+        const rows = 2 + Math.floor(r() * 2);
+        for (let k = 0; k < rows; k++) {
+          const y0 = lerp(0.4, 0.66, r()), slope = lerp(-0.12, 0.05, r());
+          const x0 = lerp(0.06, 0.3, r()), x1 = lerp(0.65, 0.94, r());
+          const n = Math.round(nP * 1.6 / rows);
+          for (let i = 0; i < n; i++) {
+            if (r() < 0.12) continue;                                   // gaps -> broken look
+            const x = lerp(x0, x1, r());
+            const y = y0 + (x - 0.5) * slope - Math.pow(r(), 2) * 0.16;
+            const rad = lerp(0.05, 0.12, r());
+            puffs.push([x * W2, y * H2, rad * H2 * 1.4, lerp(1.6, 2.6, r())]);
+          }
         }
-        const layer = (color, dy, k, blur) => {
+        const layer = (color, dy, k) => {
           g.fillStyle = color;
-          for (const [x, y, rr] of puffs) { g.beginPath(); g.ellipse(x, y + dy * rr, rr * k * 1.25, rr * k, 0, 0, Math.PI * 2); g.fill(); }
+          for (const [x, y, rr, asp] of puffs) { g.beginPath(); g.ellipse(x + dy * rr * 0.4, y + dy * rr, rr * k * asp, rr * k, -0.08, 0, Math.PI * 2); g.fill(); }
         };
-        layer('#62809f', 0.0, 1.0, 1.5);
-        layer('#7a8ca6', -0.16, 0.84, 1.5);
-        layer('#8c99ae', -0.32, 0.64, 2);
-        layer('#9ba5b6', -0.46, 0.4, 2.5);
+        layer('#63809f', 0.0, 1.0);
+        layer('#7689a4', -0.25, 0.82);
+        layer('#8796ad', -0.5, 0.6);
+        layer('#939fb2', -0.7, 0.36);
+        // painterly breakup: small bites out of the edges
+        g.globalCompositeOperation = 'destination-out';
+        // trim a few base bites only (keeps interiors solid)
+        for (let i = 0; i < 18; i++) { g.beginPath(); g.ellipse(r() * W2, lerp(0.66, 0.8, r()) * H2, lerp(8, 20, r()) * 2, lerp(4, 9, r()), 0, 0, Math.PI * 2); g.fill(); }
+        g.globalCompositeOperation = 'source-over';
         // flat-ish base
         g.globalCompositeOperation = 'destination-out';
         const fade = g.createLinearGradient(0, H2 * 0.68, 0, H2 * 0.82);

@@ -7,8 +7,8 @@ export default {
   duration: 3.958,
   credit: { role: 'CREATED BY', cx: 0.744, ry: 0.6875, ny: 0.736 },
   post: {
-    bloom: 0.45, bloomRadius: 0.55, bloomThreshold: 0.78,
-    exposure: 0.85, contrast: 1.1, saturation: 1.02,
+    bloom: 0.4, bloomRadius: 0.5, bloomThreshold: 0.86,
+    exposure: 0.9, contrast: 1.12, saturation: 1.02,
     lift: [0.02, 0.015, 0.01], gamma: [1.0, 1.0, 0.99], gain: [1.0, 1.0, 0.96],
     vignette: 0.2, grain: 0.03, ca: 0.0012, soft: 0.12,
   },
@@ -34,7 +34,7 @@ export default {
     /* ---------------- sky + light ---------------- */
     scene.add(makeSky({ zenith: '#3c6c98', mid: '#5996b8', horizon: '#8cbcc4', haze: 0.4, horizonY: 0.0 }));
     const SUN = V3(-0.3, 0.3, 0.9).normalize();
-    const rig = lightRig(scene, { sunDir: SUN.toArray(), sunColor: '#ffcc58', sunIntensity: 3.9, sky: '#8aa8cc', ground: '#6a7088', hemiIntensity: 0.9,
+    const rig = lightRig(scene, { sunDir: SUN.toArray(), sunColor: '#ffc85a', sunIntensity: 3.95, sky: '#8aa8cc', ground: '#6a7088', hemiIntensity: 0.9,
       ambient: '#6a88bc', ambientIntensity: 0.85, shadows: true, shadowBox: 45, shadowRes: 2048, target: [5, 10, -40] });
     rig.sun.shadow.camera.far = 400; rig.sun.shadow.bias = -0.0008; rig.sun.shadow.normalBias = 0.04;
     rig.sun.shadow.camera.updateProjectionMatrix();
@@ -135,7 +135,7 @@ export default {
     };
     const SB = local(805, 380, 0)[0];
     const concLit = vtoon('#ece6dc', { sB: SB, slope: 0.6 });
-    const concDark = vtoon('#948c94', { sB: SB, slope: 0.6 });
+    const concDark = vtoon('#8a5848', { sB: SB, slope: 0.6 });
     const S0 = -90, S1 = 260;
     const bandBot = local(420, 312, 0)[1];
     const wallBot = local(420, 470, -2.2)[1];
@@ -150,16 +150,15 @@ export default {
     vbox(S0, S1, wallBot, bandBot, -3.0, -2.2, concLit, false, true);
     // brackets under overhang
     const bracketMat = vtoon('#c8bcac', { sB: SB, slope: 0.6 });
-    for (let s = -40; s < S1; s += 9.5) {
-      const g = new THREE.Group();
+    {
       const sh = new THREE.Shape();
-      const H = 2.2, D = 2.0;
-      sh.moveTo(0, 0); sh.lineTo(D, 0); sh.lineTo(D, -0.35); sh.lineTo(0.35, -H); sh.lineTo(0, -H); sh.lineTo(0, 0);
-      const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.35, bevelEnabled: false });
-      const m = new THREE.Mesh(geo, bracketMat); m.castShadow = true; m.receiveShadow = true;
-      // shape x -> local d (toward camera), shape y -> h
-      m.rotation.y = -Math.PI / 2; // shape x axis -> +z(local d)
-      g.add(m); g.position.set(s, bandBot, -2.2); via.add(g);
+      sh.moveTo(-1.0, 0); sh.lineTo(-0.62, 0); sh.lineTo(0, -1.0); sh.lineTo(0.62, 0); sh.lineTo(1.0, 0);
+      sh.lineTo(0.2, -1.3); sh.lineTo(0.2, -2.3); sh.lineTo(-0.2, -2.3); sh.lineTo(-0.2, -1.3); sh.lineTo(-1.0, 0);
+      const geo = new THREE.ExtrudeGeometry(sh, { depth: 1.5, bevelEnabled: false }); geo.scale(0.7, 0.75, 1);
+      for (let s = -38; s < S1; s += 11) {
+        const m = new THREE.Mesh(geo, bracketMat); m.castShadow = true; m.receiveShadow = true;
+        m.position.set(s, bandBot + 0.05, -2.2); via.add(m);
+      }
     }
     // lower girder (cross beam, ribbed) — mostly in shadow
     const girdMat = vtoon('#bfc4cc', { k: 1, sB: local(330, 590, 0)[0], slope: 0 });
@@ -289,20 +288,20 @@ export default {
       const Z = -95;
       const FL = 3.0;   // floor height (m) ; texture = 8 floors
       const towerTex = paintTexture('s1_tower', 512, 512, (g, w, h, r) => {
-        const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#f8e0a0'); gr.addColorStop(1, '#f4d088');
+        const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#ffe8a8'); gr.addColorStop(1, '#f8d68c');
         g.fillStyle = gr; g.fillRect(0, 0, w, h);
         const fl = 64;
         for (let y = 0; y < h; y += fl) {
           // left balcony column (recessed, dark)
-          g.fillStyle = '#7a3a1e'; g.fillRect(40, y + 6, 110, 44); g.fillStyle = '#a85e2c'; g.fillRect(46, y + 10, 30, 36);
+          g.fillStyle = '#5c2810'; g.fillRect(40, y + 6, 110, 44); g.fillStyle = '#8c4820'; g.fillRect(46, y + 10, 30, 36);
           g.fillStyle = '#f9de96'; g.fillRect(64, y + 46, 84, 8);
           // windows pairs
           for (const x of [200, 300, 400]) {
-            g.fillStyle = '#8e4c22'; g.fillRect(x, y + 12, 66, 38);
-            g.fillStyle = '#c47a3a'; g.fillRect(x + 4, y + 16, 26, 30); g.fillStyle = '#a8602c'; g.fillRect(x + 35, y + 16, 26, 30);
+            g.fillStyle = '#6a3014'; g.fillRect(x, y + 12, 66, 38);
+            g.fillStyle = '#b06830'; g.fillRect(x + 4, y + 16, 26, 30); g.fillStyle = '#904a20'; g.fillRect(x + 35, y + 16, 26, 30);
           }
-          g.fillStyle = 'rgba(150,80,30,0.35)'; g.fillRect(0, y + 54, w, 4);
-          g.fillStyle = 'rgba(255,240,190,0.5)'; g.fillRect(0, y + 58, w, 3);
+          g.fillStyle = 'rgba(120,50,15,0.6)'; g.fillRect(0, y + 52, w, 6);
+          g.fillStyle = 'rgba(255,248,210,0.8)'; g.fillRect(0, y + 58, w, 4);
         }
         g.fillStyle = '#fbe2a0'; g.fillRect(0, 0, 14, h); g.fillRect(170, 0, 12, h);
       });
@@ -507,22 +506,22 @@ export default {
         }
       }
       const tree = makeFoliage({ clumps, density: 3, cardSize: 0.42, kind: 'round', seed: 3, texSeed: 2,
-        dark: '#161d0c', mid: '#1f2912', light: '#2a3618', highlight: '#3a4a22', wind: 0.02, shell: 0.6, lightWrap: 0.35, terminator: 0.0, sizeJitter: 0.6 });
+        dark: '#0b1108', mid: '#111a0c', light: '#1a2512', highlight: '#253219', wind: 0.02, shell: 0.6, lightWrap: 0.35, terminator: 0.0, sizeJitter: 0.6 });
       scene.add(tree);
       // light olive blotches scattered over the dark mass (painterly highlight clusters)
       const bl = [];
-      for (let i = 0; i < 46; i++) {
-        const py = lerp(20, 720, r()), lo = Math.max(leftEdge(py), -60) + 20, hi = rightEdge(py) + 60;
+      for (let i = 0; i < 22; i++) {
+        const py = lerp(20, 720, r()), lo = Math.max(leftEdge(py), -60) + 10, hi = rightEdge(py) + 30;
         const px = lerp(lo, hi, r());
-        const p = atDist(px, py, TD - 0.9); bl.push([p.x, p.y, p.z, lerp(0.07, 0.14, r())]);
+        const p = atDist(px, py, TD - 0.9); bl.push([p.x, p.y, p.z, lerp(0.16, 0.26, r())]);
       }
-      scene.add(makeFoliage({ clumps: bl, density: 0.9, cardSize: 0.15, kind: 'round', seed: 21, texSeed: 5,
-        dark: '#4a5f2e', mid: '#5c7538', light: '#6d8844', highlight: '#87a356', wind: 0.025, shell: 0.3, lightWrap: 0.6, terminator: 0.1, sizeJitter: 0.5 }));
+      scene.add(makeFoliage({ clumps: bl, density: 0.5, cardSize: 0.24, kind: 'round', seed: 21, texSeed: 5, flatten: 0.6,
+        dark: '#3e4f26', mid: '#4f6230', light: '#5e7538', highlight: '#6b8442', wind: 0.025, shell: 0.5, lightWrap: 0.9, terminator: 0.2, sizeJitter: 0.4 }));
       // warm backlit rim on the upper-left of the tree
       const rim = [];
-      for (let i = 0; i < 9; i++) { const py = lerp(120, 320, r()); const p = atDist(lerp(-10, 40, r()), py, TD - 0.6); rim.push([p.x, p.y, p.z, lerp(0.03, 0.055, r())]); }
+      for (let i = 0; i < 11; i++) { const py = lerp(60, 640, r()); const p = atDist(rightEdge(py) + lerp(55, 95, r()), py, TD - 0.2); rim.push([p.x, p.y, p.z, lerp(0.04, 0.07, r())]); }
       scene.add(makeFoliage({ clumps: rim, density: 1.2, cardSize: 0.12, kind: 'round', seed: 33, texSeed: 7,
-        dark: '#3a2412', mid: '#6a3418', light: '#b85a2a', highlight: '#e08a40', wind: 0.025, shell: 0.4, lightWrap: 0.5, terminator: 0.0 }));
+        dark: '#4a2a10', mid: '#8a4a1a', light: '#d0782c', highlight: '#f0a848', wind: 0.025, shell: 0.4, lightWrap: 0.7, terminator: 0.05 }));
       // lower-left broad leaves (very close)
       const lc = [];
       for (let py = 450; py < 780; py += 55) for (let px = -20; px < 70; px += 50) { if (px > 20 && py < 540) continue; const p = atDist(px + (r() - 0.5) * 20, py + (r() - 0.5) * 20, 4.0); lc.push([p.x, p.y, p.z, 0.12]); }

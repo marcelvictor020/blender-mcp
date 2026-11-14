@@ -7,7 +7,15 @@ export default {
   post: { bloom: 0.22, bloomThreshold: 0.88, bloomRadius: 0.5, exposure: 1.0, contrast: 1.03, saturation: 1.08,
     lift: [0.05, 0.05, 0.035], vignette: 0.16, grain: 0.025, soft: 0.25, ca: 0.001 },
   build(core) {
-    const { THREE, makeCloud, makeFoliage, lightRig, toon, shared, rng, lerp, NOISE_GLSL, col, paintTexture, chainLinkTexture } = core;
+    const { THREE, makeCloud, makeFoliage, lightRig, shared, rng, lerp, NOISE_GLSL, col, paintTexture, chainLinkTexture } = core;
+    // toon variant: anisotropic, diagonal fine leaf-shadow flecks (instead of round blobs)
+    const toon = (o) => {
+      const m = core.toon(o); const orig = m.onBeforeCompile; const dk = m.customProgramCacheKey();
+      m.onBeforeCompile = (sh) => { orig(sh); sh.fragmentShader = sh.fragmentShader.replace(
+        'vec2 q = vec2(dot(p, t1), dot(p, t2)) * uDappleScale;',
+        'vec2 q = vec2(dot(p, t1), dot(p, t2)); q = mat2(0.7071, 0.7071, -0.7071, 0.7071) * q; q *= uDappleScale * vec2(0.9, 2.2);'); };
+      m.customProgramCacheKey = () => 's6' + dk; return m;
+    };
     const scene = new THREE.Scene();
     const FOV = 26, CAMY = 2.0;
     const F = 360 / Math.tan(THREE.MathUtils.degToRad(FOV / 2));
@@ -147,12 +155,12 @@ export default {
     /* ---------------- background tree masses ---------------- */
     // right tree mass (px 1000-1280, py 210-470)
     fol({ clumps: fillPoly([[1000, 470], [1010, 330], [1050, 280], [1110, 240], [1180, 215], [1300, 205], [1300, 470]], 70, 18, 34, 60, 41, 4),
-      density: 5, cardSize: S(19, 60), kind: 'round', seed: 4, texSeed: 3,
+      density: 4, maxCards: 9000, cardSize: S(20, 60), kind: 'round', seed: 4, texSeed: 3,
       dark: '#0e2826', mid: '#163f36', light: '#235c48', highlight: '#42825e', wind: 0.008, shell: 0.55, lightWrap: 0.45, flatten: 0.8 }, [-0.7, 0.6, 0.5]);
     // left mass behind fence (px 120-510, py 230-560)
     fol({ clumps: fillPoly([[110, 560], [130, 330], [260, 300], [380, 250], [440, 235], [500, 260], [515, 320], [505, 430], [500, 560]], 80, 20, 38, 40, 43, 4),
-      density: 5, cardSize: S(19, 40), kind: 'round', seed: 6, texSeed: 5,
-      dark: '#0d2a24', mid: '#174d3c', light: '#287a56', highlight: '#5aa86c', wind: 0.01, shell: 0.55, lightWrap: 0.4, flatten: 0.85 }, [0.5, 0.6, 0.6]);
+      density: 4, maxCards: 9000, cardSize: S(20, 40), kind: 'round', seed: 6, texSeed: 5,
+      dark: '#0b231f', mid: '#133f33', light: '#21654a', highlight: '#46905e', wind: 0.01, shell: 0.55, lightWrap: 0.4, flatten: 0.85 }, [0.5, 0.6, 0.6]);
     // dark backdrop so no sky leaks through the left woods
     {
       const a0 = P(60, 300, 45), b0 = P(520, 600, 45);
@@ -160,7 +168,7 @@ export default {
       bd.position.set((a0.x + b0.x) / 2, (a0.y + b0.y) / 2, -45); scene.add(bd);
     }
     fol({ clumps: fillPoly([[60, 600], [70, 330], [200, 320], [300, 300], [400, 330], [400, 600]], 40, 22, 40, 44, 49, 2),
-      density: 4, cardSize: S(20, 44), kind: 'round', seed: 10, texSeed: 11,
+      density: 3, maxCards: 5000, cardSize: S(22, 44), kind: 'round', seed: 10, texSeed: 11,
       dark: '#0c2622', mid: '#143c34', light: '#1f5a48', highlight: '#3f8060', wind: 0.008, shell: 0.6, lightWrap: 0.3 }, [0.5, 0.6, 0.6]);
     // low bushes behind left fence (px 120-360, py 440-540)
     fol({ clumps: fillPoly([[120, 540], [140, 470], [220, 450], [300, 440], [380, 460], [380, 545]], 22, 16, 26, 20, 47),
@@ -545,8 +553,8 @@ export default {
         g.save(); g.translate(cx, cy); g.rotate(rot);
         g.beginPath(); g.moveTo(0, -len / 2);
         const N = 14;
-        for (let i = 0; i <= N; i++) { const t = i / N; const y = -len / 2 + t * len; const ww = wid * Math.sin(Math.PI * Math.pow(t, 0.8)) * (1 + (i % 2) * serr); g.lineTo(ww, y); }
-        for (let i = N; i >= 0; i--) { const t = i / N; const y = -len / 2 + t * len; const ww = wid * Math.sin(Math.PI * Math.pow(t, 0.8)) * (1 + (i % 2) * serr); g.lineTo(-ww, y); }
+        for (let i = 0; i <= N; i++) { const t = i / N; const y = -len / 2 + t * len; const ww = wid * Math.pow(Math.sin(Math.PI * Math.pow(t, 0.75)), 1.25) * (1 + (i % 2) * serr); g.lineTo(ww, y); }
+        for (let i = N; i >= 0; i--) { const t = i / N; const y = -len / 2 + t * len; const ww = wid * Math.pow(Math.sin(Math.PI * Math.pow(t, 0.75)), 1.25) * (1 + (i % 2) * serr); g.lineTo(-ww, y); }
         g.closePath();
         const c = Math.round(255 * v); g.fillStyle = `rgb(${c},${c},${c})`; g.fill();
         g.lineWidth = 3; g.strokeStyle = 'rgba(120,120,120,1)'; g.stroke();
@@ -564,7 +572,7 @@ export default {
       for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2 + r(); const d = 40 + r() * 40; leaf(128 + Math.cos(a) * d, 384 + Math.sin(a) * d, 80, 30, a + Math.PI / 2 + (r() - 0.5), 0.8 + r() * 0.2, 0.06); }
       leaf(128, 384, 80, 30, r() * 3, 1, 0.06);
       // cell 3 (256,256): broad ovate leaf (foreground plant)
-      leaf(384, 384, 236, 72, 0, 1, 0.02);
+      leaf(384, 384, 240, 62, 0, 1, 0.02);
     }, { srgb: false });
     leafAtlas.generateMipmaps = true;
 
@@ -635,14 +643,14 @@ export default {
     // top-left: near-black mass; lit leaves toward the sky opening (lower-right edge)
     const tlPoly = [[-40, -40], [545, -40], [530, 40], [500, 110], [455, 170], [420, 215], [370, 260], [310, 300], [200, 296], [100, 300], [-40, 310]];
     const tlTone = (x, y, r) => {
-      const edge = smooth01(0.4, 0.92, (x + 0.85 * y) / 560);
+      const edge = smooth01(0.62, 0.95, (x + 0.85 * y) / 560);
       const patch = vn(x / 90, y / 90);
-      return Math.min(1, Math.max(0, 0.02 + edge * 0.6 + (patch - 0.5) * 0.3 + (r() - 0.5) * 0.22));
+      return Math.min(1, Math.max(0, edge * 0.62 + (patch - 0.5) * 0.18 * edge + (r() - 0.5) * 0.16 - 0.04));
     };
     leafSpray(sprayPoly(tlPoly, 260, 101, (x, y, r) => (x + 0.85 * y > 480 ? null : { size: lerp(70, 110, r()), rot: r() * 6.28, cell: 2, tone: tlTone(x, y, r) * 0.6 })), 7.2,
-      ['#08160f', '#10281a', '#24502e', '#4f8a48'], 0.6);
+      ['#06110c', '#0b1d14', '#1a3c24', '#3f7a40'], 0.6);
     leafSpray(sprayPoly(tlPoly, 1600, 103, (x, y, r) => ((x + 0.85 * y > 470 && r() < 0.3) ? null : { size: lerp(20, 34, r()), rot: r() * 6.28, cell: r() < 0.6 ? 0 : 1, tone: tlTone(x, y, r) })), 7.0,
-      ['#0a1a12', '#153424', '#2c6040', '#5e9a5a'], 1.0);
+      ['#07130d', '#10291b', '#2c6040', '#5e9a5a'], 1.0);
     // top-right: dark core at right, bright lime leaves toward the left / bottom
     const trPoly = [[690, -40], [1320, -40], [1320, 215], [1230, 225], [1160, 205], [1090, 180], [1040, 205], [990, 255], [945, 280], [915, 240], [902, 170], [900, 90], [870, 75], [800, 90], [720, 85], [690, 50]];
     const trTone = (x, y, r) => {
@@ -660,21 +668,20 @@ export default {
     }), 7.0, ['#11291f', '#1f4a32', '#46865a', '#80b86c'], 1.0);
 
     /* ---------------- foreground broad leaves (lower-left plant) ---------------- */
-    const plPoly = [[-40, 270], [60, 275], [140, 310], [190, 400], [230, 500], [330, 590], [390, 700], [380, 740], [-40, 740]];
-    leafSpray(sprayPoly(plPoly, 230, 109, (x, y, r) => {
-      if (x > 180 && r() < 0.72) return null;
-      if (x > 120 && y < 420 && r() < 0.5) return null;
+    const plPoly = [[-40, 275], [50, 280], [110, 320], [150, 400], [190, 500], [230, 600], [250, 740], [-40, 740]];
+    leafSpray(sprayPoly(plPoly, 240, 109, (x, y, r) => {
+      if (x > 140 && r() < 0.4) return null;
       const patch = vn(x / 120, y / 120);
-      return { size: lerp(36, 62, r()), rot: (r() - 0.5) * 2.6 + (x > 150 ? 0.6 : -0.3), cell: 3,
-        tone: Math.min(1, Math.max(0, 0.38 + (patch - 0.5) * 0.8 + (r() - 0.5) * 0.5 - smooth01(560, 720, y) * 0.3)) };
-    }), 4.0, ['#0f2419', '#2a6a40', '#4f9a4c', '#8cc86a'], 1.2);
+      return { size: lerp(30, 46, r()), rot: (r() - 0.5) * 2.6 + (x > 100 ? 0.7 : -0.3), cell: 3,
+        tone: Math.min(1, Math.max(0, 0.5 + (patch - 0.5) * 0.8 - smooth01(300, 600, y) * 0.15 + (r() - 0.5) * 0.5 - smooth01(560, 720, y) * 0.3)) };
+    }), 4.0, ['#10291c', '#2c6a40', '#55a050', '#92cc70'], 1.2);
 
     return {
       scene, camera,
       update(t) {
         shared.uSunDir.value.copy(SUN);
         shared.uDapple.value = 1.0;
-        shared.uDappleScale.value = 5.0;
+        shared.uDappleScale.value = 6.5;
         shared.uDappleCover.value = 0.69;
         shared.uDappleSpeed.value = 0.25;
         shared.uFogMax.value = 0.0;

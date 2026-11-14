@@ -101,9 +101,9 @@ export default {
     }, { repeat: true });
     concTex.repeat.set(6, 1);
     const fasciaMat = toon({ color: '#d8c8a8', map: concTex, dapple: false });
-    const underMat = toon({ color: '#504f4c', dapple: false });
-    const girderMat = toon({ color: '#5a5856', dapple: false });
-    const flangeMat = toon({ color: '#77716a', dapple: false });
+    const underMat = toon({ color: '#5e5c58', dapple: false });
+    const girderMat = toon({ color: '#66635e', dapple: false });
+    const flangeMat = toon({ color: '#74706a', dapple: false });
     const postMat = toon({ color: '#f4efe6', dapple: false });
     const L0 = -80, L1 = 220, LEN = L1 - L0, WID = 40;
     const obox = (w, h, d, mat, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); opGroup.add(m); return m; };
@@ -112,7 +112,7 @@ export default {
     // fascia (lit concrete strip) slightly proud
     obox(LEN, 0.5, 0.12, fasciaMat, (L0 + L1) / 2, -0.25, -0.03);
     // longitudinal girders under the deck
-    for (let z = 0.8; z < WID; z += 2.6) {
+    for (let z = 0.8; z < WID; z += 4.0) {
       const d = 1.1;
       obox(LEN, d, 0.3, girderMat, (L0 + L1) / 2, -0.75 - d / 2, z);
       obox(LEN, 0.1, 0.7, flangeMat, (L0 + L1) / 2, -0.75 - d, z);
@@ -184,25 +184,26 @@ export default {
     /* ---------------- chain-link fences ---------------- */
     // chain-link: 2x2 rounded diamonds per tile
     const linkTex = paintTexture('s2_link', 128, 128, (g, w, h) => {
-      g.clearRect(0, 0, w, h); g.strokeStyle = '#fff'; g.lineWidth = 4.5; g.lineCap = 'round';
+      g.clearRect(0, 0, w, h); g.strokeStyle = '#fff'; g.lineWidth = 3.5; g.lineCap = 'round';
       for (let c = -2; c <= 4; c++) {
         const o = c * w / 2;
         g.beginPath(); g.moveTo(o, 0); g.bezierCurveTo(o + w * 0.3, h * 0.22, o + w * 0.2, h * 0.78, o + w, h); g.stroke();
         g.beginPath(); g.moveTo(o + w, 0); g.bezierCurveTo(o + w * 0.7, h * 0.22, o + w * 0.8, h * 0.78, o, h); g.stroke();
       }
     }, { srgb: false, repeat: true });
-    const fenceMat = (rep, dark = '#3a2a24', lit = '#e8d6bc', cov = 0.6) => {
+    const fenceMat = (rep, dark = '#3a2a24', lit = '#e8d6bc', cov = 0.6, spark = 0) => {
       const t = linkTex;
       return new THREE.ShaderMaterial({
         uniforms: { tLink: { value: t }, uRep: { value: new THREE.Vector2(...rep) }, uTime: shared.uTime, uSun: { value: sunDir },
-          cDark: { value: col(dark) }, cLit: { value: col(lit) }, uCov: { value: cov } },
+          cDark: { value: col(dark) }, cLit: { value: col(lit) }, uCov: { value: cov }, uSpark: { value: spark } },
         vertexShader: `varying vec2 vUv; varying vec3 vW; void main(){ vUv = uv; vec4 w = modelMatrix*vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`,
-        fragmentShader: `uniform sampler2D tLink; uniform vec2 uRep; uniform float uTime; uniform vec3 uSun, cDark, cLit; uniform float uCov; varying vec2 vUv; varying vec3 vW;
+        fragmentShader: `uniform sampler2D tLink; uniform vec2 uRep; uniform float uTime; uniform vec3 uSun, cDark, cLit; uniform float uCov, uSpark; varying vec2 vUv; varying vec3 vW;
           ${NOISE_GLSL}
           void main(){ float a = texture2D(tLink, vUv*uRep).a; if (a < 0.05) discard;
             vec3 L = normalize(uSun); vec3 t1 = normalize(cross(L, vec3(0.,1.,0.))); vec3 t2 = cross(L, t1);
             vec2 q = vec2(dot(vW,t1), dot(vW,t2))*1.3 + vec2(sin(uTime*0.6), cos(uTime*0.5))*0.08;
             float m = smoothstep(uCov, uCov + 0.04, fbm(q));
+            m *= mix(1.0, smoothstep(0.66, 0.82, vnoise(vUv * uRep * 3.0 + vec2(uTime * 0.5, 0.))), uSpark);
             gl_FragColor = vec4(mix(cDark, cLit, m), smoothstep(0.05, 0.6, a)); }`,
         side: THREE.DoubleSide, transparent: true, depthWrite: false,
       });
@@ -225,7 +226,7 @@ export default {
       const Hf = 1.05;
       const A = hitY(60, 568, Hf), B = hitY(600, 400, Hf);
       const len = A.distanceTo(B);
-      const f = quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), fenceMat([len / 0.3, (Hf - GROUND) / 0.3], '#6a4a42', '#d8a07c', 0.6));
+      const f = quad(A, B, B.clone().setY(GROUND), A.clone().setY(GROUND), fenceMat([len / 0.3, (Hf - GROUND) / 0.3], '#463430', '#cc9c78', 0.42, 1));
       scene.add(f);
       tube(hitY(-40, 600, Hf), B, 0.035, railMat);
       // posts
@@ -255,27 +256,27 @@ export default {
       g.fillStyle = shade ? '#5a0810' : '#d43a3c'; g.fillRect(0, 0, w, h * 0.018);
       // glass display
       const gx0 = w * 0.045, gx1 = w * 0.86, gy0 = h * 0.03, gy1 = h * 0.6;
-      g.fillStyle = shade ? '#3e302c' : '#cfc0a4'; g.fillRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
-      const rows = 5, rh = (gy1 - gy0) / rows;
-      const cols = shade ? ['#8a7a6c', '#7a6458', '#86504a', '#6a6a5a', '#9a8a74', '#5a5a6a', '#8a6a4a', '#a09080'] :
-        ['#e4d8c4', '#dccab4', '#e0b8a4', '#d4d4bc', '#e6d2ac', '#c8c8cc', '#e0c49c', '#ece2d0'];
+      g.fillStyle = shade ? '#3a2c28' : '#dccfb6'; g.fillRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
+      const rows = 6, rh = (gy1 - gy0) / rows;
+      const cols = shade ? ['#9a443a', '#b8964e', '#5a7898', '#b4ac9c', '#6e9060', '#a86a7a', '#ba7a3c', '#8a90a0', '#c8c0b0'] :
+        ['#e4d6bc', '#dfd0b4', '#e2c8b4', '#d8d4c0', '#e6d4b0', '#d4d2d0', '#e2c8a8', '#ebe0cc', '#e0d6c2'];
       for (let k = 0; k < rows; k++) {
         const y0 = gy0 + k * rh;
-        g.fillStyle = shade ? '#2e2220' : '#cbbca4'; g.fillRect(gx0, y0, gx1 - gx0, rh * 0.12);
-        const n = 9;
+        g.fillStyle = shade ? '#2a201e' : '#cfc2a8'; g.fillRect(gx0, y0, gx1 - gx0, rh * 0.1);
+        const n = 13;
         for (let i = 0; i < n; i++) {
-          const bx = gx0 + (i + 0.5) * (gx1 - gx0) / n, bw = (gx1 - gx0) / n * 0.6, bh = rh * (0.5 + pr() * 0.12);
+          const bx = gx0 + (i + 0.5) * (gx1 - gx0) / n, bw = (gx1 - gx0) / n * 0.55, bh = rh * (0.45 + pr() * 0.12);
           g.fillStyle = cols[Math.floor(pr() * cols.length)];
           const by = y0 + rh * 0.78 - bh;
           g.fillRect(bx - bw / 2, by + bh * 0.25, bw, bh * 0.75);
           g.fillRect(bx - bw * 0.3, by + bh * 0.08, bw * 0.6, bh * 0.2);
           g.fillStyle = shade ? '#a89888' : '#f4ecdc'; g.fillRect(bx - bw * 0.2, by, bw * 0.4, bh * 0.08);
           g.fillStyle = shade ? '#9a8a7a' : '#fff8ec'; g.fillRect(bx - bw * 0.45, y0 + rh * 0.82, bw * 0.9, rh * 0.06);
-          g.fillStyle = shade ? '#2a2a2a' : '#7a7068'; g.fillRect(bx - bw * 0.18, y0 + rh * 0.9, bw * 0.36, rh * 0.05);
+          g.fillStyle = shade ? '#2a2a2a' : '#d8cfc0'; g.fillRect(bx - bw * 0.18, y0 + rh * 0.9, bw * 0.36, rh * 0.05);
         }
       }
       // glass reflection streaks
-      g.fillStyle = shade ? 'rgba(160,140,130,0.10)' : 'rgba(255,255,255,0.15)'; g.beginPath(); g.moveTo(gx0, gy1); g.lineTo(gx0 + w * 0.2, gy0); g.lineTo(gx0 + w * 0.32, gy0); g.lineTo(gx0 + w * 0.12, gy1); g.fill();
+      g.fillStyle = shade ? 'rgba(160,140,130,0.10)' : 'rgba(255,255,255,0.35)'; g.beginPath(); g.moveTo(gx0, gy1); g.lineTo(gx0 + w * 0.2, gy0); g.lineTo(gx0 + w * 0.32, gy0); g.lineTo(gx0 + w * 0.12, gy1); g.fill();
       g.strokeStyle = shade ? '#4a0810' : '#c43030'; g.lineWidth = 5; g.strokeRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
       // ledge under glass
       g.fillStyle = shade ? '#580a10' : '#d84040'; g.fillRect(gx0, gy1, gx1 - gx0, h * 0.012);
@@ -322,24 +323,26 @@ export default {
     };
     const vmLit = paintTexture('s2_vmLit', 512, 1024, vmDraw(false)), vmSh = paintTexture('s2_vmSh', 512, 1024, vmDraw(true));
     const sdLit = paintTexture('s2_sdLit', 256, 1024, sideDraw(false)), sdSh = paintTexture('s2_sdSh', 256, 1024, sideDraw(true));
-    const dappleMat = (tL, tS, cover, scale) => new THREE.ShaderMaterial({
-      uniforms: { tL: { value: tL }, tS: { value: tS }, uTime: shared.uTime, uSun: { value: sunDir }, uCover: { value: cover }, uScale: { value: scale } },
+    const dappleMat = (tL, tS, cover, scale, glassBias = 0) => new THREE.ShaderMaterial({
+      uniforms: { tL: { value: tL }, tS: { value: tS }, uTime: shared.uTime, uSun: { value: sunDir }, uCover: { value: cover }, uScale: { value: scale }, uGlassBias: { value: glassBias } },
       vertexShader: `varying vec2 vUv; varying vec3 vW; void main(){ vUv = uv; vec4 w = modelMatrix*vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`,
-      fragmentShader: `uniform sampler2D tL, tS; uniform float uTime, uCover, uScale; uniform vec3 uSun; varying vec2 vUv; varying vec3 vW;
+      fragmentShader: `uniform sampler2D tL, tS; uniform float uTime, uCover, uScale, uGlassBias; uniform vec3 uSun; varying vec2 vUv; varying vec3 vW;
         ${NOISE_GLSL}
         void main(){
           vec3 L = normalize(uSun); vec3 t1 = normalize(cross(L, vec3(0.,1.,0.))); vec3 t2 = cross(L, t1);
           vec2 q = vec2(dot(vW,t1), dot(vW,t2)) * uScale;
           q += vec2(sin(uTime*0.55 + q.y*0.35), cos(uTime*0.42 + q.x*0.3)) * 0.12 + vec2(uTime*0.06, -uTime*0.025);
           float n = 0.8*fbm(q) + 0.2*vnoise(q*2.7 + vec2(3.1, uTime*0.12)) + 0.08*(vnoise(q*7.0 + uTime*0.3) - 0.5);
-          float m = smoothstep(uCover - 0.015, uCover + 0.015, n);
+          float gl = step(0.045, vUv.x) * step(vUv.x, 0.86) * step(0.4, vUv.y) * step(vUv.y, 0.97);
+          float cv = uCover - uGlassBias * gl * (0.6 + 0.4 * vUv.y);
+          float m = smoothstep(cv - 0.015, cv + 0.015, n);
           vec3 c = mix(texture2D(tS, vUv).rgb, texture2D(tL, vUv).rgb, m);
           gl_FragColor = vec4(c, 1.);
         }`,
     });
     {
       const A0 = MA.clone().setY(GROUND), B0 = MB.clone().setY(GROUND), C0 = MC.clone().setY(GROUND);
-      scene.add(quad(MA, MB, B0, A0, dappleMat(vmLit, vmSh, 0.53, 6.5)));
+      scene.add(quad(MA, MB, B0, A0, dappleMat(vmLit, vmSh, 0.53, 6.5, 0.06)));
       scene.add(quad(MB, MC, C0, B0, dappleMat(sdLit, sdSh, 0.74, 6.5)));
       // top lid (dark) + small vent box
       const Dp = MA.clone().add(MC).sub(MB);
@@ -354,7 +357,7 @@ export default {
     /* ---------------- barrier tape with bulbs ---------------- */
     const tapeTex = paintTexture('s2_tape', 512, 32, (g, w, h) => {
       g.fillStyle = '#16120f'; g.fillRect(0, 0, w, h);
-      for (let x = 0; x < w; x += 64) { g.fillStyle = '#ffe28a'; g.beginPath(); g.moveTo(x, h); g.lineTo(x + 20, 0); g.lineTo(x + 52, 0); g.lineTo(x + 32, h); g.fill(); }
+      for (let x = 0; x < w; x += 64) { g.fillStyle = '#d6b052'; g.beginPath(); g.moveTo(x, h); g.lineTo(x + 20, 0); g.lineTo(x + 52, 0); g.lineTo(x + 32, h); g.fill(); }
     }, { repeat: true });
     const ribbon = (pts, width) => {
       const curve = new THREE.CatmullRomCurve3(pts); const rep = curve.getLength() / 0.32;
@@ -373,12 +376,16 @@ export default {
     const bulbs = [];
     {
       const c1 = ribbon([at(-20, 700, 3.2), at(120, 680, 3.4), at(260, 668, 3.6), at(380, 645, 3.8), at(470, 612, 4.0), at(540, 565, 4.2), at(590, 530, 4.4)], 0.1);
-      const c2 = ribbon([at(980, 492, 4.0), at(1100, 482, 3.6), at(1220, 466, 3.2), at(1320, 455, 3.0)], 0.16);
+      const c2 = ribbon([at(980, 492, 4.0), at(1100, 482, 3.6), at(1220, 466, 3.2), at(1320, 455, 3.0)], 0.06);
       for (let i = 0; i < 9; i++) bulbs.push(c1.getPoint((i + 0.4) / 9));
-      for (let i = 0; i < 4; i++) bulbs.push(c2.getPoint((i + 0.3) / 4));
       const bg = new THREE.BufferGeometry().setFromPoints(bulbs);
       const bm = new THREE.PointsMaterial({ size: 0.35, map: softDotTexture(), color: col('#ffe8a0'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
       scene.add(new THREE.Points(bg, bm));
+      // right tape: a few discrete bright bulbs (core + halo)
+      const rb = [0.12, 0.42, 0.72].map(t => c2.getPoint(t));
+      const rg = new THREE.BufferGeometry().setFromPoints(rb);
+      scene.add(new THREE.Points(rg, new THREE.PointsMaterial({ size: 0.42, map: softDotTexture(), color: col('#ffd890'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
+      scene.add(new THREE.Points(rg, new THREE.PointsMaterial({ size: 0.12, map: softDotTexture(), color: col('#fffbe8'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
     }
 
     /* ---------------- traffic cone ---------------- */

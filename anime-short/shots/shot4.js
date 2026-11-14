@@ -46,16 +46,51 @@ export default {
     const sunV = new THREE.Vector3(...SUN).normalize();
 
     /* ---------------- clouds ---------------- */
+    const paintedCloud = (w, h, puffs, seed) => {
+      const blobs = puffs.map(p => new THREE.Vector3(...p));
+      while (blobs.length < 32) blobs.push(new THREE.Vector3(9, 9, 0.0001));
+      const mat = new THREE.ShaderMaterial({
+        uniforms: { uBlobs: { value: blobs }, uSeed: { value: seed * 1.37 }, uAspect: { value: w / h }, uTime: shared.uTime,
+          cL: { value: col('#f2f4f4') }, cM: { value: col('#cdd6dc') }, cS: { value: col('#a6b9c6') }, cB: { value: col('#91aabb') } },
+        vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
+        fragmentShader: `varying vec2 vUv; uniform vec3 uBlobs[32]; uniform float uSeed, uAspect, uTime; uniform vec3 cL, cM, cS, cB;
+          ${core.NOISE_GLSL}
+          float dens(vec2 p){
+            vec2 q = p * vec2(uAspect, 1.0); float d = -1.0;
+            for (int i = 0; i < 32; i++){ vec3 b = uBlobs[i]; float k = 1. - length(q - b.xy * vec2(uAspect, 1.0)) / b.z; d = max(d, k); }
+            d += (fbm(q * 2.6 + uSeed + vec2(uTime * 0.003, 0.)) - 0.5) * 0.75 + (vnoise(q * 12. + uSeed * 3.) - 0.5) * 0.2;
+            float e = smoothstep(0.5, 0.42, abs(p.x)) * smoothstep(0.5, 0.42, abs(p.y));
+            return d - (1.0 - e) * 1.5;
+          }
+          void main(){
+            vec2 p = vUv - 0.5; float d = dens(p);
+            float a = smoothstep(0.0, 0.09, d); if (a < 0.01) discard;
+            float e = 0.01;
+            vec2 g = vec2(dens(p + vec2(e, 0.)) - dens(p - vec2(e, 0.)), dens(p + vec2(0., e)) - dens(p - vec2(0., e)));
+            vec2 nOut = -normalize(g + 1e-6);
+            float up = dot(nOut, normalize(vec2(0.35, 1.0)));
+            float rim = smoothstep(0.65, 0.05, d) * smoothstep(-0.1, 0.55, up);
+            float hgt = smoothstep(-0.32, 0.3, p.y);
+            float n = fbm(p * vec2(uAspect, 1.) * 6. + uSeed * 2.);
+            vec3 c = mix(cB, cS, smoothstep(0.0, 0.5, hgt + (n - 0.5) * 0.4));
+            c = mix(c, cM, smoothstep(0.35, 0.75, hgt * 0.8 + up * 0.25 + (n - 0.5) * 0.3));
+            c = mix(c, cL, smoothstep(0.32, 0.5, rim + hgt * 0.12));
+            gl_FragColor = vec4(c, a);
+          }`,
+        transparent: true, depthWrite: false,
+      });
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); m.renderOrder = -5; return m;
+    };
     const cloudFromPx = (x0, y0, x1, y1, puffs, seed, extra = {}) => {
       const W = x1 - x0, H = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, D = 700;
       const pf = puffs.map(([px, py, pr]) => [(px - cx) / W, (cy - py) / H, pr / H]);
-      const c = makeCloud({ w: W * wpp(D), h: H * wpp(D), seed, puffs: pf, light: '#e6e9eb', mid: '#d6dce0', shadow: '#b0c1cb', lightDir: [0.35, 0.95], edge: 0.1, detail: 0.55, ...extra });
+      const c = paintedCloud(W * wpp(D), H * wpp(D), pf, seed);
       c.position.copy(scr(cx, cy, D)); return facing(c);
     };
-    scene.add(cloudFromPx(150, 30, 830, 430, [
-      [250, 190, 55], [262, 285, 60], [330, 150, 55], [395, 115, 52], [450, 160, 60], [380, 230, 75], [300, 330, 55],
-      [520, 160, 60], [600, 165, 58], [670, 145, 48], [725, 175, 45], [700, 230, 60], [610, 250, 75], [500, 260, 80],
-      [420, 320, 70], [745, 255, 40], [560, 330, 70], [235, 245, 50], [250, 330, 45],
+    scene.add(cloudFromPx(150, 20, 830, 440, [
+      [255, 200, 58], [262, 290, 62], [335, 150, 58], [392, 110, 50], [445, 165, 62], [380, 240, 85], [300, 340, 60],
+      [525, 165, 62], [600, 170, 60], [668, 150, 50], [722, 180, 46], [700, 240, 66], [610, 260, 85], [500, 275, 90],
+      [420, 335, 80], [748, 262, 40], [560, 345, 80], [238, 250, 52],
     ], 4));
     scene.add(cloudFromPx(-60, 170, 190, 400, [
       [10, 255, 36], [62, 248, 38], [100, 275, 34], [40, 298, 44], [-10, 240, 36], [112, 318, 30], [62, 322, 40], [140, 300, 26],
@@ -94,7 +129,7 @@ export default {
 
     /* ---------------- farmhouse: painted card (lighting painted in) ---------------- */
     const HX0 = 780, HY0 = 225, HX1 = 1280, HY1 = 580, HS = 2;
-    const houseTex = paintTexture('s4_house_v4', (HX1 - HX0) * HS, (HY1 - HY0) * HS, (g, W, H, r) => {
+    const houseTex = paintTexture('s4_house_v5', (HX1 - HX0) * HS, (HY1 - HY0) * HS, (g, W, H, r) => {
       g.save(); g.scale(HS, HS); g.translate(-HX0, -HY0);
       const path = (pts) => { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); };
       const fillPoly = (pts, fill) => { path(pts); g.fillStyle = fill; g.fill(); };
@@ -151,7 +186,7 @@ export default {
       // building A roof
       const roofA = [[862, 241], [1066, 239], [1108, 312], [1100, 350], [840, 346], [801, 353], [818, 326], [838, 296], [852, 266]];
       g.save(); path(roofA); g.clip();
-      g.fillStyle = (() => { const gr = g.createLinearGradient(860, 240, 1100, 340); gr.addColorStop(0, '#d6bea2'); gr.addColorStop(0.45, '#ad9e88'); gr.addColorStop(1, '#8a7f70'); return gr; })();
+      g.fillStyle = (() => { const gr = g.createLinearGradient(860, 240, 1100, 340); gr.addColorStop(0, '#e6caa8'); gr.addColorStop(0.45, '#bca88c'); gr.addColorStop(1, '#978874'); return gr; })();
       g.fillRect(HX0, HY0, 500, 200);
       g.restore();
       tiles(roofA, 'rgba(0,0,0,0)', 7.5, 9, 0.7, -0.25);
@@ -186,7 +221,7 @@ export default {
       // right roof surface of B
       const roofB = [[1155, 256], [1282, 247], [1282, 344], [1219, 343]];
       g.save(); path(roofB); g.clip();
-      g.fillStyle = (() => { const gr = g.createLinearGradient(1160, 250, 1280, 340); gr.addColorStop(0, '#b4a690'); gr.addColorStop(1, '#8e8476'); return gr; })();
+      g.fillStyle = (() => { const gr = g.createLinearGradient(1160, 250, 1280, 340); gr.addColorStop(0, '#c8b496'); gr.addColorStop(1, '#a0907a'); return gr; })();
       g.fillRect(1100, 240, 190, 110); g.restore();
       tiles(roofB, 'rgba(0,0,0,0)', 7, 8.5, 0.7, 0.3);
       // B bargeboards
@@ -197,7 +232,7 @@ export default {
       // pent roof (hisashi) across B, wrapping left
       const pent = [[1006, 347], [1282, 339], [1282, 384], [990, 389]];
       g.save(); path(pent); g.clip();
-      g.fillStyle = vgrad(340, 389, [[0, '#948a7e'], [1, '#6e665c']]); g.fillRect(980, 335, 310, 60); g.restore();
+      g.fillStyle = vgrad(340, 389, [[0, '#a69680'], [1, '#7a6e60']]); g.fillRect(980, 335, 310, 60); g.restore();
       tiles(pent, 'rgba(0,0,0,0)', 6.5, 8, 0.7, 0.6);
       fillPoly([[990, 383], [1282, 378], [1282, 388], [988, 391]], '#5c564c');
       for (let x = 994; x < 1280; x += 7.5) { g.fillStyle = 'rgba(170,160,145,0.6)'; g.beginPath(); g.arc(x, 386, 2, 0, 7); g.fill(); }
@@ -483,25 +518,25 @@ export default {
     // dense core along the very top (dark interior + lit leaves)
     const canopyCore = [[430, -30], [1015, -30], [1000, 26], [975, 52], [945, 76], [905, 92], [870, 104], [840, 104], [812, 88], [784, 74],
       [752, 80], [722, 92], [690, 108], [650, 112], [610, 100], [570, 92], [530, 84], [490, 64], [455, 30]];
-    spray(canopy, 101, canopyCore, 150, { d: 5.2, dz: 0.6, size: [36, 54],
+    spray(canopy, 101, canopyCore, 150, { d: 5.2, dz: 0.6, size: [26, 72],
       tone: (x, y, r) => 0.02 + r() * 0.22, rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.4, variant: 0 });
-    spray(canopy, 102, canopyCore, 150, { d: 5.0, dz: 0.6, size: [38, 56],
+    spray(canopy, 102, canopyCore, 150, { d: 5.0, dz: 0.6, size: [24, 66],
       tone: (x, y, r) => { const q = r(); return q < 0.5 ? 0.3 + r() * 0.15 : 0.52 + r() * 0.2 + (q > 0.93 ? 0.25 : 0); },
       rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.2, variant: 0 });
     // sparse fringe of individual hanging leaves (sky shows between them)
-    spray(canopy, 105, canopyPoly, 95, { d: 4.9, dz: 0.5, size: [38, 54],
-      tone: (x, y, r) => { const q = r(); return q < 0.35 ? 0.05 + r() * 0.15 : q < 0.6 ? 0.3 + r() * 0.15 : 0.52 + r() * 0.2; },
+    spray(canopy, 105, canopyPoly, 95, { d: 4.9, dz: 0.5, size: [22, 74],
+      tone: (x, y, r) => { const q = r(); return q < 0.35 ? r() * 0.08 : q < 0.6 ? 0.3 + r() * 0.15 : 0.52 + r() * 0.2; },
       rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.0, variant: 0 });
     // the drooping spray above the transformer pole
-    spray(canopy, 106, [[480, 150], [670, 150], [660, 250], [600, 256], [520, 225]], 26, { d: 4.8, dz: 0.4, size: [40, 56],
-      tone: (x, y, r) => (r() < 0.45 ? 0.05 + r() * 0.15 : 0.3 + r() * 0.4), rot: (x, y, r) => Math.PI + (r() - 0.5) * 1.6, variant: 0 });
+    spray(canopy, 106, [[480, 150], [670, 150], [660, 250], [600, 256], [520, 225]], 26, { d: 4.8, dz: 0.4, size: [28, 66],
+      tone: (x, y, r) => (r() < 0.45 ? r() * 0.08 : 0.3 + r() * 0.4), rot: (x, y, r) => Math.PI + (r() - 0.5) * 1.6, variant: 0 });
     // right-hand bright cluster
     const canopyR = [[995, -30], [1300, -30], [1300, 300], [1242, 302], [1196, 285], [1165, 258], [1146, 210], [1110, 168], [1068, 136], [1030, 104], [1004, 64]];
-    spray(canopy, 103, canopyR, 140, { d: 4.6, dz: 0.5, size: [36, 52], tone: (x, y, r) => 0.05 + r() * 0.2, rot: (x, y, r) => Math.PI * 0.85 + (r() - 0.5) * 2.4, variant: 0 });
-    spray(canopy, 104, canopyR, 230, { d: 4.4, dz: 0.5, size: [36, 54],
+    spray(canopy, 103, canopyR, 140, { d: 4.6, dz: 0.5, size: [26, 70], tone: (x, y, r) => 0.05 + r() * 0.2, rot: (x, y, r) => Math.PI * 0.85 + (r() - 0.5) * 2.4, variant: 0 });
+    spray(canopy, 104, canopyR, 230, { d: 4.4, dz: 0.5, size: [26, 64],
       tone: (x, y, r) => { const q = r(); return q < (y < 110 ? 0.55 : 0.2) ? 0.32 + r() * 0.12 : 0.55 + r() * 0.18 + (q > 0.6 ? 0.25 : 0); },
       rot: (x, y, r) => Math.PI * 0.85 + (r() - 0.5) * 2.4, variant: 0 });
-    scene.add(leafLayer(canopy, { pal: ['#0c1b1b', '#1b3a30', '#33694c', '#5b946b'], wind: 0.015 }));
+    scene.add(leafLayer(canopy, { pal: ['#071110', '#1b3a30', '#33694c', '#5b946b'], wind: 0.015 }));
 
     // --- tall broad-leaf weed on the left edge (silhouetted against the sky)
     const plantPoly = [[-10, 60], [50, 66], [92, 120], [150, 130], [210, 140], [262, 250], [256, 300], [300, 360], [352, 460], [290, 480], [240, 520], [-10, 540]];
@@ -525,17 +560,17 @@ export default {
     scene.add(leafLayer(plant, { pal: ['#12211b', '#264434', '#4a7a50', '#76a070'], wind: 0.03 }));
 
     // --- dense dark bush, lower left (butterflies hover over it)
-    const bushPoly = [[-10, 450], [70, 448], [150, 470], [210, 506], [262, 548], [310, 592], [345, 640], [370, 690], [385, 730], [-10, 730]];
+    const bushPoly = [[-10, 510], [60, 505], [140, 520], [200, 548], [250, 585], [290, 625], [320, 670], [340, 730], [-10, 730]];
     const bush = [];
-    spray(bush, 301, bushPoly, 210, { d: 1.15, dz: 0.15, size: [46, 70], tone: (x, y, r) => 0.01 + r() * 0.23,
-      rot: (x, y, r) => (r() - 0.5) * 3.0 + Math.PI * (r() < 0.5 ? 1 : 0), variant: 1 });
-    spray(bush, 302, bushPoly, 80, { d: 1.1, dz: 0.15, size: [44, 66],
-      tone: (x, y, r) => { const top = 1 - sm(440, 650, y); return r() < 0.15 + top * 0.25 ? 0.52 + r() * 0.22 + (r() < 0.25 ? 0.22 : 0) : 0.3 + r() * 0.16; },
+    spray(bush, 301, bushPoly, 120, { d: 1.15, dz: 0.15, size: [40, 62], tone: (x, y, r) => 0.01 + r() * 0.23,
+      rot: (x, y, r) => (r() - 0.5) * 3.0 + Math.PI * (r() < 0.5 ? 1 : 0), variant: (r) => (r() < 0.6 ? 1 : 2) });
+    spray(bush, 302, bushPoly, 34, { d: 1.1, dz: 0.15, size: [38, 58],
+      tone: (x, y, r) => { const top = 1 - sm(440, 650, y); return r() < 0.08 + top * 0.2 ? 0.52 + r() * 0.22 + (r() < 0.25 ? 0.22 : 0) : 0.3 + r() * 0.16; },
       rot: (x, y, r) => (r() - 0.5) * 3.0 + Math.PI * (r() < 0.5 ? 1 : 0), variant: 1 });
     // loose leaves poking above the grass to the right of the bush
-    spray(bush, 303, [[340, 590], [550, 600], [550, 730], [340, 730]], 22, { d: 1.2, dz: 0.2, size: [44, 62],
+    spray(bush, 303, [[320, 620], [540, 620], [540, 730], [320, 730]], 16, { d: 1.2, dz: 0.2, size: [38, 54],
       tone: (x, y, r) => 0.02 + r() * 0.4, rot: (x, y, r) => (r() - 0.5) * 2.2, variant: 1 });
-    scene.add(leafLayer(bush, { pal: ['#0a1711', '#18341f', '#2c5832', '#4f8444'], wind: 0.025 }));
+    scene.add(leafLayer(bush, { pal: ['#070f0b', '#122719', '#234a2a', '#41733c'], wind: 0.025 }));
 
     /* ---------------- butterflies (tiny glowing yellow) ---------------- */
     const bfTex = canvasTexture('s4_bfly', 64, 64, (g, w, h) => {
