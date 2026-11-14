@@ -277,51 +277,11 @@ def render():
             place(b['drums'], swell(BAR * 0.5, 0.2), T(10, 2), pan=0.0)
         if bar == 8: place(b['drums'], crash(0.22, 2.6), T(8), pan=-0.2)
 
-    # ------------------------------------------------------------ ambience (cut-synced)
-    amb = b['amb']
-    def seg(i):
-        return CUTS[i], CUTS[i + 1]
-    def cicadas(t0, t1, vel, pan=0.0, fc=5200):
-        n = int((t1 - t0) * SR); t = np.arange(n) / SR
-        s = bp(rng.standard_normal(n), fc * 0.85, fc * 1.18, 3)
-        am = (0.55 + 0.45 * np.sin(2 * np.pi * 31 * t)) * (0.7 + 0.3 * np.sin(2 * np.pi * 0.35 * t + rng.random() * 6))
-        e = np.clip(t / 0.03, 0, 1) * np.clip((t1 - t0 - t) / 0.03, 0, 1)
-        place(amb, s * am * e * vel, t0, pan=pan)
-    def wind(t0, t1, vel, lo=200, hi=1800):
-        n = int((t1 - t0) * SR); t = np.arange(n) / SR
-        s = bp(rng.standard_normal(n), lo, hi, 2) * (0.6 + 0.4 * np.sin(2 * np.pi * 0.23 * t + 1.3))
-        e = np.clip(t / 0.04, 0, 1) * np.clip((t1 - t0 - t) / 0.04, 0, 1)
-        place(amb, np.stack([s * e * vel, np.roll(s, 900) * e * vel]), t0)
-    def chirp(t0, vel=0.05, pan=0.4):
-        for k in range(rng.integers(2, 4)):
-            n = int(0.07 * SR); t = np.arange(n) / SR
-            f = 3300 + 1700 * (t / 0.07) + 300 * np.sin(2 * np.pi * 60 * t)
-            place(amb, np.sin(2 * np.pi * np.cumsum(f) / SR) * np.sin(np.pi * t / 0.07) * vel, t0 + k * 0.11, pan=pan)
-    def train(t0, t1, vel, muffle=900, start=0.0):
-        n = int((t1 - t0) * SR); t = np.arange(n) / SR
-        rumble = lp(rng.standard_normal(n), muffle, 2) * 0.6
-        clack = np.zeros(n)
-        for k in np.arange(start, t1 - t0, 0.21):
-            i = int(k * SR); m = min(int(0.03 * SR), n - i)
-            if m > 0: clack[i:i + m] += bp(rng.standard_normal(m), 400, 2500) * np.exp(-np.arange(m) / SR * 90) * (1.0 if int(k / 0.21) % 2 else 0.7)
-        e = np.clip((t - start) / 0.6, 0, 1) * np.clip((t1 - t0 - t) / 0.03, 0, 1)
-        place(amb, (rumble + lp(clack, muffle * 2, 1)) * e * vel, t0)
-    def hum(t0, t1, vel, f0=60):
-        n = int((t1 - t0) * SR); t = np.arange(n) / SR
-        s = sum(np.sin(2 * np.pi * f0 * k * t) / k for k in (1, 2, 3, 5))
-        place(amb, s * vel * np.clip(t / 0.03, 0, 1) * np.clip((t1 - t0 - t) / 0.03, 0, 1), t0)
-
-    a, z = seg(0); cicadas(a, z, 0.010, 0.2); train(a + 1.2, z, 0.05, 700, 0.0); wind(a, z, 0.006)      # railway at dusk + passing train
-    a, z = seg(1); cicadas(a, z, 0.016, -0.3, 5600); hum(a, z, 0.004, 50)                                # vending machine hum
-    a, z = seg(2); wind(a, z, 0.008, 300, 2500); [chirp(a + d, 0.03, p) for d, p in [(0.4, 0.5), (1.3, -0.4), (2.2, 0.3)]]
-    a, z = seg(3); wind(a, z, 0.012, 250, 3000); cicadas(a, z, 0.008, -0.5)
-    n = int((z - a) * SR); tt = np.arange(n) / SR                                                         # kei truck pulling away
-    eng = (np.sin(2 * np.pi * 38 * tt) + 0.5 * np.sin(2 * np.pi * 76 * tt + 0.3) + 0.25 * lp(rng.standard_normal(n), 300)) * np.exp(-tt * 0.45)
-    place(amb, eng * 0.02 * np.clip((z - a - tt) / 0.03, 0, 1), a, pan=-0.3 - 0.0)
-    a, z = seg(4); cicadas(a, z, 0.013, 0.4, 4800); wind(a, z, 0.005)
-    a, z = seg(5); cicadas(a, z, 0.011, 0.2, 5400); hum(a, z, 0.005, 50); wind(a, z, 0.006)
-    a, z = seg(6); train(a, z, 0.045, 450, 0.0); hum(a, z, 0.003, 30)                                  # inside the car: muffled
-    a, z = seg(7); wind(a, z, 0.016, 200, 2200); [chirp(a + d, 0.025, p) for d, p in [(0.6, -0.5), (1.9, 0.5)]]
+    # ------------------------------------------------------------ sound design (cut-synced, see tools/sfx.py)
+    import os, importlib.util
+    spec = importlib.util.spec_from_file_location('sfx', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sfx.py'))
+    sfx = importlib.util.module_from_spec(spec); spec.loader.exec_module(sfx)
+    sfx.design(b['amb'], place, {'SR': SR, 'lp': lp, 'hp': hp, 'bp': bp}, rng, CUTS)
 
     # ------------------------------------------------------------ mix
     mus = sum(b[k] for k in ['pad', 'ep', 'pluck', 'bell', 'lead', 'bass', 'drums'])
@@ -348,7 +308,15 @@ def render():
     mus = lp(mus, 14500, 2)  # gentle 90s top end
     hiss = hp(rng.standard_normal((2, N)), 3000, 1) * 0.0018
 
-    mix = hp(mus, 32, 2) + b['amb'] * 4.5 + hiss
+    # per-scene SFX level (dB), short crossfades at the cuts
+    sfx_db = [7.5, 8.0, 8.0, 7.0, 9.5, 13.0, 12.0, 8.0]
+    g = np.zeros(N)
+    for i, gd in enumerate(sfx_db):
+        a_, z_ = int(CUTS[i] * SR), int(CUTS[i + 1] * SR) if i < 7 else N
+        g[a_:z_] = 10 ** (gd / 20)
+    g = lfilter([0.002], [1, -0.998], g) / 1.0
+    b['amb'] = b['amb'] * g
+    mix = hp(mus, 32, 2) * (1.0 if '--no-music' not in sys.argv else 0.0) + b['amb'] * (0.0 if '--no-sfx' in sys.argv else 1.0) + hiss
     # bus compression (RMS, slow) + soft clip limiter
     rms = np.sqrt(lfilter([0.0015], [1, -0.9985], (mix ** 2).mean(axis=0)) + 1e-9)
     thr = 0.12
