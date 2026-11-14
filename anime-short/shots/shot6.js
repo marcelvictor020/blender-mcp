@@ -39,7 +39,7 @@ export default {
         { dir: [1, -0.6], w: 20, h: 9, dist: 30, color: '#1d4a3a' },
       ],
     });
-    const UNI = (o) => pbrUniforms({ sunDir: SUN.toArray(), leafScale: 2.6, leafSharp: 0.05, leafSeed: 4.0, grime: 0, ...o });
+    const UNI = (o) => pbrUniforms({ sunDir: SUN.toArray(), leafScale: 2.6, leafSharp: 0.05, leafSeed: 4.0, grime: 0, ...o, leafAmt: 0 });
     const UG = UNI({ leafAmt: 1, leafCover: 0.6 });               // ground under the canopy
     const UM = UNI({ leafAmt: 1, leafCover: 0.5, grime: 0.1 });   // machines / props
     const UF = UNI({ leafAmt: 0.45, leafCover: 0.45 });           // fence / bike (mostly open sun)

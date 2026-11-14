@@ -1,4 +1,5 @@
 import { makeKeiTruck, makeEnvMap, makeGroundShadow } from '../vehicles.js';
+import { pbrUniforms, pbr, texSet } from '../pbr.js';
 // Shot 4 — rural summer field: low eye-level camera in tall grass. Weathered wooden farmhouse (right),
 // white kei truck driving off to the left, utility poles + sagging wires, big dark tree mass, overhanging leaves,
 // tall broad-leaf weed on the left, glowing butterflies over the lower-left bush.
@@ -128,165 +129,403 @@ export default {
       density: 8, cardSize: 1.1, kind: 'round', seed: 25, texSeed: 7,
       dark: '#5e8a40', mid: '#8eb658', light: '#b8d27a', highlight: '#dde8a2', lightWrap: 0.4, wind: 0.008, shell: 0.6 }));
 
-    /* ---------------- farmhouse: painted card (lighting painted in) ---------------- */
-    const HX0 = 780, HY0 = 225, HX1 = 1280, HY1 = 580, HS = 2;
-    const houseTex = paintTexture('s4_house_v5', (HX1 - HX0) * HS, (HY1 - HY0) * HS, (g, W, H, r) => {
-      g.save(); g.scale(HS, HS); g.translate(-HX0, -HY0);
-      const path = (pts) => { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); };
-      const fillPoly = (pts, fill) => { path(pts); g.fillStyle = fill; g.fill(); };
-      const vgrad = (y0, y1, stops) => { const gr = g.createLinearGradient(0, y0, 0, y1); stops.forEach(([o, c]) => gr.addColorStop(o, c)); return gr; };
-      const planks = (x0, y0, x1, y1, base, line, step = 8, jitter = 0.12) => {
-        g.fillStyle = base; g.fillRect(x0, y0, x1 - x0, y1 - y0);
-        for (let x = x0; x < x1; x += step) {
-          const v = (r() - 0.5) * jitter;
-          g.fillStyle = v > 0 ? `rgba(255,230,190,${v})` : `rgba(20,10,0,${-v})`; g.fillRect(x, y0, step, y1 - y0);
-          g.fillStyle = line; g.fillRect(x, y0, 1, y1 - y0);
-        }
-      };
-      // kawara tile courses: each tile a rounded scallop with a dark lower lip and a lit crown
-      const tiles = (pts, base, rowH, colW, lineA, slope = 0) => {
-        g.save(); path(pts); g.clip();
-        g.fillStyle = base; g.fillRect(HX0, HY0, HX1 - HX0, HY1 - HY0);
-        let k = 0;
-        for (let y = HY0; y < HY1; y += rowH, k++) {
-          for (let x = HX0 - colW + (k % 2) * colW * 0.5; x < HX1 + colW; x += colW) {
-            const xx = x + slope * (y - HY0);
-            g.beginPath(); g.ellipse(xx, y + rowH * 0.15, colW * 0.5, rowH * 0.85, 0, 0, Math.PI);
-            g.strokeStyle = `rgba(40,34,30,${lineA})`; g.lineWidth = 1.1; g.stroke();
-            g.beginPath(); g.ellipse(xx, y + rowH * 0.05, colW * 0.3, rowH * 0.45, 0, Math.PI * 1.1, Math.PI * 1.9);
-            g.strokeStyle = `rgba(255,245,228,${lineA * 0.45})`; g.lineWidth = 0.9; g.stroke();
-          }
-          g.fillStyle = `rgba(30,26,22,${lineA * 0.35})`; g.fillRect(HX0, y + rowH - 1.2, HX1 - HX0, 1.2);
-        }
-        g.restore();
-      };
-      // --- recess between buildings (deep shade)
-      fillPoly([[985, 350], [1100, 350], [1100, 565], [985, 565]], '#1c1612');
-      // --- building A: front wall
-      g.fillStyle = vgrad(350, 400, [[0, '#33261c'], [1, '#6e5a44']]); g.fillRect(848, 350, 152, 50);
-      planks(848, 403, 1000, 518, '#56402e', 'rgba(50,34,22,0.8)', 8);
-      g.fillStyle = 'rgba(255,220,170,0.10)'; g.fillRect(848, 403, 70, 115);
-      g.fillStyle = '#58412e'; g.fillRect(848, 398, 152, 6);
-      g.fillStyle = '#4a3828'; g.fillRect(848, 455, 152, 3);
-      // shadow of building B's roof across A
-      fillPoly([[888, 518], [978, 436], [1000, 426], [1000, 520]], 'rgba(30,22,18,0.82)');
-      g.fillStyle = '#c4a47e'; g.fillRect(848, 352, 7, 166);      // corner post (lit)
-      g.fillStyle = '#7d6248'; g.fillRect(986, 352, 8, 166);
-      // building A: left end wall under the roof overhang
-      g.fillStyle = vgrad(352, 420, [[0, '#3a2c20'], [1, '#8a7458']]); g.fillRect(805, 352, 43, 66);
-      planks(805, 418, 848, 518, '#6e5640', 'rgba(60,40,26,0.7)', 7);
-      // stone base
-      g.fillStyle = '#9d8d80'; g.fillRect(802, 516, 200, 40);
-      for (let i = 0; i < 70; i++) {
-        const x = 802 + r() * 196, y = 516 + r() * 36, w = 8 + r() * 14, h = 6 + r() * 8;
-        g.fillStyle = `rgb(${150 + r() * 50 | 0},${135 + r() * 45 | 0},${120 + r() * 40 | 0})`;
-        g.beginPath(); g.ellipse(x, y, w / 2, h / 2, 0, 0, 7); g.fill();
-        g.strokeStyle = 'rgba(70,60,52,0.7)'; g.lineWidth = 0.8; g.stroke();
-      }
-      g.fillStyle = 'rgba(40,30,25,0.35)'; g.fillRect(802, 516, 200, 5);
-      // building A roof
-      const roofA = [[862, 241], [1066, 239], [1108, 312], [1100, 350], [840, 346], [801, 353], [818, 326], [838, 296], [852, 266]];
-      g.save(); path(roofA); g.clip();
-      g.fillStyle = (() => { const gr = g.createLinearGradient(860, 240, 1100, 340); gr.addColorStop(0, '#e6caa8'); gr.addColorStop(0.45, '#bca88c'); gr.addColorStop(1, '#978874'); return gr; })();
-      g.fillRect(HX0, HY0, 500, 200);
-      g.restore();
-      tiles(roofA, 'rgba(0,0,0,0)', 7.5, 9, 0.7, -0.25);
-      g.fillStyle = 'rgba(255,236,210,0.18)'; fillPoly([[862, 241], [960, 240], [930, 300], [850, 300]], 'rgba(255,236,210,0.16)');
-      // eave tile-ends band
-      g.fillStyle = '#6b655a'; fillPoly([[806, 345], [1102, 343], [1100, 354], [804, 356]], '#6b655a');
-      for (let x = 808; x < 1100; x += 8) { g.fillStyle = 'rgba(190,180,165,0.7)'; g.beginPath(); g.arc(x, 350, 2.4, 0, 7); g.fill(); }
-      // ridge cap
-      fillPoly([[860, 236], [1068, 234], [1068, 244], [860, 246]], '#857b6e');
-      g.fillStyle = 'rgba(240,225,205,0.55)'; g.fillRect(860, 236, 208, 2.5);
-      // bargeboard (curved, lit)
-      g.lineCap = 'round';
-      g.beginPath(); g.moveTo(862, 238); g.quadraticCurveTo(840, 300, 800, 352); g.strokeStyle = '#6a4a30'; g.lineWidth = 11; g.stroke();
-      g.beginPath(); g.moveTo(864, 236); g.quadraticCurveTo(843, 297, 803, 348); g.strokeStyle = '#c49a6c'; g.lineWidth = 6; g.stroke();
-      g.beginPath(); g.moveTo(1066, 239); g.lineTo(1108, 312); g.strokeStyle = '#6e6458'; g.lineWidth = 3; g.stroke();
-      // --- building B
-      // wall under pent roof
-      planks(1092, 386, 1280, 566, '#3a2c20', 'rgba(40,28,18,0.85)', 7);
-      g.fillStyle = '#241c16'; g.fillRect(1092, 386, 188, 60);
-      for (let x = 1100; x < 1250; x += 30) { g.fillStyle = 'rgba(52,40,30,0.8)'; g.fillRect(x, 392, 24, 48); }
-      g.fillStyle = vgrad(386, 430, [[0, 'rgba(10,8,6,0.75)'], [1, 'rgba(10,8,6,0)']]); g.fillRect(1092, 386, 188, 44);
-      g.fillStyle = '#7e664c'; g.fillRect(1092, 446, 188, 6);
-      g.fillStyle = '#c8a87e'; g.fillRect(1246, 386, 10, 180);
-      g.fillStyle = '#7a6248'; g.fillRect(1090, 386, 8, 180);
-      g.fillStyle = '#8a6d50'; g.fillRect(1172, 386, 6, 180);
-      g.fillStyle = 'rgba(20,14,10,0.5)'; g.fillRect(1098, 452, 148, 114);
-      // gable triangle (planks, warm lit)
-      g.save(); path([[1153, 262], [1092, 340], [1218, 342]]); g.clip();
-      planks(1090, 258, 1220, 345, '#7c5c3e', 'rgba(45,30,18,0.8)', 6);
-      g.fillStyle = vgrad(262, 300, [[0, 'rgba(20,12,8,0.6)'], [1, 'rgba(20,12,8,0)']]); g.fillRect(1090, 258, 130, 45);
-      g.restore();
-      // right roof surface of B
-      const roofB = [[1155, 256], [1282, 247], [1282, 344], [1219, 343]];
-      g.save(); path(roofB); g.clip();
-      g.fillStyle = (() => { const gr = g.createLinearGradient(1160, 250, 1280, 340); gr.addColorStop(0, '#c8b496'); gr.addColorStop(1, '#a0907a'); return gr; })();
-      g.fillRect(1100, 240, 190, 110); g.restore();
-      tiles(roofB, 'rgba(0,0,0,0)', 7, 8.5, 0.7, 0.3);
-      // B bargeboards
-      g.beginPath(); g.moveTo(1153, 258); g.lineTo(1086, 343); g.strokeStyle = '#5e4630'; g.lineWidth = 9; g.stroke();
-      g.beginPath(); g.moveTo(1154, 257); g.lineTo(1089, 340); g.strokeStyle = '#ae8c64'; g.lineWidth = 5; g.stroke();
-      g.beginPath(); g.moveTo(1153, 258); g.lineTo(1219, 344); g.strokeStyle = '#8c6e50'; g.lineWidth = 5; g.stroke();
-      fillPoly([[1150, 252], [1158, 252], [1158, 262], [1150, 262]], '#7a6e60');
-      // pent roof (hisashi) across B, wrapping left
-      const pent = [[1006, 347], [1282, 339], [1282, 384], [990, 389]];
-      g.save(); path(pent); g.clip();
-      g.fillStyle = vgrad(340, 389, [[0, '#a69680'], [1, '#7a6e60']]); g.fillRect(980, 335, 310, 60); g.restore();
-      tiles(pent, 'rgba(0,0,0,0)', 6.5, 8, 0.7, 0.6);
-      fillPoly([[990, 383], [1282, 378], [1282, 388], [988, 391]], '#5c564c');
-      for (let x = 994; x < 1280; x += 7.5) { g.fillStyle = 'rgba(170,160,145,0.6)'; g.beginPath(); g.arc(x, 386, 2, 0, 7); g.fill(); }
-      // small lower roof piece at left of B
-      const low = [[996, 392], [1068, 390], [1060, 412], [1002, 414]];
-      g.save(); path(low); g.clip(); g.fillStyle = '#9a9080'; g.fillRect(990, 388, 80, 30); g.restore();
-      tiles(low, 'rgba(0,0,0,0)', 5, 7, 0.4);
-      // red postbox
-      g.fillStyle = '#c84a32'; g.fillRect(1053, 514, 29, 52);
-      g.fillStyle = '#dd6044'; g.fillRect(1060, 514, 22, 52);
-      g.fillStyle = '#e8775a'; g.fillRect(1052, 510, 31, 6);
-      g.fillStyle = '#3a1a14'; g.fillRect(1062, 524, 16, 2);
-      g.fillStyle = '#efe2d2'; g.fillRect(1064, 534, 10, 8);
-      g.restore();
+    /* ---------------- modelled set: farmhouse + utility poles (PBR, real cast shadows) ----------------
+       Everything is real 3D geometry aligned with the world axes (the camera only pitches), placed from reference-pixel
+       anchors at chosen depths via atZ(). The house/pole materials take their direct sun from `hsun`, a zero-intensity
+       shadow-casting twin of rig.sun whose shadow frustum covers the house + poles (rig.sun's box follows the truck);
+       in those materials rig.sun's own (unshadowed here) contribution is swapped for hsun's shadowed one. */
+    const atZ = (px, py, d) => { const v = ray(px, py); return v.multiplyScalar(-d / v.z).add(camera.position); };
+    const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    const HU = pbrUniforms({ sunDir: SUN, leafAmt: 0, sunGain: 1.35, rimAmt: 0, grime: 0 });
+    const houseEnv = makeEnvMap('s4_house_env', {
+      zenith: '#2f86c0', horizon: '#b9d4dc', ground: '#4a5a34', sunDir: SUN, sunColor: '#fff2dc', sunPower: 10,
+      clouds: [{ dir: [-0.6, 0.45, -0.7], size: 8, power: 1.3 }],
+      blocks: [{ dir: [-0.5, -1], w: 34, h: 10, dist: 16, color: '#163128' }, { dir: [0.3, 1], w: 30, h: 3, dist: 14, color: '#3e5a2c' }],
     });
-    const houseMat = new THREE.MeshBasicMaterial({ map: houseTex, transparent: true, alphaTest: 0.5, depthWrite: true });
-    scene.add(card(HX0, HY0, HX1, HY1, 21, houseMat));
+    const hsun = new THREE.DirectionalLight(0xffffff, 0);
+    hsun.castShadow = true; hsun.shadow.mapSize.set(2048, 2048);
+    {
+      const HC = V3(5.0, 2.5, -21.5);
+      hsun.position.copy(HC).addScaledVector(sunV, 40); hsun.target.position.copy(HC);
+      const c = hsun.shadow.camera; c.left = c.bottom = -12; c.right = c.top = 12; c.near = 5; c.far = 90;
+      hsun.shadow.bias = -0.0006; hsun.shadow.normalBias = 0.025; hsun.shadow.radius = 2;
+      scene.add(hsun, hsun.target);
+    }
+    const uHSun = { value: rig.sun.color.clone().multiplyScalar(rig.sun.intensity) };
+    const uSunW = { value: sunV.clone() };
+    const hmat = (key, o) => {
+      const m = pbr(HU, { envMap: houseEnv, envMapIntensity: 0.45, roughness: 0.85, metalness: 0, ...o }, null, 's4h_' + key);
+      const prev = m.onBeforeCompile;
+      m.onBeforeCompile = (sh, r) => {
+        prev(sh, r);
+        sh.uniforms.uHSun = uHSun; sh.uniforms.uSunW = uSunW;
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uHSun, uSunW;')
+          .replaceAll('getDirectionalLightInfo( directionalLight, directLight );', `getDirectionalLightInfo( directionalLight, directLight );
+            if (dot(directLight.color, vec3(1.0)) < 1e-6) directLight.color = uHSun;
+            else if (dot(directLight.direction, normalize((viewMatrix * vec4(uSunW, 0.0)).xyz)) > 0.9995) directLight.color = vec3(0.0);`);
+      };
+      m.customProgramCacheKey = () => 's4h_' + key + (o.map ? 'm' : '') + (o.normalMap ? 'n' : '');
+      return m;
+    };
+    const shade = (o) => { o.traverse((m) => { if (m.isMesh) { m.castShadow = m.receiveShadow = true; } }); return o; };
+    const M4 = new THREE.Matrix4();
+    // oriented box between two world points: z along a->b, y as close to `up` as possible
+    const barMatrix = (a, b, w, h, up = V3(0, 1, 0), ext = 0) => {
+      const z = b.clone().sub(a); const len = z.length() + ext; z.normalize();
+      const x = up.clone().cross(z).normalize(); const y = z.clone().cross(x);
+      return new THREE.Matrix4().makeBasis(x.multiplyScalar(w), y.multiplyScalar(h), z.multiplyScalar(len)).setPosition(a.clone().add(b).multiplyScalar(0.5));
+    };
+    const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+    const instanced = (geo, mat, list, colors) => {
+      const im = new THREE.InstancedMesh(geo, mat, list.length);
+      list.forEach((m, i) => im.setMatrixAt(i, m));
+      if (colors) colors.forEach((c, i) => im.setColorAt(i, c));
+      im.castShadow = im.receiveShadow = true; scene.add(im); return im;
+    };
+    const tint = (base, r, amt = 0.12, warm = 0) => { const k = 1 + (r() - 0.5) * 2 * amt; const w = (r() - 0.5) * warm; return new THREE.Color(base).multiplyScalar(k).offsetHSL(w, 0, 0); };
 
-    /* ---------------- utility poles + transformer + wires ---------------- */
-    const poleMatA = toon({ color: '#e2d0b0', dapple: false });
-    const poleMatB = toon({ color: '#9a7a60', dapple: false });
-    const darkMat = new THREE.MeshBasicMaterial({ color: col('#3a3634') });
-    const poleAt = (px, topPy, botPy, d, radPx, mat) => {
-      const top = scr(px, topPy, d), bot = scr(px, botPy, d);
-      const h = top.distanceTo(bot), rr = radPx * wpp(d);
-      const m = new THREE.Mesh(new THREE.CylinderGeometry(rr * 0.9, rr, h, 10), mat);
-      m.position.copy(top).add(bot).multiplyScalar(0.5); scene.add(m); return { top, bot, rr };
+    /* --- textures --- */
+    const woodTex = texSet(128, 512, (g, w, h) => {
+      const R = rng(5);
+      g.fillStyle = '#8a6a4c'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 70; i++) {                       // long vertical grain streaks
+        const x = R() * w, ww = 1 + R() * 4, a = 0.08 + R() * 0.22;
+        g.fillStyle = R() < 0.6 ? `rgba(40,24,12,${a})` : `rgba(200,170,130,${a * 0.6})`;
+        g.beginPath(); g.moveTo(x, 0); for (let y = 0; y <= h; y += 32) g.lineTo(x + Math.sin(y * 0.02 + i) * 2.5, y); g.lineTo(x + ww, h); g.lineTo(x + ww, 0); g.fill();
+      }
+      for (let i = 0; i < 4; i++) { const x = R() * w, y = R() * h; g.fillStyle = 'rgba(30,18,8,0.5)'; g.beginPath(); g.ellipse(x, y, 4, 9, 0, 0, 7); g.fill(); }
+      const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(0,0,0,0.15)'); gr.addColorStop(0.5, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(20,10,0,0.25)');
+      g.fillStyle = gr; g.fillRect(0, 0, w, h);
+      g.fillStyle = 'rgba(15,8,2,0.55)'; g.fillRect(0, 0, 3, h); g.fillRect(w - 3, 0, 3, h);
+    }, { normalStrength: 3.0, roughBase: 0.82, roughVar: 0.25 });
+    const stoneTex = texSet(256, 128, (g, w, h) => {
+      const R = rng(9);
+      g.fillStyle = '#4a4038'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 90; i++) {
+        const x = R() * w, y = R() * h, rx = 9 + R() * 14, ry = 6 + R() * 8, v = 150 + R() * 70;
+        g.fillStyle = `rgb(${v | 0},${(v * 0.93) | 0},${(v * 0.84) | 0})`;
+        for (const dx of [-w, 0, w]) { g.beginPath(); g.ellipse(x + dx, y, rx, ry, R() * 0.6, 0, 7); g.fill(); }
+      }
+      for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(${R() < 0.5 ? '0,0,0' : '255,255,240'},${R() * 0.12})`; g.fillRect(R() * w, R() * h, 2, 2); }
+    }, { normalStrength: 4.0, roughBase: 0.9, roughVar: 0.1 });
+    const concreteTex = texSet(64, 256, (g, w, h) => {
+      const R = rng(13);
+      g.fillStyle = '#d8d0c0'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 300; i++) { g.fillStyle = `rgba(${R() < 0.5 ? '60,50,40' : '255,250,240'},${R() * 0.1})`; g.fillRect(R() * w, R() * h, 1 + R() * 3, 1 + R() * 3); }
+      for (let i = 0; i < 6; i++) { const x = R() * w; g.fillStyle = `rgba(70,60,50,${0.05 + R() * 0.08})`; g.fillRect(x, R() * h * 0.5, 1 + R() * 2, h); }
+      g.fillStyle = 'rgba(40,30,20,0.6)'; for (let y = 20; y < h; y += 46) g.fillRect(0, y, w, 1);   // step-bolt rings
+    }, { normalStrength: 1.5, roughBase: 0.9, roughVar: 0.1 });
+
+    const woodMat = hmat('wood', { color: '#a88a6c', ...woodTex, normalScale: new THREE.Vector2(0.8, 0.8) });
+    const postMat = hmat('post', { color: '#d8c0a0', ...woodTex, normalScale: new THREE.Vector2(0.5, 0.5) });
+    const darkWoodMat = hmat('dwood', { color: '#5a4636', ...woodTex });
+    const tileMat = hmat('tile', { color: '#bdb6aa', roughness: 0.55, envMapIntensity: 0.6 });
+    const stoneMat = hmat('stone', { color: '#ffffff', ...stoneTex });
+    const voidMat = hmat('void', { color: '#140f0b', roughness: 1, envMapIntensity: 0.05 });
+
+    /* --- kawara tile: arc cover tile with a thick lower lip (x across, y up = roof normal, z = down-slope 0..1) --- */
+    const tileGeo = (() => {
+      const S = 8, P = [], pos = [], idx = [];
+      for (let i = 0; i <= S; i++) { const th = -0.9 + 1.8 * i / S; P.push([0.5 * Math.sin(th) / Math.sin(0.9), 0.4 * (Math.cos(th) - Math.cos(0.9))]); }
+      for (const z of [0, 1]) for (const [x, y] of P) pos.push(x, y, z);
+      for (let i = 0; i < S; i++) idx.push(i, i + S + 1, i + 1, i + 1, i + S + 1, i + S + 2);
+      const b = pos.length / 3;
+      for (const [x, y] of P) pos.push(x, y, 1, x, y - 0.22, 1);
+      for (let i = 0; i < S; i++) { const t0 = b + i * 2, t1 = b + i * 2 + 2; idx.push(t0, t0 + 1, t1, t1, t0 + 1, t1 + 1); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+      g.computeVertexNormals(); return g;
+    })();
+    // lay tiles over a roof patch given its left/right edges as functions of v (0 = eave, 1 = ridge) -> world points.
+    // rows and columns are spaced in *screen pixels* (like the reference's ~9x7 px tile scale)
+    const tileList = [], tileCols = [];
+    const roofTiles = (L, R, { rows, colPx = 9, seed = 1, base = '#bdb6aa', lift = 0.16, over = 1.55, wScale = 1.08 }) => {
+      const r = rng(seed), toPx = (p) => { const q = p.clone().project(camera); return new THREE.Vector2(q.x * 640, q.y * 360); };
+      for (let j = 0; j < rows; j++) {
+        const v = (j + 0.5) / rows, dv = 1 / rows;
+        const a = L(v), b = R(v), a2 = L(Math.min(1, v + dv)), b2 = R(Math.min(1, v + dv));
+        const n = Math.max(2, Math.round(toPx(a).distanceTo(toPx(b)) / colPx));
+        for (let i = 0; i < n; i++) {
+          const u = (i + 0.5 + (j % 2) * 0.5 - 0.25) / n; if (u > 1) continue;
+          const p = a.clone().lerp(b, u), pU = a2.clone().lerp(b2, u);
+          const U = b.clone().sub(a).normalize(), Vv = pU.clone().sub(p); const len = Vv.length() * over; Vv.normalize();
+          const N = U.clone().cross(Vv).normalize(); if (N.y < 0) N.negate();
+          const Vp = N.clone().cross(U).normalize(); if (Vp.dot(Vv) < 0) Vp.negate();
+          const w = a.distanceTo(b) / n * wScale;
+          const tl = lift + (r() - 0.5) * 0.06;
+          const zAx = Vp.clone().negate().multiplyScalar(Math.cos(tl)).addScaledVector(N, Math.sin(tl));
+          const yAx = N.clone().multiplyScalar(Math.cos(tl)).addScaledVector(Vp, Math.sin(tl));
+          const xAx = yAx.clone().cross(zAx).normalize();
+          const top = p.clone().addScaledVector(Vp, len * 0.92).addScaledVector(N, 0.01);
+          const m = new THREE.Matrix4().makeBasis(xAx.multiplyScalar(w), yAx.multiplyScalar(w * 0.9), zAx.multiplyScalar(len)).setPosition(top);
+          tileList.push(m); tileCols.push(tint(base, r, 0.1, 0.01));
+        }
+      }
+    };
+    const linePts = (pts) => (v) => {      // polyline in v (pts given from eave (v=0) to ridge (v=1)), world points
+      const f = clamp(v, 0, 1) * (pts.length - 1), i = Math.min(pts.length - 2, Math.floor(f));
+      return pts[i].clone().lerp(pts[i + 1], f - i);
+    };
+    const curvePts = (pts) => { const c = new THREE.CatmullRomCurve3(pts); return (v) => c.getPoint(clamp(v, 0, 1)); };
+
+    /* ===== building A (left, irimoya-like sweep with curved bargeboard) ===== */
+    const dWA = 20.5, dEA = 19.3, dRA = 23.0;
+    // front slope: left edge sweeps from the eave corner up to the ridge apex (constant depth, like an upturned verge);
+    // right edge is the gable rake running back to the ridge
+    const AL = curvePts([atZ(975, 343, dEA), atZ(938, 322, dEA), atZ(905, 295, dEA), atZ(882, 268, dEA), atZ(866, 246, dEA)]);
+    const AR = linePts([atZ(1106, 347, dEA), atZ(1104, 318, (dEA + dRA) / 2 - 0.4), atZ(1067, 243, dRA)]);
+    roofTiles(AL, AR, { rows: 15, colPx: 9, seed: 31, base: '#c4bdb0' });
+    // ridge (noshi stack + round cap) along the top
+    {
+      const a = AL(1).add(V3(0, 0.05, 0)), b = AR(1).add(V3(0, 0.05, 0));
+      const ridgeMat = hmat('ridge', { color: '#8e877c', roughness: 0.5, envMapIntensity: 0.6 });
+      const rk = []; for (let k = 0; k < 3; k++) rk.push(barMatrix(a.clone().add(V3(0, k * 0.07, 0)), b.clone().add(V3(0, k * 0.07, 0)), 0.3 - k * 0.04, 0.075, V3(0, 1, 0), 0.2));
+      instanced(boxGeo, ridgeMat, rk);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1, 10, 1, false, 0, Math.PI), ridgeMat);
+      const capM = barMatrix(a.clone().add(V3(0, 0.22, 0)), b.clone().add(V3(0, 0.22, 0)), 1, 1, V3(0, 1, 0), 0.25);
+      cap.geometry.rotateX(Math.PI / 2); cap.geometry.rotateZ(Math.PI / 2); cap.applyMatrix4(capM); scene.add(shade(cap));
+      for (const e of [a, b]) { const o = new THREE.Mesh(boxGeo, ridgeMat); o.scale.set(0.34, 0.42, 0.3); o.position.copy(e).add(V3(0, 0.2, 0)); scene.add(shade(o)); }
+    }
+    // eave line: fascia + rafter ends + soffit (deep eave; casts the shadow band onto the wall)
+    {
+      const eL = AL(0), eR = AR(0);
+      const fas = new THREE.Mesh(boxGeo, darkWoodMat); fas.applyMatrix4(barMatrix(eL.clone().add(V3(0, -0.08, 0.02)), eR.clone().add(V3(0, -0.08, 0.02)), 0.08, 0.14, V3(0, 1, 0), 0.1)); scene.add(shade(fas));
+      const raf = []; const n = 12;
+      for (let i = 0; i <= n; i++) { const p = eL.clone().lerp(eR, i / n); raf.push(barMatrix(p.clone().add(V3(0, -0.16, 0)), V3(p.x, p.y - 0.02, -dWA), 0.08, 0.1)); }
+      const lc = []; for (let i = 0; i <= 16; i++) { const v = i / 16 * 0.85; const p = AL(v); raf.push(barMatrix(p.clone().add(V3(0, -0.14, 0)), V3(p.x + 0.2, p.y - 0.05, -dWA - 0.2), 0.07, 0.1)); }
+      instanced(boxGeo, postMat, raf);
+      // soffit board (underside of the roof between the eave and the wall)
+      const sg = new THREE.BufferGeometry(); const sp = [];
+      const outer = [], inner = [];
+      for (let i = 0; i <= 12; i++) { const v = 0.95 - i / 12 * 0.95; const p = AL(v).add(V3(0, -0.12, 0)); outer.push(p); inner.push(V3(p.x + 0.25, p.y - 0.15, -dWA - 0.05)); }
+      for (let i = 1; i <= 8; i++) { const p = eL.clone().lerp(eR, i / 8).add(V3(0, -0.12, 0)); outer.push(p); inner.push(V3(p.x, p.y - 0.05, -dWA - 0.05)); }
+      for (let i = 0; i < outer.length - 1; i++) sp.push(...outer[i].toArray(), ...inner[i].toArray(), ...outer[i + 1].toArray(), ...outer[i + 1].toArray(), ...inner[i].toArray(), ...inner[i + 1].toArray());
+      sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); sg.computeVertexNormals();
+      const soff = new THREE.Mesh(sg, hmat('soffit', { color: '#3a2c22', side: THREE.DoubleSide })); scene.add(shade(soff));
+    }
+    // curved bargeboard (hafu) down the left gable + verge tiles riding on it
+    {
+      const bb = [atZ(866, 243, dEA), atZ(850, 268, 19.7), atZ(834, 296, 20.0), atZ(818, 325, 20.25), atZ(801, 352, 20.5)];
+      const curve = new THREE.CatmullRomCurve3(bb); const pts = curve.getPoints(16);
+      const bm = [], vt = [], vc = []; const r = rng(17);
+      for (let i = 0; i < pts.length - 1; i++) {
+        const a = pts[i], b = pts[i + 1];
+        bm.push(barMatrix(a.clone().add(V3(0, -0.17, 0)), b.clone().add(V3(0, -0.17, 0)), 0.1, 0.32, V3(1, 0, 0.6).normalize(), 0.04));
+      }
+      instanced(boxGeo, postMat, bm);
+      const pts2 = curve.getPoints(22);
+      for (let i = 0; i < pts2.length - 1; i++) {
+        const a = pts2[i], b = pts2[i + 1];
+        vt.push(barMatrix(a.clone().add(V3(-0.04, 0.06, 0.05)), b.clone().add(V3(-0.04, 0.06, 0.05)), 0.24, 0.13, V3(-0.3, 1, 0.5).normalize(), 0.02));
+        vc.push(tint('#a8a296', r, 0.12));
+      }
+      instanced(boxGeo, tileMat, vt, vc);
+      // tile band behind the bargeboard (the left slope seen edge-on), fills the strip up to the ridge
+      const BL = curvePts(bb.slice().reverse().map((p) => p.clone().add(V3(-0.02, 0.12, -0.25))));
+      const BR = curvePts(bb.slice().reverse().map((p) => p.clone().add(V3(0.45, 0.32, -1.6))));
+      roofTiles(BL, BR, { rows: 16, colPx: 8, seed: 33, base: '#9c968a' });
+    }
+    // walls of A: vertical boards (instanced, jittered) + posts + rails
+    const topA = (px) => {                  // top of A's front wall on screen (follows the sweep of the roof edge)
+      const T = [[848, 268], [866, 250], [882, 270], [905, 297], [938, 324], [975, 345], [1000, 348]];
+      for (let i = 0; i < T.length - 1; i++) if (px <= T[i + 1][0]) return lerp(T[i][1], T[i + 1][1], (px - T[i][0]) / (T[i + 1][0] - T[i][0]));
+      return 348;
+    };
+    {
+      const r = rng(51), pl = [], pc = [];
+      const xa = atZ(848, 500, dWA).x, xb = atZ(1000, 500, dWA).x;
+      for (let x = xa; x < xb; x += 0.2) {
+        const xm = x + 0.1, pxm = 640 + xm * F / dWA;
+        const yTop = atZ(pxm, topA(pxm) - 3, dWA).y, yBot = 0.55;
+        pl.push(barMatrix(V3(xm, yBot, -dWA + (r() - 0.5) * 0.02), V3(xm, yTop, -dWA + (r() - 0.5) * 0.02), 0.205, 0.035, V3(0, 0, 1)));
+        pc.push(tint('#6e5038', r, 0.16, 0.02));
+      }
+      // left end wall (faces the camera side), boards running back in depth
+      const XL = xa - 0.06;
+      for (let z = dWA; z < dWA + 5.2; z += 0.21) {
+        const zm = z + 0.105, pxm = 640 + XL * F / zm;
+        const yTop = lerp(4.6, 3.95, (zm - dWA) / 5.2);
+        pl.push(barMatrix(V3(XL + (r() - 0.5) * 0.02, 0.55, -zm), V3(XL, yTop, -zm), 0.035, 0.21, V3(0, 0, 1)));
+        pc.push(tint('#8a6a4c', r, 0.16, 0.02));
+      }
+      instanced(boxGeo, woodMat, pl, pc);
+      // posts + rails
+      const pm = [];
+      for (const px of [849, 986]) { const p = atZ(px, 500, dWA - 0.06); pm.push(barMatrix(V3(p.x, 0.5, p.z), V3(p.x, atZ(px, topA(px) + 4, dWA).y, p.z), 0.2, 0.2, V3(0, 0, 1))); }
+      for (const py of [352, 402, 456]) { const a = atZ(848, py, dWA - 0.07), b = atZ(1000, py, dWA - 0.07); b.y = a.y; pm.push(barMatrix(a, b, 0.08, 0.13, V3(0, 1, 0), 0.1)); }
+      const ze = dWA + 5.2; pm.push(barMatrix(V3(XL - 0.03, 0.5, -ze), V3(XL - 0.03, 3.95, -ze), 0.2, 0.2, V3(0, 0, 1)));
+      pm.push(barMatrix(V3(XL - 0.04, 2.6, -dWA), V3(XL - 0.04, 2.6, -ze), 0.08, 0.12, V3(0, 1, 0)));
+      instanced(boxGeo, postMat, pm);
+      // stone base under A (front + left side), top catches the sun
+      const sb = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), stoneMat);
+      const s0 = atZ(802, 540, dWA - 0.35), s1 = atZ(1003, 540, dWA - 0.35);
+      sb.scale.set(s1.x - s0.x, 0.66, 5.9); sb.position.set((s0.x + s1.x) / 2, 0.29, -dWA + 0.4 - 2.95);
+      const uvs = sb.geometry.attributes.uv; for (let i = 0; i < uvs.count; i++) uvs.setX(i, uvs.getX(i) * 4);
+      scene.add(shade(sb));
+      const cap = new THREE.Mesh(boxGeo, hmat('stonecap', { color: '#a89c8c', roughness: 0.95 }));
+      cap.scale.set(s1.x - s0.x + 0.06, 0.06, 5.96); cap.position.set(sb.position.x, 0.63, sb.position.z); scene.add(shade(cap));
+    }
+
+    /* ===== recess + doorway between A and B ===== */
+    const dWB = 18.6;
+    {
+      const back = new THREE.Mesh(boxGeo, voidMat); const p0 = atZ(990, 560, 21.6), p1 = atZ(1100, 330, 21.6);
+      back.scale.set(p1.x - p0.x + 1, p1.y - p0.y, 0.1); back.position.set((p0.x + p1.x) / 2, (p0.y + p1.y) / 2, -21.6); scene.add(shade(back));
+      // B's left side wall (in shade, faces the camera side) with a dark doorway
+      const xB = atZ(1092, 450, dWB).x;
+      const r = rng(61), sw = [], sc = [];
+      for (let z = dWB; z < 21.5; z += 0.21) { sw.push(barMatrix(V3(xB, 0, -z - 0.105), V3(xB, 3.5, -z - 0.105), 0.035, 0.21, V3(0, 0, 1))); sc.push(tint('#4a3828', r, 0.15)); }
+      instanced(boxGeo, darkWoodMat, sw, sc);
+      const door = new THREE.Mesh(boxGeo, voidMat); door.scale.set(0.06, 1.9, 1.15); door.position.set(xB - 0.02, 0.95, -dWB - 1.35); scene.add(door);
+      const dfr = []; for (const z of [dWB + 0.75, dWB + 1.95]) dfr.push(barMatrix(V3(xB - 0.05, 0, -z), V3(xB - 0.05, 2.0, -z), 0.08, 0.1, V3(0, 0, 1)));
+      dfr.push(barMatrix(V3(xB - 0.05, 2.0, -dWB - 0.7), V3(xB - 0.05, 2.0, -dWB - 2.0), 0.08, 0.12, V3(0, 1, 0)));
+      instanced(boxGeo, postMat, dfr);
+    }
+
+    /* ===== building B (right): cross gable + wing roof + pent roof (hisashi) over a plank wall ===== */
+    {
+      const r = rng(71);
+      // front wall boards
+      const pl = [], pc = [];
+      const xa = atZ(1092, 500, dWB).x, xb = atZ(1300, 500, dWB).x;
+      const yWallTop = atZ(1150, 343, dWB).y;
+      for (let x = xa; x < xb; x += 0.2) {
+        const xm = x + 0.1, j = (r() - 0.5) * 0.02;
+        pl.push(barMatrix(V3(xm, -0.1, -dWB + j), V3(xm, yWallTop, -dWB + j), 0.205, 0.035, V3(0, 0, 1)));
+        pc.push(tint('#5c4430', r, 0.18, 0.02));
+      }
+      // gable triangle boards
+      const ap = atZ(1153, 266, dWB), gl = atZ(1094, 342, dWB), gr = atZ(1216, 342, dWB);
+      for (let x = gl.x; x < gr.x; x += 0.19) {
+        const xm = x + 0.095, t = xm < ap.x ? (xm - gl.x) / (ap.x - gl.x) : (gr.x - xm) / (gr.x - ap.x);
+        const yt = lerp(gl.y, ap.y, clamp(t, 0, 1));
+        pl.push(barMatrix(V3(xm, gl.y - 0.05, -dWB + 0.02), V3(xm, yt, -dWB + 0.02), 0.19, 0.03, V3(0, 0, 1)));
+        pc.push(tint('#8a6644', r, 0.15, 0.02));
+      }
+      instanced(boxGeo, woodMat, pl, pc);
+      // posts, rails, battens on the upper (shaded) band
+      const pm = [];
+      for (const px of [1094, 1172, 1250]) { const p = atZ(px, 500, dWB - 0.08); pm.push(barMatrix(V3(p.x, -0.1, p.z), V3(p.x, yWallTop, p.z), 0.16, 0.16, V3(0, 0, 1))); }
+      for (const py of [448, 388]) { const a = atZ(1092, py, dWB - 0.1), b = atZ(1300, py, dWB - 0.1); b.y = a.y; pm.push(barMatrix(a, b, 0.08, 0.12, V3(0, 1, 0))); }
+      pm.push(barMatrix(gl.clone().add(V3(-0.1, 0, 0.08)), gr.clone().add(V3(0.1, 0, 0.08)), 0.1, 0.16, V3(0, 1, 0)));
+      instanced(boxGeo, postMat, pm);
+      const bt = []; for (let px = 1112; px < 1290; px += 31) { const a = atZ(px, 448, dWB - 0.06), b = atZ(px, 392, dWB - 0.06); bt.push(barMatrix(a, V3(a.x, b.y, a.z), 0.05, 0.05, V3(0, 0, 1))); }
+      instanced(boxGeo, darkWoodMat, bt);
+      // cross-gable bargeboards
+      const dG = dWB - 0.35;
+      const A0 = atZ(1153, 260, dG), L0 = atZ(1084, 344, dG), R0 = atZ(1220, 345, dG);
+      instanced(boxGeo, postMat, [barMatrix(A0, L0, 0.08, 0.26, V3(0, 0, 1), 0.2), barMatrix(A0, R0, 0.08, 0.22, V3(0, 0, 1), 0.2)]);
+      // left slope of the cross gable (seen at a grazing angle) + right wing roof
+      const back = 4.0;
+      roofTiles(linePts([L0.clone().add(V3(-0.08, 0.1, 0.12)), A0.clone().add(V3(0, 0.14, 0.12))]),
+        linePts([L0.clone().add(V3(0.75, 0.75, -back)), A0.clone().add(V3(0, 0.14, -back))]), { rows: 14, colPx: 8, seed: 72, base: '#a8a194' });
+      roofTiles(linePts([R0.clone().add(V3(-0.1, 0.05, 0.05)), atZ(1157, 256, 22.6)]), linePts([atZ(1300, 345, dG), atZ(1300, 246, 22.6)]),
+        { rows: 15, colPx: 9, seed: 73, base: '#c2bbae' });
+      // pent roof (hisashi) wrapping left over the recess; its eave throws the dark band over B's upper wall
+      const dP = dWB - 1.45;
+      roofTiles(linePts([atZ(990, 389, dP), atZ(1006, 345, dWB + 0.05)]), linePts([atZ(1300, 384, dP), atZ(1300, 340, dWB + 0.05)]),
+        { rows: 6, colPx: 8, seed: 74, base: '#b2ab9e', lift: 0.12 });
+      const pe0 = atZ(990, 392, dP), pe1 = atZ(1300, 386, dP); pe1.y = pe0.y;
+      const praf = [barMatrix(pe0.clone().add(V3(0, -0.06, 0)), pe1.clone().add(V3(0, -0.06, 0)), 0.07, 0.12, V3(0, 1, 0))];
+      for (let px = 996; px < 1300; px += 18) { const a = atZ(px, 392, dP); praf.push(barMatrix(V3(a.x, pe0.y - 0.08, a.z), V3(a.x, pe0.y + 0.3, -dWB), 0.05, 0.07)); }
+      instanced(boxGeo, postMat, praf);
+      // little lower canopy over the doorway
+      roofTiles(linePts([atZ(998, 413, dP - 0.3), atZ(996, 392, dP + 0.5)]), linePts([atZ(1062, 412, dP - 0.3), atZ(1068, 391, dP + 0.5)]),
+        { rows: 3, colPx: 7, seed: 75, base: '#b8b1a4', lift: 0.1 });
+    }
+    instanced(tileGeo, tileMat, tileList, tileCols);
+
+    /* ===== red postbox (modelled) ===== */
+    {
+      const pr = hmat('postbox', { color: '#d23a22', roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.3, envMapIntensity: 0.8 });
+      const g = new THREE.Group(); const c = atZ(1067, 560, 18.1); g.position.set(c.x, 0, c.z);
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.78, 0.36), pr); body.position.y = 0.42;
+      const top = new THREE.Mesh(new THREE.BoxGeometry(0.47, 0.06, 0.41), pr); top.position.y = 0.84;
+      const slot = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.025, 0.02), voidMat); slot.position.set(0.02, 0.66, 0.185);
+      const lab = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.1, 0.01), hmat('label', { color: '#efe6d8', roughness: 0.6 })); lab.position.set(0.02, 0.5, 0.183);
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.3, 0.12), darkWoodMat); leg.position.y = 0.02;
+      g.add(body, top, slot, lab, leg); g.rotation.y = -0.18; scene.add(shade(g));
+    }
+
+    /* ---------------- utility poles: concrete + wooden, crossarms, insulators, transformer, street lamp ---------------- */
+    const poleMatA = toon({ color: '#e2d0b0', dapple: false });   // far pole (kept painterly)
+    const concMat = hmat('conc', { color: '#f2e6d0', ...concreteTex, roughness: 0.9 });
+    const polWood = hmat('polewood', { color: '#b89878', ...woodTex });
+    const steelMat = hmat('steel', { color: '#8a8c88', roughness: 0.5, metalness: 0.6, envMapIntensity: 0.8 });
+    const porcMat = hmat('porc', { color: '#f2efe6', roughness: 0.25, envMapIntensity: 0.9 });
+    const brownPorc = hmat('bporc', { color: '#a86a3c', roughness: 0.3, envMapIntensity: 0.9 });
+    const transMat = hmat('trans', { color: '#c6c2b8', roughness: 0.55, metalness: 0.35, envMapIntensity: 0.7 });
+    const realPole = (px, topPy, botPy, d, radPx, mat) => {
+      const top = atZ(px, topPy, d), bot = atZ(px, botPy, d); top.x = bot.x;
+      const rr = radPx * d / F;
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(rr * 0.82, rr, top.y - bot.y, 16), mat);
+      m.position.copy(top).add(bot).multiplyScalar(0.5); scene.add(shade(m)); return { top, bot, rr };
     };
     const DA = 22.5, DB = 20.5;
-    poleAt(530, 186, 560, DA, 6.5, poleMatA);
-    poleAt(588, 253, 560, DA, 6.0, poleMatA);
-    const barAt = (px0, px1, py, d, hPx, mat) => {
-      const a = scr(px0, py, d), b = scr(px1, py, d);
-      const m = new THREE.Mesh(new THREE.BoxGeometry(a.distanceTo(b), hPx * wpp(d), hPx * wpp(d)), mat);
-      m.position.copy(a).add(b).multiplyScalar(0.5); facing(m); scene.add(m); return m;
-    };
-    barAt(520, 600, 283, DA - 0.2, 5, poleMatA);
-    barAt(514, 584, 375, DA - 0.3, 5, poleMatA);
-    barAt(522, 540, 190, DA - 0.2, 4, poleMatA);
-    // transformer
-    const tr = new THREE.Mesh(new THREE.BoxGeometry(48 * wpp(DA), 36 * wpp(DA), 30 * wpp(DA)), toon({ color: '#c8c2b4', dapple: false }));
-    tr.position.copy(scr(554, 352, DA - 0.5)); facing(tr); scene.add(tr);
-    for (let i = 0; i < 3; i++) { const b = new THREE.Mesh(new THREE.CylinderGeometry(2 * wpp(DA), 2 * wpp(DA), 9 * wpp(DA), 6), toon({ color: '#d8a868', dapple: false })); b.position.copy(scr(542 + i * 9, 330, DA - 0.6)); scene.add(b); }
-    // pole B (wooden, near the house) + crossarm + street lamp arm
-    poleAt(775, 213, 548, DB, 7, poleMatB);
-    barAt(744, 778, 226, DB - 0.1, 4, poleMatB);
-    barAt(744, 760, 240, DB - 0.1, 3, poleMatB);
-    const lampArm = new THREE.Mesh(new THREE.BoxGeometry(52 * wpp(DB), 3 * wpp(DB), 3 * wpp(DB)), darkMat);
-    lampArm.position.copy(scr(748, 266, DB - 0.2)); facing(lampArm); lampArm.rotateZ(-0.1); scene.add(lampArm);
-    const lamp = new THREE.Mesh(new THREE.BoxGeometry(12 * wpp(DB), 4 * wpp(DB), 6 * wpp(DB)), new THREE.MeshBasicMaterial({ color: col('#f4f0e0') }));
-    lamp.position.copy(scr(724, 265, DB - 0.25)); facing(lamp); scene.add(lamp);
+    const pA1 = realPole(530, 186, 600, DA, 6.5, concMat), pA2 = realPole(588, 253, 600, DA, 6.0, concMat);
+    {
+      const bars = [];
+      const y283 = atZ(560, 283, DA).y, y375 = atZ(560, 377, DA).y;
+      bars.push(barMatrix(V3(pA1.top.x - 0.25, y283, -DA + 0.2), V3(pA2.top.x + 0.25, y283, -DA + 0.2), 0.1, 0.1, V3(0, 1, 0)));
+      bars.push(barMatrix(V3(pA1.top.x - 0.35, y375, -DA + 0.2), V3(pA2.top.x + 0.35, y375, -DA + 0.2), 0.1, 0.1, V3(0, 1, 0)));
+      bars.push(barMatrix(V3(pA1.top.x - 0.45, y375 - 0.05, -DA + 0.1), V3(pA1.top.x - 0.45, y375 - 0.05, -DA + 0.8), 0.08, 0.08, V3(0, 1, 0)));
+      const yTop = atZ(530, 196, DA).y; bars.push(barMatrix(V3(pA1.top.x - 0.35, yTop, -DA + 0.2), V3(pA1.top.x + 0.35, yTop, -DA + 0.2), 0.09, 0.09, V3(0, 1, 0)));
+      const yTop2 = atZ(588, 262, DA).y; bars.push(barMatrix(V3(pA2.top.x - 0.4, yTop2, -DA + 0.2), V3(pA2.top.x + 0.4, yTop2, -DA + 0.2), 0.09, 0.09, V3(0, 1, 0)));
+      // diagonal braces
+      bars.push(barMatrix(V3(pA1.top.x, y283 - 0.6, -DA + 0.18), V3(pA2.top.x, y283 - 0.02, -DA + 0.18), 0.04, 0.04, V3(0, 0, 1)));
+      instanced(boxGeo, steelMat, bars);
+      // transformer: banded cylinder tank + lid + fins + three brown bushings, on the lower platform
+      const tc = atZ(554, 352, DA - 0.55); const tH = 30 * DA / F, tR = 20 * DA / F;
+      const tank = new THREE.Mesh(new THREE.CylinderGeometry(tR, tR, tH, 20), transMat); tank.position.set(tc.x, y375 + 0.08 + tH / 2, tc.z);
+      const lid = new THREE.Mesh(new THREE.CylinderGeometry(tR * 1.08, tR * 1.08, 0.06, 20), transMat); lid.position.set(tc.x, y375 + 0.1 + tH, tc.z);
+      const g = new THREE.Group(); g.add(tank, lid);
+      for (const yy of [0.25, 0.55, 0.85]) { const band = new THREE.Mesh(new THREE.TorusGeometry(tR * 1.01, 0.012, 4, 24), transMat); band.rotation.x = Math.PI / 2; band.position.set(tc.x, y375 + 0.08 + tH * yy, tc.z); g.add(band); }
+      for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; const f = new THREE.Mesh(boxGeo, transMat); f.scale.set(0.02, tH * 0.8, 0.09); f.position.set(tc.x + Math.cos(a) * (tR + 0.03), y375 + 0.08 + tH / 2, tc.z + Math.sin(a) * (tR + 0.03)); f.rotation.y = -a; g.add(f); }
+      for (let i = -1; i <= 1; i++) {
+        const bu = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.2, 8), brownPorc); bu.position.set(tc.x + i * 0.16, y375 + 0.22 + tH, tc.z + 0.05);
+        g.add(bu);
+        for (let k = 0; k < 3; k++) { const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.015, 10), brownPorc); disc.position.set(bu.position.x, bu.position.y - 0.06 + k * 0.05, bu.position.z); g.add(disc); }
+      }
+      const plat = new THREE.Mesh(boxGeo, steelMat); plat.scale.set(pA2.top.x - pA1.top.x + 0.7, 0.05, 0.6); plat.position.set((pA1.top.x + pA2.top.x) / 2, y375 + 0.05, -DA + 0.35); g.add(plat);
+      scene.add(shade(g));
+      // pin insulators on the top arms
+      const ins = [];
+      for (const [p, yy] of [[pA1, yTop], [pA2, yTop2]]) for (const dx of [-0.3, 0.3]) ins.push(new THREE.Matrix4().makeTranslation(p.top.x + dx, yy + 0.09, -DA + 0.2));
+      instanced(new THREE.CylinderGeometry(0.035, 0.05, 0.12, 8), porcMat, ins);
+    }
+    // pole B (wooden, near the house): crossarms with insulators + a street lamp on a curved arm
+    const pB = realPole(775, 213, 600, DB, 7, polWood);
+    {
+      const y1 = atZ(760, 226, DB).y, y2 = atZ(760, 240, DB).y, x = pB.top.x;
+      instanced(boxGeo, polWood, [
+        barMatrix(V3(x - 0.95, y1, -DB + 0.18), V3(x + 0.25, y1, -DB + 0.18), 0.09, 0.1, V3(0, 1, 0)),
+        barMatrix(V3(x - 0.75, y2, -DB + 0.18), V3(x + 0.15, y2, -DB + 0.18), 0.08, 0.09, V3(0, 1, 0)),
+        barMatrix(V3(x - 0.7, y1 - 0.02, -DB + 0.18), V3(x - 0.02, y1 - 0.55, -DB + 0.15), 0.04, 0.04, V3(0, 0, 1)),
+      ]);
+      const ins = []; for (const dx of [-0.85, -0.45, 0.15]) ins.push(new THREE.Matrix4().makeTranslation(x + dx, y1 + 0.1, -DB + 0.18));
+      for (const dx of [-0.65, -0.3]) ins.push(new THREE.Matrix4().makeTranslation(x + dx, y2 + 0.09, -DB + 0.18));
+      instanced(new THREE.CylinderGeometry(0.03, 0.045, 0.11, 8), porcMat, ins);
+      // step bolts
+      const sb = []; for (let k = 0; k < 9; k++) { const yy = 2.2 + k * 0.42; const s = k % 2 ? 1 : -1; sb.push(barMatrix(V3(x, yy, -DB), V3(x + s * pB.rr * 2.4, yy, -DB + 0.05), 0.018, 0.018, V3(0, 1, 0))); }
+      instanced(boxGeo, steelMat, sb);
+      // lamp: curved steel arm reaching left, housing with an emissive lens
+      const a0 = atZ(775, 290, DB - 0.05); a0.x = x;
+      const arm = new THREE.CatmullRomCurve3([V3(x - 0.02, a0.y, -DB + 0.1), V3(x - 0.35, a0.y + 0.28, -DB + 0.2), V3(x - 0.75, a0.y + 0.34, -DB + 0.25), atZ(726, 264, DB - 0.3)]);
+      scene.add(shade(new THREE.Mesh(new THREE.TubeGeometry(arm, 16, 0.025, 6), steelMat)));
+      const lp = atZ(722, 266, DB - 0.3);
+      const hous = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 0.3, 10), hmat('lamp', { color: '#6a6c6a', roughness: 0.45, metalness: 0.5 }));
+      hous.rotation.z = Math.PI / 2 - 0.15; hous.position.copy(lp); scene.add(shade(hous));
+      const lens = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.03, 0.12), new THREE.MeshBasicMaterial({ color: col('#fffbea') }));
+      lens.position.copy(lp).add(V3(0, -0.07, 0)); scene.add(lens);
+      // pole bands / sign plate
+      const plate = new THREE.Mesh(boxGeo, hmat('plate', { color: '#d8d4c8', roughness: 0.5 })); plate.scale.set(0.16, 0.42, 0.01);
+      plate.position.set(x, 2.6, -DB + pB.rr + 0.01); scene.add(shade(plate));
+    }
     // far small pole on the left
-    poleAt(218, 288, 360, 70, 3.2, poleMatB);
+    {
+      const top = scr(218, 288, 70), bot = scr(218, 360, 70);
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(3.2 * wpp(70) * 0.9, 3.2 * wpp(70), top.distanceTo(bot), 8), poleMatA);
+      m.position.copy(top).add(bot).multiplyScalar(0.5); scene.add(m);
+    }
 
     const wireMat = new THREE.MeshBasicMaterial({ color: col('#2c2f36') });
     const wire = (a, b, sagPx, thickPx = 1.3) => {
@@ -347,27 +586,27 @@ export default {
     /* ---------------- ground + grass ---------------- */
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshBasicMaterial({ color: col('#4f8a3a') }));
     ground.material.color = col('#2a4630'); ground.rotation.x = -Math.PI / 2; ground.position.set(0, -0.01, -60); scene.add(ground);
-    // custom painterly grass: blades sampled per screen column + depth; each blade's height is chosen so that its
-    // tip lands near the reference grass line (~y 540) regardless of depth -> tall near grass, short far grass.
+    // lit grass: wide curved blades sampled per screen column + depth; each blade's height is chosen so that its tip lands
+    // near the reference grass line (~y 540) regardless of depth -> tall near grass, short far grass. Per-blade normals
+    // (with a folded midrib) are lit by the sun: lit vs shaded faces, back-lit translucency, root AO, clump hue, tip glints.
     {
-      const r = rng(41); const N = 52000;
-      const segs = 4, pos = [], uvs = [], idx = [];
-      for (let i = 0; i <= segs; i++) { const t = i / segs, ww = (1 - Math.pow(t, 1.6)) * 0.5;
-        if (i < segs) { pos.push(-ww, t, 0, ww, t, 0); uvs.push(0, t, 1, t); } else { pos.push(0, 1, 0); uvs.push(0.5, 1); } }
+      const r = rng(41); const N = 60000;
+      const segs = 5, pos = [], idx = [];
+      for (let i = 0; i <= segs; i++) { const t = i / segs, ww = Math.pow(1 - t, 0.85) * 0.5; if (i < segs) pos.push(-ww, t, 0, ww, t, 0); else pos.push(0, 1, 0); }
       for (let i = 0; i < segs - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
       idx.push((segs - 1) * 2, (segs - 1) * 2 + 1, segs * 2);
       const ig = new THREE.InstancedBufferGeometry();
-      ig.setIndex(idx); ig.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); ig.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      ig.setIndex(idx); ig.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       const aO = new Float32Array(N * 4), aS = new Float32Array(N * 4), aC = new Float32Array(N * 2);
       for (let i = 0; i < N; i++) {
-        const z = 1.4 * Math.pow(34 / 1.4, Math.pow(r(), 0.85));
+        const z = 1.3 * Math.pow(34 / 1.3, Math.pow(r(), 0.8));
         const px = lerp(-80, 1360, r());
         const p = scr(px, HORIZON, z);
         const spike = r() < 0.08 ? 15 + r() * 30 : 0;
         const tipY = 560 + (r() - 0.5) * 40 - spike + (px < 420 ? 10 : 0) + Math.max(0, (px - 980) * 0.06);
         const h = Math.max(0.12, CAM_H - (tipY - HORIZON) * z / F);
-        const w = (0.032 + 0.0105 * z) * lerp(0.7, 1.35, r());
-        aO.set([p.x, 0, p.z, (r() - 0.5) * 1.1], i * 4);
+        const w = (0.05 + 0.014 * z) * lerp(0.65, 1.45, r());
+        aO.set([p.x, 0, p.z, (r() - 0.5) * 1.5], i * 4);
         aS.set([h, w, r(), r()], i * 4);
         aC.set([px < 380 ? lerp(0.55, 0.8, clamp((px - 120) / 260, 0, 1)) : 1.0, z], i * 2);
       }
@@ -376,33 +615,57 @@ export default {
       ig.setAttribute('aC', new THREE.InstancedBufferAttribute(aC, 2));
       ig.instanceCount = N;
       const gm = new THREE.ShaderMaterial({
-        uniforms: { uTime: shared.uTime, cLo: { value: col('#447f37') }, cMid: { value: col('#62983f') }, cHi: { value: col('#78ab49') },
-          cTip: { value: col('#9cc464') }, cDk: { value: col('#3e7636') } },
+        uniforms: { uTime: shared.uTime, uSun: { value: sunV.clone() },
+          cA: { value: col('#5f9a3c') }, cB: { value: col('#78ad46') }, cC: { value: col('#4c8a48') },
+          cTip: { value: col('#c8e07a') }, cRoot: { value: col('#24401e') }, cTrans: { value: col('#d8f080') } },
         vertexShader: `attribute vec4 aO; attribute vec4 aS; attribute vec2 aC; uniform float uTime;
-          varying float vT, vR, vR2, vSide, vShade, vZ;
+          varying float vT, vR, vR2, vShade, vClump, vSide; varying vec3 vN, vW;
           ${core.NOISE_GLSL}
           void main(){
             float t = position.y; vT = t;
             float c = cos(aO.w), s = sin(aO.w);
-            vec3 p = vec3(position.x * aS.y, t * aS.x, 0.);
-            p = vec3(p.x * c, p.y, p.x * s);
-            float gust = vnoise(aO.xz * 0.25 + vec2(uTime * 0.6, uTime * 0.2));
-            float sway = (gust - 0.45) * 0.22 + sin(uTime * 2.1 + aO.x * 1.3 + aO.z * 0.7) * 0.05;
-            vec2 dir = vec2(0.10 + sway, 0.0) + vec2(aS.z - 0.5, aS.w - 0.5) * 0.30;
-            p.xz += dir * t * t * aS.x;
-            p.y -= length(dir) * t * t * aS.x * 0.25;
-            vec4 mv = modelViewMatrix * vec4(aO.xyz + p, 1.);
-            gl_Position = projectionMatrix * mv;
-            vR = aS.z; vR2 = aS.w; vSide = position.x; vShade = aC.x; vZ = aC.y;
+            vec3 W = vec3(c, 0., s);
+            float h = aS.x;
+            // gusts roll across the field (low-frequency travelling noise) + per-blade flutter
+            float gust = vnoise(aO.xz * 0.16 + vec2(-uTime * 0.85, uTime * 0.25));
+            gust = smoothstep(0.35, 0.85, gust);
+            float sway = gust * 0.34 + sin(uTime * 2.3 + aO.x * 1.7 + aO.z * 0.9) * 0.045 + sin(uTime * 7.0 + aS.z * 40.) * 0.015 * t;
+            vec2 dir = vec2(0.08 + sway, -0.02 - gust * 0.08) + vec2(aS.z - 0.5, aS.w - 0.5) * 0.42;
+            vec3 p = W * position.x * aS.y + vec3(0., t * h, 0.);
+            float L = length(dir);
+            p.xz += dir * t * t * h;
+            p.y -= L * L * t * t * h * 0.35;
+            vec3 T = normalize(vec3(dir.x * 2. * t * h, h * (1. - 0.7 * L * L * t), dir.y * 2. * t * h));
+            vec3 n = normalize(cross(W, T));
+            // folded blade: each half tilts away from the midrib
+            vSide = sign(position.x);
+            n = normalize(n + W * vSide * 0.55);
+            vN = n;
+            vec3 wp = aO.xyz + p; vW = wp;
+            gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.);
+            vR = aS.z; vR2 = aS.w; vShade = aC.x;
+            vClump = vnoise(aO.xz * 0.55 + 3.0) * 0.65 + vnoise(aO.xz * 2.3) * 0.35;
           }`,
-        fragmentShader: `uniform vec3 cLo, cMid, cHi, cTip, cDk; varying float vT, vR, vR2, vSide, vShade, vZ;
+        fragmentShader: `uniform vec3 uSun, cA, cB, cC, cTip, cRoot, cTrans; varying float vT, vR, vR2, vShade, vClump, vSide; varying vec3 vN, vW;
           void main(){
-            vec3 c = mix(cLo, cMid, smoothstep(0.0, 0.55, vT));
-            c = mix(c, cHi, smoothstep(0.5, 0.92, vT) * (0.35 + 0.65 * vR));
-            c = mix(c, cTip, smoothstep(0.86, 1.0, vT) * step(0.55, vR2) * 0.7);
-            c = mix(c, cDk, step(0.82, vR) * 0.6);
-            c *= 0.86 + 0.26 * vR2;
-            c *= vSide > 0.0 ? 0.9 : 1.0;
+            vec3 n = normalize(vN);
+            vec3 V = normalize(cameraPosition - vW);
+            float facing = dot(n, V);
+            if (facing < 0.) n = -n;
+            float ndl = dot(n, uSun);
+            float diff = max(ndl, 0.);
+            float trans = max(-ndl, 0.) * (0.35 + 0.65 * vT);
+            // clump colour: yellow-green / mid / cool blue-green patches
+            vec3 alb = mix(cC, cA, smoothstep(0.25, 0.55, vClump));
+            alb = mix(alb, cB, smoothstep(0.55, 0.85, vClump + (vR - 0.5) * 0.25));
+            alb *= 0.86 + 0.28 * vR2;
+            float ao = mix(0.32, 1.0, smoothstep(0.0, 0.62, vT));
+            float sky = 0.58 + 0.22 * n.y;
+            vec3 c = alb * (sky + 0.62 * diff) + cTrans * alb * trans * 0.55;
+            c *= ao;
+            c = mix(cRoot, c, smoothstep(0.0, 0.3, vT) * 0.6 + 0.4);
+            // tips catch the light
+            c = mix(c, cTip, smoothstep(0.84, 1.0, vT) * smoothstep(0.2, 0.75, diff) * step(0.45, vR2) * 0.55);
             c *= vShade;
             gl_FragColor = vec4(c, 1.);
           }`,
