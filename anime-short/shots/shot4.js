@@ -58,7 +58,7 @@ export default {
           float dens(vec2 p){
             vec2 q = p * vec2(uAspect, 1.0); float d = -1.0;
             for (int i = 0; i < 32; i++){ vec3 b = uBlobs[i]; float k = 1. - length(q - b.xy * vec2(uAspect, 1.0)) / b.z; d = max(d, k); }
-            d += (fbm(q * 2.6 + uSeed + vec2(uTime * 0.003, 0.)) - 0.5) * 0.75 + (vnoise(q * 12. + uSeed * 3.) - 0.5) * 0.2;
+            d += (fbm(q * 1.9 + uSeed + vec2(uTime * 0.003, 0.)) - 0.5) * 1.05 + (fbm(q * 7. + uSeed * 3.) - 0.5) * 0.35;
             float e = smoothstep(0.5, 0.42, abs(p.x)) * smoothstep(0.5, 0.42, abs(p.y));
             return d - (1.0 - e) * 1.5;
           }
@@ -69,7 +69,7 @@ export default {
             vec2 g = vec2(dens(p + vec2(e, 0.)) - dens(p - vec2(e, 0.)), dens(p + vec2(0., e)) - dens(p - vec2(0., e)));
             vec2 nOut = -normalize(g + 1e-6);
             float up = dot(nOut, normalize(vec2(0.35, 1.0)));
-            float rim = smoothstep(0.3, 0.04, d) * smoothstep(0.4, 0.85, up) * smoothstep(-0.05, 0.25, p.y);
+            float rim = smoothstep(0.34, 0.04, d) * smoothstep(0.25, 0.8, up) * smoothstep(-0.1, 0.2, p.y);
             float hgt = smoothstep(-0.32, 0.3, p.y);
             float n = fbm(p * vec2(uAspect, 1.) * 6. + uSeed * 2.);
             vec3 c = mix(cB, cS, smoothstep(0.0, 0.35, hgt + (n - 0.5) * 0.4));
@@ -88,9 +88,9 @@ export default {
       c.position.copy(scr(cx, cy, D)); return facing(c);
     };
     scene.add(cloudFromPx(150, 20, 830, 440, [
-      [250, 205, 50], [258, 290, 55], [330, 155, 46], [392, 112, 44], [440, 170, 50], [370, 250, 70], [300, 345, 55],
-      [535, 175, 48], [612, 168, 50], [672, 150, 42], [724, 182, 40], [690, 245, 55], [600, 275, 70],
-      [480, 300, 70], [420, 345, 70], [748, 262, 34], [235, 255, 44],
+      [250, 205, 60], [258, 295, 66], [330, 150, 56], [392, 110, 54], [445, 170, 60], [370, 250, 84], [300, 345, 66],
+      [535, 175, 58], [612, 168, 60], [672, 150, 50], [724, 185, 48], [690, 245, 66], [600, 275, 84],
+      [480, 300, 84], [420, 345, 84], [748, 262, 40], [235, 255, 52],
     ], 4));
     scene.add(cloudFromPx(-60, 170, 190, 400, [
       [10, 255, 36], [62, 248, 38], [100, 275, 34], [40, 298, 44], [-10, 240, 36], [112, 318, 30], [62, 322, 40], [140, 300, 26],
@@ -539,7 +539,7 @@ export default {
     scene.add(leafLayer(canopy, { pal: ['#071110', '#1b3a30', '#33694c', '#5b946b'], wind: 0.015 }));
 
     // --- tall broad-leaf weed on the left edge (silhouetted against the sky)
-    const plantPoly = [[-10, 60], [50, 66], [92, 120], [150, 130], [210, 140], [262, 250], [256, 300], [300, 360], [345, 450], [280, 465], [200, 470], [-10, 470]];
+    const plantPoly = [[-10, 60], [50, 66], [92, 120], [150, 130], [210, 140], [262, 250], [256, 300], [300, 360], [345, 450], [280, 465], [200, 470], [120, 500], [-10, 520]];
     const plant = [];
     spray(plant, 201, plantPoly, 44, { d: 2.6, dz: 0.3, size: [54, 76], tone: (x, y, r) => 0.02 + r() * 0.22,
       rot: (x, y, r) => Math.PI + (r() - 0.5) * 2.6, variant: 2 });
