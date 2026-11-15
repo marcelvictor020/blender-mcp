@@ -13,9 +13,9 @@ export default {
   duration: 3.958,
   credit: { role: 'CREATED BY', cx: 0.744, ry: 0.6875, ny: 0.736 },
   post: {
-    bloom: 0.5, bloomRadius: 0.6, bloomThreshold: 0.8,
-    exposure: 0.9, contrast: 1.12, saturation: 1.1,
-    lift: [0.02, 0.015, 0.01], gamma: [1.0, 1.0, 0.99], gain: [1.0, 1.0, 0.96],
+    bloom: 0.62, bloomRadius: 0.65, bloomThreshold: 0.74,
+    exposure: 0.95, contrast: 1.14, saturation: 1.22,
+    lift: [0.03, 0.014, 0.0], gamma: [1.02, 1.0, 0.96], gain: [1.04, 0.99, 0.88],
     vignette: 0.2, grain: 0.03, ca: 0.0012, soft: 0.12,
   },
   build(core) {
