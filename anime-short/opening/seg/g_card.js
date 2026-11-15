@@ -38,7 +38,7 @@ export default {
         if (pk > 0) {
           const s = 1 + 1.6 * (1 - outExpo(pk)), a = Math.min(1, pk * 2.5);
           g.save(); g.translate(1490, 540); g.scale(s, s); g.translate(-1490, -540);
-          if (V === 'collector') vkanji(g, C.kanji, 1530, 205, 300, { fill: INK, shadow: { dx: 16, dy: 16, color: RED }, gap: 1.06, alpha: a });
+          if (V === 'collector') vkanji(g, C.kanji, 1450, 250, 285, { fill: INK, shadow: { dx: 16, dy: 16, color: RED }, gap: 1.06, alpha: a });
           else kanji(g, C.kanji, 1470, 500, 700, { fill: CREAM, shadow: { dx: 24, dy: 24, color: INK }, stroke: INK, strokeW: 8, bold: 0.018, alpha: a });
           g.restore();
         }
@@ -52,11 +52,11 @@ export default {
             silhouette(g, SIL.ren, 640, 470, 0.98 * zoom, { fill: INK, rim: CREAM, rx: 14, ry: -6 });
           } else if (V === 'aoi') {
             wheel(g, 430, 640, 390, t * 2.2, INK);
-            silhouette(g, SIL.aoi, 860, 430, 1.02 * zoom, { fill: INK, rim: CREAM, rx: 13, ry: -6 });
-            g.save(); g.translate(860, 430); g.scale(1.02 * zoom, 1.02 * zoom);
-            unionFill(g, SIL.aoiCollar, CREAM); unionFill(g, SIL.aoiTie, RED); g.restore();
+            silhouette(g, SIL.aoi, 860, 450, 0.98 * zoom, { fill: INK, rim: CREAM, rx: 13, ry: -6 });
+            g.save(); g.translate(860, 450); g.scale(0.98 * zoom, 0.98 * zoom);
+            g.strokeStyle = CREAM; SIL.aoiCollar(g); unionFill(g, SIL.aoiTie, RED); g.restore();
           } else {
-            silhouette(g, SIL.collector, 720, 1075, 0.98 * zoom, { fill: INK, rim: RED, rx: -14, ry: -6 });
+            silhouette(g, SIL.collector, 720, 1082, 0.9 * zoom, { fill: INK, rim: RED, rx: -14, ry: -6 });
           }
           g.restore();
         };
@@ -67,10 +67,10 @@ export default {
           const ga = seg(t, 0.55, 0.68) * (0.85 + 0.15 * Math.sin(t * 40));
           const s = 0.98 * zoom; glint(g, slide + 640 + 52 * s, 470 + 22 * s, 10 + 8 * seg(t, 0.55, 0.75), CRIMSON, ga);
         } else if (V === 'collector') {
-          const s = 0.98 * zoom;
-          jar(g, slide + 720 + 368 * s, 1075 - 350 * s, 0.82, t);
+          const s = 0.9 * zoom;
+          jar(g, slide + 720 + 368 * s, 1082 - 350 * s, 0.76, t);
           const ea = seg(t, 0.5, 0.6);
-          for (const ex of [-24, 22]) { g.globalAlpha = ea; g.fillStyle = CREAM; g.fillRect(slide + 720 + ex * s - 7, 1075 - 846 * s, 14, 6); }
+          for (const ex of [-24, 22]) { g.globalAlpha = ea; g.fillStyle = CREAM; g.fillRect(slide + 720 + ex * s - 7, 1082 - 846 * s, 14, 6); }
           g.globalAlpha = 1;
         }
         /* ---- name tag ---- */

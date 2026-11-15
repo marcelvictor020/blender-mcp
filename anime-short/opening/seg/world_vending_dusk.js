@@ -45,7 +45,7 @@ export default {
     // light pools in front of the three machines (+ one warm from the red one)
     const pools = [];
     for (const [x, c, i] of [[-1.55, '#cfe6ff', 0.9], [-0.35, '#bcd4ff', 0.9], [0.95, '#ffd0c8', 1.0]]) {
-      const L = new THREE.PointLight(col(c), i, 6, 1.6); L.position.set(x, 0.35, -10.1); scene.add(L); pools.push(L);
+      const L = new THREE.PointLight(col(c), i, 6, 1.6); L.position.set(x - 0.3, 0.12, -9.4); scene.add(L); pools.push(L);
     }
     killDapple(scene);
     const camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 3000);
@@ -62,7 +62,7 @@ export default {
         camera.lookAt(-1.2, 1.25, -12.2);
         // fluorescent stutter: the middle machine flickers on in the first 0.6 s
         const fl = t < 0.6 ? ((Math.sin(t * 90) > 0.2 ? 1 : 0.15) * (t > 0.12 ? 1 : 0.1)) : 1;
-        disp.forEach((m, i) => { m.emissiveIntensity = (i === 1 ? fl : 1) * 0.8; });
+        disp.forEach((m, i) => { m.emissiveIntensity = (i === 1 ? fl : 1) * 1.15; });
         pools[1].intensity = 0.9 * fl;
       },
     };

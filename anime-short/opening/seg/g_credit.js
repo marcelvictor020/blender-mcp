@@ -26,7 +26,6 @@ export default {
         g.globalAlpha = 0.9; g.fillStyle = C.b; g.fillRect(0, 0, 1920, 1080); g.globalAlpha = 1;
         speedLines(g, 960, 560, t, C.acc, { n: 120, inner: 520, density: 0.45, width: 0.01 });
         // vertical role kanji
-        if (jp) vkanji(g, jp, flip > 0 ? 1740 : 180, 190, 190, { fill: C.kj === C.b ? C.acc : C.kj, gap: 1.02, alpha: 0.95 });
         // slanted band
         const pb = outExpo(seg(t, 0, 0.12));
         g.save(); g.translate(960, 560); g.rotate(-0.09 * flip); g.translate((1 - pb) * 2400 * flip, 0);
@@ -34,6 +33,7 @@ export default {
         g.fillStyle = C.acc; g.fillRect(-1300, 205, 2600, 18);
         halftone(g, 26, C.shadow, (X, Y) => (X / 1920) * 0.7 - 0.25, { ox: t * 90, angle: 0.2 });
         g.restore();
+        if (jp) kanji(g, jp, flip > 0 ? 1870 : 50, 900, 180, { fill: C.kj === C.b ? C.acc : C.kj, align: flip > 0 ? 'right' : 'left', alpha: outExpo(seg(t, 0.08, 0.2)) });
         // role tag
         const pr = outExpo(seg(t, 0.05, 0.16));
         g.save(); g.translate((1 - pr) * -1200, 0);

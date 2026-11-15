@@ -199,17 +199,19 @@ export const SIL = {
     g.quadraticCurveTo(360, 420, 300, 300); g.quadraticCurveTo(210, 220, 62, 200); g.lineTo(50, 112); g.closePath();
     g.moveTo(84, -8); g.ellipse(4, -10, 84, 106, 0, 0, Math.PI * 2);
     g.moveTo(-50, 40); g.lineTo(0, 108); g.lineTo(46, 116); g.lineTo(90, 50); g.closePath();
-    // bob: dome + straight sides + blunt cut that flicks forward at the jaw
-    g.moveTo(-150, 92);
-    g.quadraticCurveTo(-168, -40, -120, -110); g.quadraticCurveTo(-40, -196, 50, -178); g.quadraticCurveTo(150, -150, 160, -40);
-    g.quadraticCurveTo(166, 40, 150, 96); g.lineTo(108, 84); g.lineTo(112, 20); g.lineTo(96, -40);
-    g.lineTo(-60, -44); g.lineTo(-96, 20); g.lineTo(-100, 86); g.closePath();
+    // bob: wide rounded dome, full sides, blunt cut that curls in toward the jaw
+    g.moveTo(-178, 118);
+    g.quadraticCurveTo(-210, -60, -150, -150); g.quadraticCurveTo(-60, -232, 40, -222); g.quadraticCurveTo(170, -205, 196, -60);
+    g.quadraticCurveTo(212, 40, 186, 124); g.quadraticCurveTo(160, 134, 132, 118); g.lineTo(122, 30); g.lineTo(90, -46);
+    g.lineTo(-70, -50); g.lineTo(-110, 30); g.lineTo(-122, 122); g.quadraticCurveTo(-150, 136, -178, 118); g.closePath();
   },
-  aoiCollar(g) {  // sailor collar flap (drawn in a stripe colour as a detail)
-    g.moveTo(-60, 206); g.lineTo(-300, 300); g.lineTo(-310, 330); g.lineTo(-40, 236); g.closePath();
-    g.moveTo(68, 206); g.lineTo(310, 300); g.lineTo(320, 330); g.lineTo(48, 236); g.closePath();
+  aoiCollar(g) {  // sailor-collar V with two stripes each side (stroked; call with a real 2D context)
+    g.lineCap = 'butt'; g.lineWidth = 13;
+    for (const o of [0, 30]) {
+      g.beginPath(); g.moveTo(-250 - o * 0.4, 262 + o); g.lineTo(-14, 352 + o * 1.3); g.lineTo(14, 352 + o * 1.3); g.lineTo(254 + o * 0.4, 262 + o); g.stroke();
+    }
   },
-  aoiTie(g) { g.moveTo(-30, 250); g.lineTo(40, 250); g.lineTo(80, 330); g.lineTo(30, 470); g.lineTo(4, 330); g.closePath(); },
+  aoiTie(g) { g.moveTo(-34, 330); g.lineTo(34, 330); g.lineTo(70, 380); g.lineTo(20, 520); g.lineTo(-6, 384); g.closePath(); g.moveTo(-60, 322); g.lineTo(60, 322); g.lineTo(30, 360); g.lineTo(-30, 360); g.closePath(); },
   collector(g) {  // full figure, feet at (0,0), ~1040 units tall
     // hat brim + crown
     g.moveTo(250, -890); g.ellipse(0, -900, 250, 40, -0.07, 0, Math.PI * 2);
