@@ -92,8 +92,8 @@ export function makeSkyDome(core, p) {
         c += cS * (pow(sd, 8.0) * 0.22 + pow(sd, 90.0) * 0.45) * uGlow;
         c = mix(c, cS * 2.0 + 0.6, smoothstep(0.99955, 0.9997, sd) * uDisc);
         // streaky cloud bands (anime dusk / blood sky)
-        if (uStreak > 0.) { vec2 q = vec2(atan(d.x, d.z) * 3.0, y * 22.0); float n = fbm(vec2(q.x * 0.6 + uTime * 0.01, q.y)) ;
-          float band = smoothstep(0.52, 0.72, n) * smoothstep(0.02, 0.1, y) * smoothstep(0.6, 0.15, y);
+        if (uStreak > 0.) { vec2 q = d.xz / max(d.y + 0.04, 0.03); float n = fbm(vec2(q.x * 0.35 + uTime * 0.02, q.y * 2.2) + 3.0);
+          float band = smoothstep(0.5, 0.7, n) * smoothstep(0.015, 0.08, y) * smoothstep(0.7, 0.2, y);
           vec3 lit = mix(cStreak, cS * 1.6, pow(sd, 3.0)); c = mix(c, lit, band * uStreak); }
         if (d.y < 0.) c = mix(cH, cH * 0.6, smoothstep(0., -0.2, d.y));
         gl_FragColor = vec4(c, 1.); }`,
@@ -178,6 +178,7 @@ export function makeTown(core, ctx, pal, opts = {}) {
   const addRoad = (s0, s1, d0, d1) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(s1 - s0, d1 - d0), roadMat); m.rotation.x = -Math.PI / 2; m.position.set((s0 + s1) / 2, 0.02, (d0 + d1) / 2); m.receiveShadow = true; town.add(m); roads.push([s0, s1, d0, d1]); };
   addRoad(-600, 800, 10, 18); addRoad(-600, 800, -18, -11);
   for (let s = -260; s < 700; s += 70 + Math.floor(R() * 30)) addRoad(s, s + 7, -600, 600);
+  for (const r of (opts.streets || [])) addRoad(...r);
   addRoad(-600, 800, 90, 97); addRoad(-600, 800, -110, -103); addRoad(-600, 800, 190, 197);
   // ground-level rail bed + rails under/along viaduct (gives the crossing context)
   const bed = new THREE.Mesh(new THREE.PlaneGeometry(1400, 9), toon({ color: '#6a5e52' })); bed.rotation.x = -Math.PI / 2; bed.position.set(100, 0.03, -1); town.add(bed);
@@ -245,7 +246,7 @@ export function makeTown(core, ctx, pal, opts = {}) {
   // utility poles along the roads near the focus (give scale + wires)
   const poleMat = toon({ color: '#2a2622' });
   const poles = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.18, 0.22, 10, 6).translate(0, 5, 0), poleMat, 200); let npl = 0;
-  for (let s = -200; s < 500 && npl < 200; s += 30) for (const d of [20, -20, 99, -112]) { m4.compose(P.set(s, 0, d), Q.identity(), S.set(1, 1, 1)); poles.setMatrixAt(npl++, m4); }
+  for (let s = -200; s < 500 && npl < 200; s += 30) for (const d of [20, -20, 99, -112]) { if (inRoad(s, d, 0.6)) continue; m4.compose(P.set(s, 0, d), Q.identity(), S.set(1, 1, 1)); poles.setMatrixAt(npl++, m4); }
   poles.count = npl; poles.castShadow = true; town.add(poles);
 
   // painted cloud billboards around the horizon (az relative to the sun azimuth, el in degrees)
@@ -278,4 +279,19 @@ export function killDapple(root, amt = 0) {
       m.customProgramCacheKey = () => (ck ? ck() : '') + '_nd' + amt;
     }
   });
+}
+
+/** Multiply every colour uniform of every ShaderMaterial under `root` by `tint` (re-grade painted shaders for night/red). */
+export function tintShaders(root, tint, skip = new Set()) {
+  root.traverse(o => {
+    const m = o.material; if (!m || Array.isArray(m) || skip.has(o) || m.type !== 'ShaderMaterial' || m.userData.__tinted) return;
+    m.userData.__tinted = true;
+    for (const k in m.uniforms) { const v = m.uniforms[k].value; if (v && v.isColor && m.uniforms[k] !== undefined) m.uniforms[k] = { value: v.clone().multiply(tint) }; }
+  });
+}
+/** Find the largest-radius ShaderMaterial sphere (painted sky dome) under root. */
+export function findSky(root) {
+  let best = null, br = 0;
+  root.traverse(o => { if (o.isMesh && o.material?.type === 'ShaderMaterial') { o.geometry.computeBoundingSphere?.(); const r = o.geometry.boundingSphere?.radius || 0; if (r > br) { br = r; best = o; } } });
+  return br > 300 ? best : null;
 }

@@ -11,10 +11,10 @@ export default {
   build(core, ctx) {
     const { THREE, smooth, lerp } = core;
     const T = makeTown(core, ctx, {}, { key: 'golden', focusS: 90, focusD: 0, clouds: [
-      { az: -0.42, el: 6, w: 820, h: 520, seed: 3, light: '#f8c890', mid: '#d88878', shadow: '#7a5a88', lightDir: [1, 0.1] },
+      { az: -0.42, el: 6, w: 820, h: 520, seed: 3, light: '#f8c890', mid: '#d88878', shadow: '#b07a8a', lightDir: [1, 0.1] },
       { az: 0.2, el: 13, w: 900, h: 360, seed: 8, kind: 'stratus', light: '#f8d0a0', mid: '#d88a80', shadow: '#6a5a88', lightDir: [0.3, -1], opacity: 0.85 },
-      { az: 0.55, el: 5, w: 700, h: 460, seed: 5, light: '#f8c890', mid: '#c87a88', shadow: '#5a4a78', lightDir: [-1, 0.1] },
-      { az: -0.75, el: 9, w: 760, h: 480, seed: 14, light: '#ffd8b0', mid: '#c88a98', shadow: '#5a5a88', lightDir: [1, 0.2] },
+      { az: 0.55, el: 5, w: 700, h: 460, seed: 5, light: '#f8c890', mid: '#c87a88', shadow: '#9a6a88', lightDir: [-1, 0.1] },
+      { az: -0.75, el: 9, w: 760, h: 480, seed: 14, light: '#ffd8b0', mid: '#c88a98', shadow: '#9a7090', lightDir: [1, 0.2] },
     ] });
     const { scene, frame } = T;
     const camera = new THREE.PerspectiveCamera(32, 16 / 9, 0.5, 6000);

@@ -11,10 +11,10 @@ const S = [
   { kind: 'world_town_high', beats: 12, overlay: [{ kind: 'timecode', text: '16:44', from: 0, to: 4.3 }],
     fx: { grade: 'golden', gradeMix: 0.5, grain: 0.03, keys: { fade: [[0, 1], [0.5, 0]] } } },
   /* ---- WORLD  bars 5–8  (6–12 s): beat-cut montage ---- */
-  { kind: 'world_vending', beats: 4, fx: { grade: 'dusk', gradeMix: 0.4, grain: 0.03 } },
-  { kind: 'world_meadow_egret', beats: 4, fx: { grain: 0.03 } },
-  { kind: 'world_lantern', beats: 4, fx: { grade: 'dusk', gradeMix: 0.3, grain: 0.03 } },
-  { kind: 'world_coupe', beats: 4, fx: { grade: 'night', gradeMix: 0.5, grain: 0.035,
+  { kind: 'world_vending_dusk', beats: 4, fx: { grade: 'dusk', gradeMix: 0.4, grain: 0.03 } },
+  { kind: 'world_meadow_low', beats: 4, fx: { grain: 0.03 } },
+  { kind: 'world_lantern_blue', beats: 4, fx: { grade: 'dusk', gradeMix: 0.3, grain: 0.03 } },
+  { kind: 'world_coupe_night', beats: 4, fx: { grade: 'night', gradeMix: 0.5, grain: 0.035,
     keys: { ca: [[0, 0], [1.1, 0.004], [1.5, 0.012]], glitch: [[0, 0], [1.2, 0], [1.5, 0.5]] }, impacts: [{ t: 1.5 - 1 / 24, kind: 'flash' }] } },
   /* ---- DROP + TITLE  bars 9–12  (12–18 s) ---- */
   { kind: 'g_title', beats: 4 },
@@ -22,10 +22,9 @@ const S = [
   { kind: 'g_card', id: 'card_aoi', variant: 'aoi', beats: 4 },
   { kind: 'g_card', id: 'card_collector', variant: 'collector', beats: 4 },
   /* ---- THE TURN  bars 13–20  (18–30 s) ---- */
-  { kind: 'world_bloodsky', beats: 8, fx: (lt) => ({ grade: 'blood', gradeMix: Math.min(1, lt / 2.2) * 0.5, grain: 0.04, vignette: 0.25 }) },
-  { kind: 'world_shadow_creature', beats: 8, fx: { grade: 'blood', gradeMix: 0.35, grain: 0.04, vignette: 0.3 } },
-  { kind: 'world_ghost_train', beats: 4, fx: { grade: 'blood', gradeMix: 0.3, grain: 0.04 } },
-  { kind: 'world_crossing_gate', beats: 4, fx: { grade: 'blood', gradeMix: 0.3, grain: 0.04 } },
+  { kind: 'world_blood_sky', beats: 8, fx: (lt) => ({ grade: 'blood', gradeMix: Math.min(1, lt / 2.2) * 0.5, grain: 0.04, vignette: 0.25 }) },
+  { kind: 'world_ghost_train', beats: 8, fx: { grade: 'blood', gradeMix: 0.25, grain: 0.04, vignette: 0.3 } },
+  { kind: 'world_kagero_giant', variant: 'reveal', beats: 8, fx: { grade: 'blood', gradeMix: 0.2, grain: 0.04 } },
   { kind: 'world_eye', beats: 8, fx: { grain: 0.04, vignette: 0.35, ca: 0.002 } , snareGlitch: true },
   /* ---- CLASH  bars 21–28  (30–42 s): cuts every 2 beats, credits on colour blocks ---- */
   { kind: 'world_ren_overpass', beats: 4, variant: 'a', clash: true },
