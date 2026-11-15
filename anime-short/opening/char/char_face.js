@@ -10,7 +10,7 @@ import { grid, loft, clamp, lerp, sstep, spow, TAU } from './char_geo.js';
 export function headShape(o = {}) {
   const S = {
     cy: 0.56, top: 0.44, W0: 0.43, F0: 0.40, B0: 0.47,
-    cheekW: 0.405, cheekH: 0.36, chinW: 0.04, jawPow: 1.7, faceZ: 0.385, chinZ: 0.355, chinRound: 0.06,
+    cheekW: 0.405, cheekH: 0.36, chinW: 0.075, jawPow: 2.25, faceZ: 0.385, chinZ: 0.355, chinRound: 0.06,
     faceP: 2.7, nose: 0.016, jawFwd: 0.2, ...o,
   };
   const eCr = h => Math.sqrt(Math.max(0, 1 - ((h - S.cy) / S.top) ** 2));
@@ -28,10 +28,10 @@ export function headShape(o = {}) {
   S.zb = h => {
     const skull = h >= S.cy ? -S.B0 * eCr(h) : -S.B0 * Math.sqrt(Math.max(0, 1 - ((h - S.cy) / (S.top + 0.02)) ** 2)) * sstep(0.0, 0.32, h);
     const jaw = (S.chinZ - 0.03) - 2.55 * h;
-    return Math.min(skull, jaw);
+    return Math.max(skull, jaw);
   };
   S.z0 = h => h >= S.cheekH ? 0 : lerp(0, S.jawFwd, (S.cheekH - h) / S.cheekH);
-  S.pf = h => h > 0.75 ? 2.0 : lerp(2.15, S.faceP, sstep(0.75, 0.55, h)) * (h < 0.12 ? lerp(0.85, 1, h / 0.12) : 1);
+  S.pf = h => h > 0.64 ? 2.0 : lerp(2.0, S.faceP, sstep(0.64, 0.5, h)) * (h < 0.12 ? lerp(0.85, 1, h / 0.12) : 1);
   /** point on the head surface for height h, angle a (0 front, PI/2 = +x) */
   S.point = (h, a) => {
     const W = S.W(h), zf = S.zf(h), zb = S.zb(h);
@@ -41,7 +41,7 @@ export function headShape(o = {}) {
     if (c >= 0) { const e = 2 / S.pf(h); x = W * spow(s, e); z = z0 + (zf - z0) * spow(c, e); }
     else { x = W * spow(s, 1); z = z0 + (z0 - zb) * c; }
     // tiny nose bump on the face plane
-    if (c > 0 && S.nose) z += S.nose * Math.exp(-(x / 0.028) ** 2) * sstep(0.34, 0.265, h) * sstep(0.215, 0.255, h);
+    if (c > 0 && S.nose) z += S.nose * Math.exp(-((x / 0.028) ** 2)) * sstep(0.34, 0.265, h) * sstep(0.215, 0.255, h);
     return [x, h, z];
   };
   return S;
@@ -63,20 +63,13 @@ export function earGeometry() {
     { y: -0.045, w: 0.015, df: 0.026, db: 0.018 },
     { y: -0.06, w: 0.004, df: 0.008, db: 0.006 },
   ];
-  const g = loft(rings, { nr: 16, sub: 3 });
-  g.rotateY(Math.PI / 2);           // depth axis -> x... we want the flat side facing outward: swap so 'w' is thickness along x
-  g.rotateY(-Math.PI / 2);
-  return g;
+  return loft(rings, { nr: 16, sub: 3 });   // 'w' (x) is the thin axis: the flat side faces outward
 }
 
 /* ------------------------------------------------------------------ */
 /* Face painter                                                        */
 /* ------------------------------------------------------------------ */
-const C = (hex) => new THREE.Color(hex);
-const css = (c, a = 1) => { const cc = c.clone ? c.clone() : C(c); cc.convertLinearToSRGB?.call; return `rgba(${Math.round(cc.r * 255)},${Math.round(cc.g * 255)},${Math.round(cc.b * 255)},${a})`; };
-function mixHex(a, b, t) { const A = new THREE.Color(a), B = new THREE.Color(b); return '#' + A.lerp(B, t).getHexString(); }
-// NOTE: THREE.Color(hex) converts to linear; for canvas we want sRGB values, so mix in sRGB via getHexString (which
-// converts back to sRGB) and use plain hex strings for drawing.
+// NOTE: canvas colours are mixed in sRGB space (plain hex strings), independent of THREE's linear colour management.
 function mixS(a, b, t) {
   const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
   const ch = (p, s) => (p >> s) & 255;
@@ -150,8 +143,10 @@ export class FacePainter {
     this.begin();
     // forehead shadow cast by the bangs
     if (this.bangShadow.length) {
+      g.save(); g.beginPath(); g.ellipse(0, 0.62, F.shadowClipX ?? 0.29, 0.4, 0, 0, TAU); g.clip();
       g.fillStyle = F.skinShade;
       for (const poly of this.bangShadow) { g.beginPath(); poly.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.fill(); }
+      g.restore();
     }
     // blush
     const bl = ex.blush ?? F.blush ?? 0.5;
@@ -167,9 +162,14 @@ export class FacePainter {
       const glow = ex['glow' + side] || 0; if (!glow) continue;
       const sx = side === 'L' ? 1 : -1;
       const rg = g.createRadialGradient(sx * F.eyeX, F.eyeY, 0.02, sx * F.eyeX, F.eyeY, 0.2);
-      rg.addColorStop(0, rgba('#ff2a3a', 0.55 * glow)); rg.addColorStop(1, rgba('#ff2a3a', 0));
+      rg.addColorStop(0, rgba('#e0102a', 0.4 * glow)); rg.addColorStop(0.6, rgba('#e0102a', 0.12 * glow)); rg.addColorStop(1, rgba('#e0102a', 0));
       g.fillStyle = rg; g.beginPath(); g.arc(sx * F.eyeX, F.eyeY, 0.2, 0, TAU); g.fill();
       if (glow > 0.4) this.cracks(sx, glow);
+    }
+    if (F.topShade) {   // shadow of a hat brim over the upper face (gently curved edge)
+      g.fillStyle = F.skinShade; g.beginPath(); g.moveTo(-0.6, 1.2);
+      for (let i = 0; i <= 24; i++) { const x = -0.6 + i / 24 * 1.2; g.lineTo(x, F.topShade + 0.05 * x * x + 0.012 * Math.sin(x * 20)); }
+      g.lineTo(0.6, 1.2); g.closePath(); g.fill();
     }
     if (F.plaster) this.plaster(F.plaster);
     this.nose(ex);
@@ -189,7 +189,7 @@ export class FacePainter {
     const fr = this.eyeFrame(sx);
     const side = sx > 0 ? 'L' : 'R';
     const blink = clamp(ex.blink ?? 0, 0, 1), happy = clamp(ex.eyeSmile ?? 0, 0, 1);
-    let open = st.closedOnly ? 0 : 1 - blink;
+    let open = st.closedOnly ? 0 : (1 - blink) * (1 - happy);
     const closedC = st.closedOnly ? (ex.eyeOpen ? st.upper : NARROW_SMILE) : (happy > 0 ? lpc(CLOSED, HAPPY, happy) : CLOSED);
     if (st.closedOnly && ex.eyeOpen) open = ex.eyeOpen;
     const upperOpen = ex.wide ? st.upper.map(p => [p[0], p[1] * 1.08]) : st.upper;
@@ -225,7 +225,7 @@ export class FacePainter {
       g.beginPath(); g.ellipse(icx, icy, rx, ry, 0, 0, TAU); g.stroke();
       // pupil (round -> slit)
       const slit = clamp(ex['pupilSlit' + side] || 0, 0, 1);
-      const prx = lerp(F.pupilR * 0.82, 0.0075, slit), pry = lerp(F.pupilR, ry * 0.9, slit);
+      const prx = lerp(F.pupilR * 0.82, 0.0065, slit), pry = lerp(F.pupilR, ry * 0.95, slit);
       g.fillStyle = mixS(irisHex, '#050208', 0.86);
       pupilPath(g, icx, icy + ry * 0.04, prx, pry, slit); g.fill();
       if (slit > 0.2) { g.strokeStyle = rgba('#ffd0b0', 0.5 * slit); g.lineWidth = 0.002; pupilPath(g, icx, icy + ry * 0.04, prx + 0.003, pry + 0.004, slit); g.stroke(); }
@@ -346,12 +346,12 @@ export class FacePainter {
   cracks(sx, glow) {
     const g = this.g, F = this.spec;
     const R = mkr(7 + (sx > 0 ? 1 : 2));
-    g.strokeStyle = rgba('#9a0a16', Math.min(1, (glow - 0.4) * 1.8)); g.lineCap = 'round';
+    g.strokeStyle = rgba('#7a0010', Math.min(1, (glow - 0.4) * 2.2)); g.lineCap = 'round';
     for (let k = 0; k < 6; k++) {
       let a = (k / 6) * TAU + R() * 0.6 + 0.3, x = sx * F.eyeX + Math.cos(a) * F.eyeW * 1.15, y = F.eyeY + Math.sin(a) * F.eyeH * 1.2;
-      g.lineWidth = 0.004; g.beginPath(); g.moveTo(x, y);
+      g.lineWidth = 0.0055; g.beginPath(); g.moveTo(x, y);
       const n = 4 + Math.floor(R() * 3);
-      for (let i = 0; i < n; i++) { a += (R() - 0.5) * 1.1; x += Math.cos(a) * 0.016 * glow; y += Math.sin(a) * 0.016 * glow; g.lineTo(x, y); g.lineWidth *= 0.8; }
+      for (let i = 0; i < n; i++) { a += (R() - 0.5) * 1.1; x += Math.cos(a) * 0.022 * glow; y += Math.sin(a) * 0.022 * glow; g.lineTo(x, y); g.lineWidth *= 0.8; }
       g.stroke();
     }
   }

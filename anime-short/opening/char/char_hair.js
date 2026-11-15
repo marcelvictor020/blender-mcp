@@ -35,9 +35,9 @@ export function clump(o, id) {
   pts.push(tip);
   // drop points that are too close (Catmull-Rom hates duplicates)
   const P = [pts[0]]; for (const p of pts.slice(1)) if (p.distanceTo(P[P.length - 1]) > 0.012) P.push(p);
-  const w = o.w ?? 0.07, th = o.th ?? 0.022, tp = o.tipPow ?? 1.1, rw = o.rootW ?? 0.8;
+  const w = o.w ?? 0.07, th = o.th ?? 0.022, tp = o.tipPow ?? 1.0, rw = o.rootW ?? 0.75, pk = o.peak ?? 0.4;
   const geo = strand(P, {
-    width: t => w * Math.pow(Math.max(0, 1 - t), tp) * (rw + (1 - rw) * sstep(0, 0.28, t)) + 0.0006,
+    width: t => w * (t < pk ? lerp(rw, 1, sstep(0, pk, t)) : Math.pow(Math.max(0, (1 - t) / (1 - pk)), tp)) + 0.0006,
     thick: t => th * Math.pow(Math.max(0, 1 - t), 0.6) * (0.8 + 0.2 * sstep(0, 0.2, t)) + 0.0004,
     out: (p) => { const v = p.clone().sub(SCALP.c); if (o.outY !== undefined) v.y *= o.outY; return v.normalize(); },
     seg: o.seg ?? 16, ns: 8, arch: o.arch ?? 0.45, twist: o.twist ?? 0,
@@ -92,51 +92,54 @@ const faceZ = (S, y, x) => { const p = S.point(y, Math.asin(clamp(x / S.W(y), -1
 export function styleMessy(S, seed = 3) {
   const R = rng(seed), J = (a) => (R() - 0.5) * a;
   const L = [];
-  // --- bangs (front): roots on the top-front, tips on the forehead/eye line
+  // --- bangs: broad triangular clumps; roots on the top-front, tips on the brow/eye line (long ones between the eyes)
   const bangs = [
     // [rootAz, rootEl, tipX, tipY, w, flickX]
-    [-6, 58, -0.02, 0.33, 0.085, 0.0],    // long centre spike between the eyes
-    [10, 60, 0.065, 0.42, 0.075, 0.01],
-    [-24, 56, -0.12, 0.43, 0.08, -0.01],
-    [28, 55, 0.155, 0.4, 0.078, 0.015],
-    [-42, 50, -0.22, 0.38, 0.075, -0.02],
-    [46, 49, 0.25, 0.35, 0.075, 0.02],
-    [-60, 44, -0.31, 0.3, 0.07, -0.02],
-    [62, 44, 0.32, 0.29, 0.07, 0.02],
-    [2, 62, 0.025, 0.5, 0.07, 0.0],
-    [-14, 60, -0.075, 0.53, 0.065, 0],
-    [20, 60, 0.11, 0.52, 0.065, 0],
+    [-4, 60, -0.015, 0.33, 0.12, 0.0],
+    [16, 60, 0.1, 0.43, 0.115, 0.01],
+    [-22, 58, -0.13, 0.42, 0.115, -0.01],
+    [34, 56, 0.2, 0.37, 0.11, 0.015],
+    [-40, 54, -0.23, 0.36, 0.11, -0.015],
+    [52, 50, 0.3, 0.31, 0.13, 0.02],
+    [-56, 50, -0.31, 0.3, 0.13, -0.02],
+    [6, 64, 0.05, 0.5, 0.1, 0.0],
+    [-10, 64, -0.07, 0.52, 0.1, 0],
   ];
-  bangs.forEach(([az, el, x, y, w, fx], i) => {
-    const z = faceZ(S, y, x) + 0.045 + Math.abs(x) * 0.05;
-    L.push({ bang: true, az: az + J(4), el: el + J(3), tip: [x, y, z], w, th: 0.024, lift: 0.075, exit: 26 + J(6), tipPow: 1.25, flick: [fx, 0.0, 0.01], arch: 0.5 });
+  bangs.forEach(([az, el, x, y, w, fx]) => {
+    const z = faceZ(S, y, x) + 0.04 + Math.abs(x) * 0.06;
+    L.push({ bang: true, az: az + J(3), el: el + J(2), tip: [x, y, z], w, th: 0.02, lift: 0.07, exit: 28 + J(4), tipPow: 1.0, peak: 0.45, flick: [fx, 0.0, 0.012], arch: 0.4 });
   });
-  // --- sides: in front of the ears down to the jaw
+  // --- sides: in front of / over the ears down to the jaw
   for (const sx of [-1, 1]) {
-    [[78, 30, 0.43, 0.17, 0.09, 0.075], [95, 28, 0.45, 0.22, -0.02, 0.07], [112, 26, 0.45, 0.2, -0.13, 0.07], [70, 38, 0.41, 0.26, 0.17, 0.06]].forEach(([az, el, x, y, z, w]) => {
-      L.push({ az: sx * (az + J(5)), el: el + J(4), tip: [sx * (x + J(0.02)), y + J(0.03), z], exit: 0, w, th: 0.026, lift: 0.08, bulge: 0.02, tipPow: 1.15, flick: [sx * 0.02, 0.0, 0.0] });
+    [[74, 34, 0.41, 0.2, 0.12, 0.11], [96, 30, 0.43, 0.17, -0.02, 0.12], [118, 28, 0.42, 0.15, -0.16, 0.12]].forEach(([az, el, x, y, z, w]) => {
+      L.push({ az: sx * (az + J(4)), el: el + J(3), tip: [sx * (x + J(0.015)), y + J(0.03), z], exit: 2, w, th: 0.022, lift: 0.05, bulge: 0.0, tipPow: 1.0, peak: 0.45, flick: [sx * 0.012, 0.0, 0.0] });
     });
   }
-  // --- back: two layers of spiky clumps down to the nape
-  for (let i = 0; i < 9; i++) {
-    const az = 125 + i * (110 / 8) + J(6), a = az * D2R;
-    const r = 0.38 + R() * 0.05, y = -0.02 + R() * 0.1 - (Math.abs(Math.cos(a)) > 0.9 ? 0.06 : 0);
-    L.push({ az, el: 30 + J(6), tip: [Math.sin(a) * r * 0.95, y + 0.05, Math.cos(a) * r - 0.04], exit: -28, w: 0.1, th: 0.03, lift: 0.085, bulge: 0.03, tipPow: 1.2, flick: [Math.sin(a) * 0.04, 0.02, Math.cos(a) * 0.03] });
-  }
+  // --- back: two layers of broad clumps down to the nape
   for (let i = 0; i < 8; i++) {
-    const az = 130 + i * (100 / 7) + J(6), a = az * D2R;
-    L.push({ az, el: 52 + J(6), tip: [Math.sin(a) * 0.47, 0.2 + R() * 0.08, Math.cos(a) * 0.5], exit: -5, w: 0.11, th: 0.032, lift: 0.1, tipPow: 1.15, flick: [Math.sin(a) * 0.06, 0.04, Math.cos(a) * 0.05] });
+    const az = 128 + i * (104 / 7) + J(5), a = az * D2R;
+    const r = 0.4 + R() * 0.04, y = 0.02 + R() * 0.06 - (Math.abs(Math.cos(a)) > 0.9 ? 0.05 : 0);
+    L.push({ az, el: 32 + J(5), tip: [Math.sin(a) * r, y, Math.cos(a) * r - 0.03], exit: -30, w: 0.14, th: 0.03, lift: 0.08, bulge: 0.02, tipPow: 1.0, peak: 0.45, flick: [Math.sin(a) * 0.025, 0.01, Math.cos(a) * 0.02] });
+  }
+  for (let i = 0; i < 7; i++) {
+    const az = 134 + i * (92 / 6) + J(5), a = az * D2R;
+    L.push({ az, el: 55 + J(5), tip: [Math.sin(a) * 0.47, 0.2 + R() * 0.06, Math.cos(a) * 0.5], exit: -8, w: 0.16, th: 0.03, lift: 0.08, tipPow: 1.0, peak: 0.45, flick: [Math.sin(a) * 0.03, 0.02, Math.cos(a) * 0.03] });
   }
   // nape tail (longer)
-  for (const sx of [-1, 0, 1]) L.push({ az: 180 + sx * 14, el: 10, tip: [sx * 0.07, -0.12, -0.3], exit: -40, w: 0.07, th: 0.025, lift: 0.06, tipPow: 1.1, flick: [sx * 0.02, 0, -0.02] });
-  // --- crown / top layer (gives the jagged silhouette)
-  const top = [[0, 82, 0, 0.98, 0.3], [40, 70, 0.32, 0.78, 0.28], [-40, 70, -0.32, 0.8, 0.27], [90, 66, 0.5, 0.6, 0.0], [-90, 66, -0.5, 0.62, 0.0],
-    [140, 76, 0.38, 0.86, -0.32], [-140, 76, -0.36, 0.88, -0.34], [180, 80, 0.0, 0.95, -0.42], [65, 74, 0.44, 0.74, 0.18], [-65, 74, -0.44, 0.76, 0.17]];
-  top.forEach(([az, el, x, y, z]) => L.push({ az: az + J(8), el, tip: [x * 1.15, y + 0.05, z * 1.15], w: 0.12, th: 0.035, lift: 0.1, tipPow: 1.0, n: 2, flick: [x * 0.05, 0.03, z * 0.05] }));
-  // --- ahoge: strands sticking up
-  L.push({ az: 170, el: 84, tip: [0.04, 1.2, -0.12], via: [[0.0, 1.08, -0.05]], w: 0.03, th: 0.012, lift: 0.04, tipPow: 1.0, n: 1, flick: [0.05, 0.0, 0.03] });
-  L.push({ az: 150, el: 80, tip: [0.13, 1.14, -0.22], via: [[0.06, 1.06, -0.12]], w: 0.025, th: 0.01, lift: 0.04, tipPow: 1.0, n: 1, flick: [0.04, -0.02, -0.02] });
-  const elH = az => { const a = ((az + 180) % 360) - 180, f = Math.abs(a) / 180; return lerp(lerp(22, -8, sstep(0.1, 0.45, f)), -38, sstep(0.55, 0.95, f)); };
+  for (const sx of [-1, 0, 1]) L.push({ az: 180 + sx * 16, el: 12, tip: [sx * 0.08, -0.1, -0.3], exit: -42, w: 0.09, th: 0.025, lift: 0.06, tipPow: 1.0, flick: [sx * 0.015, 0, -0.015] });
+  // --- crown / top layer: broad clumps lying on the scalp (smooth mass, slightly jagged silhouette)
+  for (let i = 0; i < 9; i++) {
+    const az = i * 40 + J(8), a = az * D2R, el = 22 + J(6);
+    const tip = scalpPoint(dirAE(az, el), 0.07);
+    L.push({ az: az + 180 + J(10), el: 80, tip: tip.toArray(), exit: el + 6, w: 0.19, th: 0.032, lift: 0.08, tipPow: 1.0, peak: 0.4, n: 3 });
+  }
+  // --- ahoge: strands sticking up from the crown
+  L.push({ az: 170, el: 84, tip: [0.05, 1.19, -0.1], via: [[0.0, 1.08, -0.06]], w: 0.045, th: 0.014, lift: 0.04, tipPow: 1.0, peak: 0.25, n: 1, flick: [0.04, 0.0, 0.03] });
+  L.push({ az: 150, el: 80, tip: [0.14, 1.12, -0.2], via: [[0.07, 1.06, -0.12]], w: 0.04, th: 0.012, lift: 0.04, tipPow: 1.0, peak: 0.25, n: 1, flick: [0.03, -0.02, -0.02] });
+  // temple locks covering the hairline corners
+  for (const sx of [-1, 1]) for (const [az, el, x, y, w] of [[50, 46, 0.3, 0.42, 0.12], [62, 38, 0.36, 0.34, 0.11], [70, 32, 0.4, 0.27, 0.1]])
+    L.push({ az: sx * (az + J(3)), el, tip: [sx * x, y, faceZ(S, y, sx * Math.min(x, 0.36)) + 0.03], exit: 16, w, th: 0.022, lift: 0.07, tipPow: 1.0, peak: 0.45, flick: [sx * 0.01, 0, 0.01] });
+  const elH = az => { const a = ((az + 180) % 360) - 180, f = Math.abs(a) / 180; return lerp(lerp(24, -12, sstep(0.07, 0.24, f)), -38, sstep(0.55, 0.95, f)); };
   return { list: L, elH };
 }
 
@@ -182,12 +185,12 @@ export function styleLank(S, seed = 9) {
   for (let i = 0; i < 16; i++) {
     const az = 55 + i * (250 / 15) + J(5), a = az * D2R;
     const front = Math.cos(a) > 0.2;
-    L.push({ az, el: 30 + J(6), tip: [Math.sin(a) * 0.5, -0.45 + J(0.1) + (front ? 0.15 : 0), Math.cos(a) * 0.42 - 0.05], exit: -15, w: 0.09, th: 0.025, lift: 0.07, bulge: 0.02, tipPow: 1.2, flick: [Math.sin(a) * 0.03, 0, 0] });
+    L.push({ az, el: 30 + J(6), tip: [Math.sin(a) * 0.5, -0.45 + J(0.1) + (front ? 0.15 : 0), Math.cos(a) * 0.42 - 0.05], exit: -15, w: 0.14, th: 0.026, lift: 0.07, bulge: 0.02, tipPow: 1.0, peak: 0.5, flick: [Math.sin(a) * 0.03, 0, 0] });
   }
   // a parted fringe
   for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) {
     const x = sx * (0.08 + k * 0.1);
-    L.push({ bang: true, az: sx * (10 + k * 18), el: 62, tip: [x * 1.25, 0.6 - k * 0.12, faceZ(S, 0.6 - k * 0.12, x * 1.2) + 0.05], exit: 30, w: 0.07, th: 0.022, lift: 0.06, tipPow: 1.1, flick: [sx * 0.02, 0, 0] });
+    L.push({ bang: true, az: sx * (10 + k * 18), el: 62, tip: [x * 1.25, 0.6 - k * 0.12, faceZ(S, 0.6 - k * 0.12, x * 1.2) + 0.05], exit: 30, w: 0.11, th: 0.022, lift: 0.06, tipPow: 1.0, peak: 0.45, flick: [sx * 0.02, 0, 0] });
   }
   const elH = az => { const a = ((az + 180) % 360) - 180, f = Math.abs(a) / 180; return lerp(lerp(30, 0, sstep(0.1, 0.45, f)), -30, sstep(0.55, 0.95, f)); };
   return { list: L, elH };

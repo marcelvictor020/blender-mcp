@@ -177,7 +177,7 @@ export function shell(fn, nu, nv, thick, { closedU = false, inward = null, rimV0
  */
 export function strand(pts, { width, thick, out, seg = 14, ns = 8, arch = 0.35, twist = 0, attrs = {} }) {
   const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
-  const pos = [], tt = [], index = [];
+  const pos = [], tt = [], ss = [], index = [];
   const frames = [];
   let prevS = null;
   for (let k = 0; k <= seg; k++) {
@@ -196,7 +196,7 @@ export function strand(pts, { width, thick, out, seg = 14, ns = 8, arch = 0.35, 
       const yy = y * h + arch * h * (1 - x * x);          // arched lens: convex outward
       const xx = spow(x, 0.85) * w;
       const q = f.p.clone().addScaledVector(f.S, xx).addScaledVector(f.O, yy);
-      pos.push(q.x, q.y, q.z); tt.push(f.t);
+      pos.push(q.x, q.y, q.z); tt.push(f.t); ss.push(x * (y >= 0 ? 1 : -1) >= 0 ? x : x);
     }
   }
   for (let k = 0; k < seg; k++) for (let i = 0; i < ns; i++) {
@@ -204,14 +204,15 @@ export function strand(pts, { width, thick, out, seg = 14, ns = 8, arch = 0.35, 
     index.push(a, b, d, b, c, d);
   }
   // root cap
-  const r0 = pos.length / 3; const p0 = frames[0].p; pos.push(p0.x, p0.y, p0.z); tt.push(0);
+  const r0 = pos.length / 3; const p0 = frames[0].p; pos.push(p0.x, p0.y, p0.z); tt.push(0); ss.push(0);
   for (let i = 0; i < ns; i++) index.push(r0, (i + 1) % ns, i);
   // tip cap (in case the tip width is not zero)
-  const r1 = pos.length / 3; const p1 = frames[seg].p; pos.push(p1.x, p1.y, p1.z); tt.push(1);
+  const r1 = pos.length / 3; const p1 = frames[seg].p; pos.push(p1.x, p1.y, p1.z); tt.push(1); ss.push(0);
   for (let i = 0; i < ns; i++) index.push(r1, seg * ns + i, seg * ns + (i + 1) % ns);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('aT', new THREE.Float32BufferAttribute(tt, 1));
+  g.setAttribute('aS', new THREE.Float32BufferAttribute(ss, 1));
   for (const [k, v] of Object.entries(attrs)) g.setAttribute(k, new THREE.Float32BufferAttribute(new Array(pos.length / 3).fill(v), 1));
   g.setIndex(index);
   orient(g); g.computeVertexNormals();

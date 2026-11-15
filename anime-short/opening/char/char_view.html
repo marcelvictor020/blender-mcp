@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Character viewer</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}body{display:flex;align-items:center;justify-content:center}
+#c{display:block;max-width:100vw;max-height:100vh}#info{position:fixed;left:8px;top:6px;color:#fff;font:12px monospace;opacity:.7}.render #info{display:none}</style>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
+</head><body><canvas id="c"></canvas><div id="info"></div>
+<script>if (location.search.includes('render')) document.documentElement.classList.add('render');</script>
+<script type="module">
+// Character viewer / review renderer.
+//   char_view.html?char=ren&mode=turn|face|pose&pose=stand&expr={"blink":1}  (interactive: slowly turning)
+//   headless: window.__shot({ mode, char, pose, expr, yaw, poses:[...] , exprs:[...] }) renders one frame.
+import * as core from '../../core.js';
+import * as THREE from 'three';
+import { makeRen, makeAoi, makeCollector } from './cast.js';
+import { CHAR_GLOBAL, POSES } from './anime_char.js';
+const MAKERS = { ren: makeRen, aoi: makeAoi, collector: makeCollector };
+const q = new URLSearchParams(location.search);
+const W = +(q.get('w') || 1280), H = +(q.get('h') || 720);
+const canvas = document.getElementById('c'); canvas.width = W; canvas.height = H;
+const engine = new core.Engine(canvas, W, H);
+core.ctx.renderer = engine.renderer; core.ctx.W = W; core.ctx.H = H;
+engine.applyPost({ bloom: 0.35, bloomThreshold: 0.99, bloomRadius: 0.4, vignette: 0, grain: 0, ca: 0, soft: 0, contrast: 1.0, saturation: 1.0, lift: [0, 0, 0] });
+CHAR_GLOBAL.uRes.value.set(W, H);
+const L0 = new THREE.Vector3(-0.45, 0.55, 0.7).normalize();
+
+function bgScene() {
+  const scene = new THREE.Scene();
+  const c = document.createElement('canvas'); c.width = 4; c.height = 256; const g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#3f86d6'); gr.addColorStop(0.6, '#8fc0ea'); gr.addColorStop(1, '#d7e9f6');
+  g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; scene.background = t;
+  return scene;
+}
+function lightFor(ch, yaw) { ch.U.uLightDir.value.copy(L0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw); ch.U.uRimDir.value.set(0.7, 0.35, -0.6).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw); }
+function headCenter(ch) { return ch.headRoot.localToWorld(new THREE.Vector3(0, 0.5, 0.15)); }
+
+let cur = null;
+function build(cfg) {
+  const scene = bgScene();
+  const mk = MAKERS[cfg.char || 'ren'];
+  const camera = new THREE.PerspectiveCamera(30, W / H, 0.05, 100);
+  const chars = [];
+  if (cfg.mode === 'turn') {
+    const yaws = [0, 0.75, Math.PI / 2, Math.PI];
+    yaws.forEach((yaw, i) => {
+      const ch = mk(core); ch.setPose(cfg.pose || 'stand'); ch.setExpression(cfg.expr || {});
+      ch.group.position.set((i - 1.5) * 1.05, 0, 0); ch.group.rotation.y = yaw; lightFor(ch, 0);
+      scene.add(ch.group); chars.push(ch);
+    });
+    const h = chars[0].D.height;
+    camera.fov = 16; camera.position.set(0, h * 0.52, h * 4.9); camera.lookAt(0, h * 0.5, 0);
+  } else if (cfg.mode === 'pose') {
+    const poses = cfg.poses || ['stand'];
+    poses.forEach((p, i) => {
+      const ch = (MAKERS[p.char] || mk)(core); ch.setPose(p.pose || p); ch.setExpression(p.expr || {});
+      ch.group.position.set((i - (poses.length - 1) / 2) * (cfg.spacing || 1.3), p.y || 0, 0); ch.group.rotation.y = p.yaw ?? 0.5; lightFor(ch, 0);
+      scene.add(ch.group); chars.push(ch);
+    });
+    camera.fov = cfg.fov || 22; camera.position.set(...(cfg.cam || [0, 1.1, 7.5])); camera.lookAt(...(cfg.target || [0, 0.9, 0]));
+  } else { // face
+    const ch = mk(core); ch.setPose(cfg.pose || 'stand'); ch.setExpression(cfg.expr || {});
+    const yaw = cfg.yaw || 0; ch.group.rotation.y = yaw; lightFor(ch, cfg.lightYaw ?? 0);
+    scene.add(ch.group); chars.push(ch);
+    scene.updateMatrixWorld(true);
+    const hc = headCenter(ch);
+    camera.fov = cfg.fov || 30;
+    const d = (cfg.dist || 0.78) * ch.D.H / 0.235;
+    camera.position.set(hc.x, hc.y + (cfg.camUp || 0.0), hc.z + d); camera.lookAt(hc.x, hc.y + (cfg.lookUp ?? -0.01), hc.z);
+  }
+  cur = { scene, camera, chars };
+}
+function renderAt(t) { for (const c of cur.chars) c.update(t); cur.scene.updateMatrixWorld(true); engine.setLens(1, 0, 0, 0, 0); engine.render(cur.scene, cur.camera, t); }
+if (q.has('render')) {
+  window.__shot = async (cfg) => { build(cfg); renderAt(cfg.t ?? 0.5); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); return true; };
+  window.__ready = true;
+} else {
+  const cfg = { mode: q.get('mode') || 'face', char: q.get('char') || 'ren', pose: q.get('pose') || 'stand', expr: q.has('expr') ? JSON.parse(q.get('expr')) : {} };
+  build(cfg);
+  const t0 = performance.now();
+  const loop = () => { const t = (performance.now() - t0) / 1000; if (cfg.mode !== 'turn') cur.chars[0].group.rotation.y = Math.sin(t * 0.4) * 0.6; cur.chars[0].setExpression({ blink: (t % 3.2) < 0.12 ? 1 : 0 }); renderAt(t); requestAnimationFrame(loop); };
+  loop();
+}
+</script></body></html>
