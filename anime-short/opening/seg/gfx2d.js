@@ -235,7 +235,7 @@ export const SIL = {
     for (let k = 0; k <= n; k++) {
       const a = Math.PI * 0.55 + (k / n) * Math.PI * 1.9 + Math.PI * 0.0;
       const f = Math.floor(t * 18);
-      let r = 330 + 120 * hash(k * 3.1 + f * 0.7) + (k % 2 ? 0 : 90);
+      let r = 250 + 80 * hash(k * 3.1 + f * 0.7) + (k % 2 ? 0 : 70);
       const x = Math.cos(a) * r * 1.05, y = Math.sin(a) * r * 0.95 - 40;
       if (k === 0) g.moveTo(x, y); else g.lineTo(x, y);
     }

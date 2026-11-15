@@ -14,11 +14,11 @@ export default {
           const [sx, sy] = shake(t, 0, 30, 0.4);
           fill(g, CREAM);
           speedLines(g, 1000, 470, t, INK, { n: 160, inner: 380, density: 0.55, width: 0.012 });
-          const s = 1.05 + 0.25 * outExpo(seg(t, 0, 0.6));
+          const s = 0.78 + 0.16 * outExpo(seg(t, 0, 0.6));
           g.save(); g.translate(sx, sy);
-          silhouette(g, SIL.oniAura, 1000, 520, s, { fill: INK, rim: RED, rx: 0, ry: -16, t });
-          silhouette(g, SIL.ren, 1000, 520, s, { fill: INK, rim: RED, rx: 12, ry: -6 });
-          glint(g, 1000 + 52 * s, 520 + 22 * s, 16, CRIMSON, 1);
+          silhouette(g, SIL.oniAura, 1060, 600, s, { fill: INK, rim: RED, rx: 0, ry: -16, t });
+          silhouette(g, SIL.ren, 1060, 600, s, { fill: INK, rim: RED, rx: 12, ry: -6 });
+          glint(g, 1060 + 52 * s, 600 + 22 * s, 14, CRIMSON, 1);
           g.restore();
           kanji(g, '鬼', 260, 540, 420, { fill: RED, shadow: { dx: 16, dy: 16, color: INK }, alpha: 0.95 });
         } else {
