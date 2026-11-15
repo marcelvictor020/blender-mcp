@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Segment viewer</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}body{display:flex;align-items:center;justify-content:center}
+#c{display:block;max-width:100vw;max-height:100vh}#info{position:fixed;left:8px;top:6px;color:#fff;font:12px monospace;opacity:.7}.render #info{display:none}</style>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
+</head><body><canvas id="c"></canvas><div id="info"></div>
+<script>if (location.search.includes('render')) document.documentElement.classList.add('render');</script>
+<script type="module">
+// Standalone segment viewer: view.html?seg=world_town_high[&t=1.2][&render=1&w=1280&h=720]
+import * as core from '../../core.js';
+const q = new URLSearchParams(location.search);
+const seg = q.get('seg') || 'world_town_high';
+const W = +(q.get('w') || 1280), H = +(q.get('h') || 720);
+const canvas = document.getElementById('c'); canvas.width = W; canvas.height = H;
+const engine = new core.Engine(canvas, W, H);
+core.ctx.renderer = engine.renderer; core.ctx.W = W; core.ctx.H = H;
+const mod = (await import('./' + seg + '.js')).default;
+const inst = await mod.build(core, { W, H, renderer: engine.renderer });
+engine.applyPost(mod.post);
+const renderAt = (t) => { core.shared.uTime.value = t + 10; inst.update?.(t, core); engine.setLens(1, 0, 0, 0, 0); engine.render(inst.scene, inst.camera, t); };
+if (q.has('render')) {
+  window.__render = async (t) => { renderAt(t); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); return true; };
+  window.__ready = true;
+} else {
+  const info = document.getElementById('info'); const t0 = performance.now(); const T = q.has('t') ? +q.get('t') : null;
+  const loop = () => { const t = T ?? ((performance.now() - t0) / 1000) % mod.dur; renderAt(t); info.textContent = seg + ' ' + t.toFixed(2) + ' / ' + mod.dur; requestAnimationFrame(loop); };
+  loop();
+}
+</script></body></html>
