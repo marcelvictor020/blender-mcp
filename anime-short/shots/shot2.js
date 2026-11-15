@@ -100,7 +100,7 @@ export default {
     const UNI = (o) => pbrUniforms({ sunDir: SUN, leafScale: 8.5, leafSharp: 0.085, leafSeed: 9.0, grime: 0, ...o });
     const LEAF = { leafAmt: 0.97, leafCover: 0.505 };
     const UM = UNI({ ...LEAF, grime: 0.05 });                 // machine body + cone under the tree
-    const UGl = UNI({ ...LEAF, leafCover: 0.465, sunGain: 1.2 });               // dusty glass: catches bright leaf-shaped sun patches
+    const UGl = UNI({ ...LEAF, leafCover: 0.53, leafScale: 10.5, leafSharp: 0.05, sunGain: 1.45 });               // dusty glass: catches bright leaf-shaped sun patches
     const UPr = UNI({ ...LEAF, sunGain: 0.6 });                // products behind the glass
     const UO = UNI({ leafAmt: 0 });                           // overpass / pole (open sun)
     const UF = UNI({ leafAmt: 0.45, leafCover: 0.42, leafScale: 5.0 });   // fences / tape
