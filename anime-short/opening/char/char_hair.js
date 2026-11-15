@@ -93,17 +93,20 @@ export function styleMessy(S, seed = 3) {
   const R = rng(seed), J = (a) => (R() - 0.5) * a;
   const L = [];
   // --- bangs: broad triangular clumps; roots on the top-front, tips on the brow/eye line (long ones between the eyes)
+  // parted over each eye: a long spike between the eyes, short clumps above the eyes, long ones outside the eye corners
   const bangs = [
     // [rootAz, rootEl, tipX, tipY, w, flickX]
-    [-4, 60, -0.015, 0.33, 0.12, 0.0],
-    [16, 60, 0.1, 0.43, 0.115, 0.01],
-    [-22, 58, -0.13, 0.42, 0.115, -0.01],
-    [34, 56, 0.2, 0.37, 0.11, 0.015],
-    [-40, 54, -0.23, 0.36, 0.11, -0.015],
-    [52, 50, 0.3, 0.31, 0.13, 0.02],
-    [-56, 50, -0.31, 0.3, 0.13, -0.02],
-    [6, 64, 0.05, 0.5, 0.1, 0.0],
-    [-10, 64, -0.07, 0.52, 0.1, 0],
+    [-2, 60, -0.01, 0.37, 0.1, 0.0],
+    [14, 62, 0.085, 0.5, 0.085, 0.012],
+    [-16, 62, -0.085, 0.5, 0.085, -0.012],
+    [28, 60, 0.19, 0.6, 0.085, 0.01],
+    [-30, 60, -0.19, 0.6, 0.085, -0.01],
+    [42, 55, 0.3, 0.4, 0.1, 0.02],
+    [-44, 55, -0.3, 0.4, 0.1, -0.02],
+    [56, 50, 0.35, 0.31, 0.12, 0.02],
+    [-58, 50, -0.35, 0.3, 0.12, -0.02],
+    [4, 65, 0.04, 0.62, 0.09, 0],
+    [-10, 65, -0.06, 0.63, 0.09, 0],
   ];
   bangs.forEach(([az, el, x, y, w, fx]) => {
     const z = faceZ(S, y, x) + 0.04 + Math.abs(x) * 0.06;

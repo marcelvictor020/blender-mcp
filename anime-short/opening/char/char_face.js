@@ -131,6 +131,12 @@ export class FacePainter {
     this.tex.minFilter = THREE.LinearMipmapLinearFilter;
     this.bangShadow = [];
     this.key = '';
+    // brows live on their own layer (drawn over the hair by a depth-biased decal, like 2D anime)
+    this.BS = size >> 1;
+    this.bcanvas = document.createElement('canvas'); this.bcanvas.width = this.bcanvas.height = this.BS;
+    this.bg = this.bcanvas.getContext('2d');
+    this.browTex = new THREE.CanvasTexture(this.bcanvas);
+    this.browTex.colorSpace = THREE.SRGBColorSpace; this.browTex.anisotropy = 8; this.browTex.minFilter = THREE.LinearMipmapLinearFilter;
   }
   // head units -> canvas: x in [-0.5,0.5], y(h) in [0,1]
   begin() { const g = this.g, S = this.S; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, S, S); g.setTransform(S, 0, 0, -S, S / 2, S); g.lineJoin = g.lineCap = 'round'; }
@@ -167,15 +173,17 @@ export class FacePainter {
       if (glow > 0.4) this.cracks(sx, glow);
     }
     if (F.topShade) {   // shadow of a hat brim over the upper face (gently curved edge)
-      g.fillStyle = F.skinShade; g.beginPath(); g.moveTo(-0.6, 1.2);
+      g.fillStyle = F.skinShade; g.globalAlpha = F.topShadeA ?? 1; g.beginPath(); g.moveTo(-0.6, 1.2);
       for (let i = 0; i <= 24; i++) { const x = -0.6 + i / 24 * 1.2; g.lineTo(x, F.topShade + 0.05 * x * x + 0.012 * Math.sin(x * 20)); }
-      g.lineTo(0.6, 1.2); g.closePath(); g.fill();
+      g.lineTo(0.6, 1.2); g.closePath(); g.fill(); g.globalAlpha = 1;
     }
     if (F.plaster) this.plaster(F.plaster);
     this.nose(ex);
     this.mouth(ex);
     this.eye(1, ex); this.eye(-1, ex);
+    const bg = this.bg, B = this.BS; bg.setTransform(1, 0, 0, 1, 0, 0); bg.clearRect(0, 0, B, B); bg.setTransform(B, 0, 0, -B, B / 2, B); bg.lineJoin = bg.lineCap = 'round';
     this.brow(1, ex); this.brow(-1, ex);
+    this.browTex.needsUpdate = true;
     this.tex.needsUpdate = true;
     return true;
   }
@@ -277,14 +285,15 @@ export class FacePainter {
   }
 
   brow(sx, ex) {
-    const g = this.g, F = this.spec; if (F.noBrows) return;
-    const b = ex.brow || 0;                         // + = worried (inner up), - = angry (inner down)
-    const lift = (ex.browUp || 0) * 0.02;
-    const x0 = sx * F.browIn, x1 = sx * F.browOut;
-    const yIn = F.browY + b * 0.03 + lift, yOut = F.browY + F.browArch * 0.4 - b * 0.006 + lift;
-    const pts = sampleBez([[x0, yIn], [lerp(x0, x1, 0.35), yIn + F.browArch + b * 0.01], [lerp(x0, x1, 0.75), yOut + F.browArch * 0.8], [x1, yOut - 0.006]], 20);
+    const g = this.bg, F = this.spec; if (F.noBrows) return;
+    const b = clamp(ex.brow || 0, -1, 1);           // + = worried (inner up, outer down), - = angry (inner down, steep)
+    const lift = (ex.browUp || 0) * 0.025;
+    const x0 = sx * (F.browIn - Math.max(0, -b) * 0.012), x1 = sx * F.browOut;
+    const yIn = F.browY + b * (b > 0 ? 0.034 : 0.045) + lift, yOut = F.browY + F.browArch * 0.4 - b * 0.018 + lift + Math.max(0, -b) * 0.012;
+    const arch = F.browArch * (1 - Math.abs(b) * 0.6);
+    const pts = sampleBez([[x0, yIn], [lerp(x0, x1, 0.35), lerp(yIn, yOut, 0.35) + arch + (b > 0 ? 0.008 * b : 0)], [lerp(x0, x1, 0.75), lerp(yIn, yOut, 0.75) + arch * 0.9], [x1, yOut - 0.006]], 20);
     g.fillStyle = F.browColor;
-    taper(g, pts, t => F.browThick * (0.55 + 0.6 * Math.sin(Math.PI * (0.15 + t * 0.7))) * (t > 0.85 ? (1 - t) / 0.15 * 0.7 + 0.3 : 1));
+    taper(g, pts, t => F.browThick * (1 + Math.max(0, -b) * 0.3) * (0.55 + 0.6 * Math.sin(Math.PI * (0.15 + t * 0.7))) * (t > 0.85 ? (1 - t) / 0.15 * 0.7 + 0.3 : 1));
   }
 
   nose() {
@@ -346,10 +355,10 @@ export class FacePainter {
   cracks(sx, glow) {
     const g = this.g, F = this.spec;
     const R = mkr(7 + (sx > 0 ? 1 : 2));
-    g.strokeStyle = rgba('#7a0010', Math.min(1, (glow - 0.4) * 2.2)); g.lineCap = 'round';
-    for (let k = 0; k < 6; k++) {
-      let a = (k / 6) * TAU + R() * 0.6 + 0.3, x = sx * F.eyeX + Math.cos(a) * F.eyeW * 1.15, y = F.eyeY + Math.sin(a) * F.eyeH * 1.2;
-      g.lineWidth = 0.0055; g.beginPath(); g.moveTo(x, y);
+    g.strokeStyle = rgba('#8a0614', Math.min(1, (glow - 0.4) * 2.4)); g.lineCap = 'round';
+    for (let k = 0; k < 8; k++) {
+      let a = (k / 8) * TAU + R() * 0.5 + 0.3, x = sx * F.eyeX + Math.cos(a) * F.eyeW * 1.15, y = F.eyeY + Math.sin(a) * F.eyeH * 1.2;
+      g.lineWidth = 0.007; g.beginPath(); g.moveTo(x, y);
       const n = 4 + Math.floor(R() * 3);
       for (let i = 0; i < n; i++) { a += (R() - 0.5) * 1.1; x += Math.cos(a) * 0.022 * glow; y += Math.sin(a) * 0.022 * glow; g.lineTo(x, y); g.lineWidth *= 0.8; }
       g.stroke();

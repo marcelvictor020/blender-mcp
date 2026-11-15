@@ -7,13 +7,13 @@ const addOutlineLocal = (ctx, mesh, color) => addOutline(mesh, ctx.U, { px: 1.1,
 
 const MALE_TORSO = [
   [0.835, 0.05, 0.04, 0.04], [0.86, 0.1, 0.07, 0.075], [0.9, 0.135, 0.09, 0.095], [0.95, 0.14, 0.092, 0.097], [1.01, 0.128, 0.085, 0.087],
-  [1.07, 0.118, 0.08, 0.08], [1.15, 0.125, 0.09, 0.083], [1.23, 0.137, 0.1, 0.088], [1.31, 0.145, 0.1, 0.088], [1.355, 0.152, 0.09, 0.085],
-  [1.39, 0.148, 0.074, 0.072], [1.41, 0.112, 0.058, 0.058], [1.425, 0.062, 0.05, 0.048], [1.44, 0.048, 0.044, 0.044],
+  [1.07, 0.118, 0.08, 0.08], [1.15, 0.125, 0.09, 0.083], [1.23, 0.137, 0.1, 0.088], [1.31, 0.147, 0.1, 0.088], [1.35, 0.168, 0.088, 0.085],
+  [1.373, 0.172, 0.074, 0.073], [1.393, 0.132, 0.064, 0.062], [1.41, 0.09, 0.055, 0.054], [1.425, 0.058, 0.05, 0.048], [1.44, 0.048, 0.044, 0.044],
 ];
 const FEMALE_TORSO = [
   [0.835, 0.05, 0.04, 0.04], [0.86, 0.11, 0.075, 0.08], [0.9, 0.146, 0.094, 0.1], [0.95, 0.147, 0.093, 0.1], [1.01, 0.126, 0.082, 0.086],
   [1.07, 0.108, 0.074, 0.074], [1.14, 0.112, 0.083, 0.076], [1.2, 0.122, 0.108, 0.08], [1.255, 0.125, 0.107, 0.08], [1.31, 0.128, 0.085, 0.08],
-  [1.355, 0.135, 0.076, 0.075], [1.385, 0.132, 0.064, 0.064], [1.405, 0.098, 0.052, 0.05], [1.425, 0.052, 0.044, 0.042], [1.44, 0.042, 0.04, 0.04],
+  [1.345, 0.152, 0.076, 0.075], [1.364, 0.158, 0.066, 0.065], [1.384, 0.116, 0.056, 0.054], [1.402, 0.078, 0.05, 0.048], [1.42, 0.05, 0.044, 0.042], [1.44, 0.042, 0.04, 0.04],
 ];
 const torsoRings = (D, o = {}) => (D.fem ? FEMALE_TORSO : MALE_TORSO).map(([y, w, df, db]) => {
   const ws = (o.widthK || 1) * (y > 1.33 ? (o.shoulderK || 1) : 1);
@@ -21,7 +21,7 @@ const torsoRings = (D, o = {}) => (D.fem ? FEMALE_TORSO : MALE_TORSO).map(([y, w
 });
 
 // arm rings: [dy from shoulder, half-width x, half-depth z]
-const ARM = [[0.03, 0.008, 0.008], [0.025, 0.028, 0.028], [0.014, 0.041, 0.04], [0, 0.047, 0.045], [-0.05, 0.045, 0.042], [-0.12, 0.04, 0.038], [-0.2, 0.036, 0.035],
+const ARM = [[0.006, 0.008, 0.008], [0.002, 0.026, 0.026], [-0.01, 0.04, 0.039], [-0.028, 0.046, 0.044], [-0.06, 0.045, 0.042], [-0.12, 0.04, 0.038], [-0.2, 0.036, 0.035],
   [-0.262, 0.031, 0.032], [-0.3, 0.034, 0.034], [-0.36, 0.032, 0.031], [-0.44, 0.025, 0.027], [-0.5, 0.0205, 0.025], [-0.512, 0.016, 0.02], [-0.518, 0.006, 0.008]];
 // leg rings: [dy from hip joint, half-width, half-depth]
 const LEG_TROUSER = [[0.085, 0.07, 0.07], [0.03, 0.088, 0.09], [-0.06, 0.085, 0.088], [-0.18, 0.076, 0.079], [-0.3, 0.065, 0.068], [-0.41, 0.058, 0.06], [-0.49, 0.058, 0.061],
@@ -185,7 +185,8 @@ function buildOpenShirt(ctx, TR, o) {
     const gap = lerp(0.52, 0.42, v) + 0.06 * Math.sin(v * 3.0);
     const a = lerp(gap, TAU - gap, u);
     const r = ringAtY(TR, Math.max(y, 0.86 * s));
-    const off = (0.011 + 0.03 * v * v + (y < 1.0 * s ? 0.012 : 0)) * s;
+    const shBump = Math.pow(Math.abs(Math.sin(a)), 4) * Math.exp(-((((y / s) - 1.36) / 0.03) ** 2));   // dropped shoulder covering the sleeve tops
+    const off = (0.011 + 0.03 * v * v + (y < 1.0 * s ? 0.012 : 0) + 0.022 * shBump) * s;
     const p = ringPoint({ ...r, w: Math.max(r.w, 0.128 * s), df: Math.max(r.df, 0.082 * s), db: Math.max(r.db, 0.083 * s) }, a, off);
     // front panels hang a bit forward of the body
     const front = Math.max(0, Math.cos(a)); p[2] += front * 0.006 * s * v;
@@ -206,27 +207,30 @@ function buildOpenShirt(ctx, TR, o) {
 
 function buildSleeves(ctx, o) {
   const { D, W } = ctx, s = D.s;
+  const armK = (D.fem ? 0.86 : 1);
   for (const [S, sx] of [['L', 1], ['R', -1]]) {
     const sh = W['shoulder' + S];
-    const len = o.len * s, rk = (D.fem ? 0.88 : 1);
-    const fn = (u, v) => {
-      const a = u * TAU;
-      let y, rx, rz;
-      if (v < 0.35) { const t = v / 0.35, q = Math.sin(t * Math.PI / 2); y = sh.y + 0.042 * s * Math.cos(t * Math.PI / 2); rx = 0.057 * s * Math.pow(q, 0.7) * rk; rz = 0.054 * s * Math.pow(q, 0.7) * rk; }
-      else { const t = (v - 0.35) / 0.65; y = sh.y - t * len; rx = lerp(0.056, 0.054 + (o.flare || 0.004), t) * s * rk; rz = lerp(0.053, 0.052 + (o.flare || 0.004), t) * s * rk; }
-      return [sh.x + Math.sin(a) * rx + sx * 0.004 * s, y, sh.z + Math.cos(a) * rz];
-    };
-    const g = shell(fn, 28, 14, 0.005 * s, { closedU: true, rimV0: false });
-    const mat = o.cuff ? { color: o.color, shade: o.shade, term: -0.08, map: stripeTex(o.color, o.cuff, 0.86, 0.94, 'cuff') } : { color: o.color, shade: o.shade, term: -0.08 };
-    ctx.skinned(g, mat, ['chest:0.7', 'shoulder' + S], { name: 'sleeve' + S, lineColor: o.line || '#5d6475', outline: 1.35 });
+    const len = o.len;
+    const off = 0.012;
+    const rings = ARM.filter(r => r[0] >= -len - 0.07).map(([dy, w, d], i) => ({ y: sh.y + (dy + (i === 0 ? 0.004 : i === 1 ? 0.002 : 0)) * s, w: (w * armK + (i === 0 ? 0.004 : off) + Math.max(0, -dy - 0.02) * 0.02) * s, d: (d * armK + (i === 0 ? 0.004 : off)) * s, cx: sh.x - sx * 0.002 * s, cz: sh.z }));
+    const yHem = sh.y - len * s;
+    const fn = (u, v) => ringPoint(ringAtY(rings, lerp(rings[0].y, yHem, v)), u * TAU);
+    const g = shell(fn, 28, 16, 0.004 * s, { closedU: true, rimV0: false });
+    const mat = o.cuff ? { color: o.color, shade: o.shade, term: -0.08, map: stripeTex(o.color, o.cuff, 0.8, 0.9, 'cuff') } : { color: o.color, shade: o.shade, term: -0.08 };
+    ctx.skinned(g, mat, ['chest:0.7', 'shoulder' + S], { name: 'sleeve' + S, lineColor: o.line || '#5d6475', outline: 1.25 });
+    // folded cuff band at the hem
+    const rh = ringAtY(rings, yHem);
+    const cf = (u, v) => ringPoint({ ...rh, y: lerp(yHem + 0.016 * s, yHem - 0.002 * s, v), w: rh.w + 0.004 * s, df: rh.df + 0.004 * s, db: rh.db + 0.004 * s }, u * TAU);
+    const cg = shell(cf, 28, 2, 0.005 * s, { closedU: true });
+    ctx.skinned(cg, { color: o.cuffBand || o.color, shade: o.cuffBandShade || o.shade, term: -0.08 }, ['shoulder' + S], { name: 'cuff' + S, lineColor: o.line || '#5d6475', outline: 1.1 });
   }
 }
 
 function buildShirtCollar(ctx, TR, o) {
   const { D } = ctx, s = D.s;
   const fn = (u, v) => {
-    const a = lerp(0.42, TAU - 0.42, u);
-    const fr = sstep(1.25, 0.42, Math.min(a, TAU - a));            // 1 near the front ends
+    const a = lerp(0.6, TAU - 0.6, u);
+    const fr = sstep(1.3, 0.6, Math.min(a, TAU - a));            // 1 near the front ends
     const yIn = (1.462 - 0.01 * fr) * s;
     const yOut = (1.415 - 0.075 * fr) * s;
     const y = lerp(yIn, yOut, v);
@@ -239,7 +243,7 @@ function buildShirtCollar(ctx, TR, o) {
     }
     const t = (v - 0.3) / 0.7;
     const r = ringAtY(TR, lerp(yIn - 0.022 * s, yOut, t));
-    const base = ringPoint({ ...r, w: Math.max(r.w, 0.062 * s), df: Math.max(r.df, 0.052 * s), db: Math.max(r.db, 0.05 * s) }, a + (a < Math.PI ? -1 : 1) * 0.12 * fr * t, (0.02 + 0.01 * Math.sin(t * Math.PI)) * s);
+    const base = ringPoint({ ...r, w: Math.max(r.w, 0.062 * s), df: Math.max(r.df, 0.052 * s), db: Math.max(r.db, 0.05 * s) }, a + (a < Math.PI ? -1 : 1) * 0.06 * fr * t, (0.02 + 0.008 * Math.sin(t * Math.PI)) * s);
     return [lerp(Math.sin(a) * (rIn + 0.012 * s) * 1.18, base[0], sstep(0, 0.4, t)), base[1], lerp(Math.cos(a) * (rIn + 0.012 * s) - 0.004 * s, base[2], sstep(0, 0.4, t))];
   };
   const g = shell(fn, 48, 10, 0.004 * s);
@@ -372,15 +376,20 @@ function buildCoat(ctx, TR, o) {
 
 function buildHat(ctx, o) {
   const { D, W } = ctx, H = D.H;
-  const prof = [[0, 0.115], [0.07, 0.112], [0.115, 0.104], [0.128, 0.085], [0.128, 0.03], [0.134, 0.01], [0.2, 0.004], [0.265, -0.012], [0.272, -0.02], [0.262, -0.018], [0.2, -0.006], [0.13, -0.002]].map(([r, y]) => new THREE.Vector2(r * H / 0.235 * 1.05, y * H / 0.235 * 1.05));
+  const prof = [[0, 0.115], [0.07, 0.112], [0.115, 0.104], [0.128, 0.085], [0.128, 0.03], [0.134, 0.01], [0.2, 0.004], [0.265, -0.012], [0.272, -0.02], [0.262, -0.018], [0.2, -0.006], [0.13, -0.002], [0.0, -0.002]].map(([r, y]) => new THREE.Vector2(r * H / 0.235 * 1.05, y * H / 0.235 * 1.05));
   const g = new THREE.LatheGeometry(prof, 48);
   g.deleteAttribute('normal'); g.deleteAttribute('uv');
-  const mg = mergeVerts(g); mg.computeVertexNormals();
-  mg.rotateX(0.1); mg.translate(0, D.chinY + 0.8 * H, -0.01 * H);
-  ctx.rigid(mg, { color: o.color, shade: autoShade(o.color, 0.55), term: -0.1, rimAmt: 0.5 }, 'head', { outline: 1.6, lineColor: '#000000' });
+  const mg = orient(mergeVerts(g)); mg.computeVertexNormals();
+  const tilt = o.tilt ?? -0.07, hy = D.chinY + (o.y ?? 0.8) * H, hz = (o.z ?? -0.02) * H;   // brim raised at the front
+  mg.rotateX(tilt); mg.translate(0, hy, hz);
+  ctx.rigid(mg, { color: o.color, shade: o.shade || autoShade(o.color, 0.55), term: -0.18, soft: 0.02, rimAmt: 0.6, rimK: 0.5 }, 'head', { outline: 1.5, lineColor: '#0a0a0e' });
+  // lighter rolled edge on the brim
+  const er = 0.268 * H / 0.235 * 1.05;
+  const eg = new THREE.TorusGeometry(er, 0.0045 * H / 0.235, 8, 72); eg.rotateX(Math.PI / 2); eg.translate(0, -0.016 * H / 0.235 * 1.05, 0); eg.rotateX(tilt); eg.translate(0, hy, hz);
+  ctx.rigid(eg, { color: o.rim || '#6a6a74', shade: o.color, term: -0.3, rimAmt: 0.4 }, 'head', { outline: 0.9, lineColor: '#0a0a0e' });
   const band = new THREE.CylinderGeometry(0.13 * H / 0.235 * 1.05, 0.131 * H / 0.235 * 1.05, 0.026 * H / 0.235, 48, 1, true);
-  band.translate(0, 0.03 * H / 0.235, 0); band.rotateX(0.1); band.translate(0, D.chinY + 0.8 * H, -0.01 * H);
-  const bm = new THREE.Mesh(band, ctx.toon({ color: o.band, shade: autoShade(o.band, 0.55), side: THREE.DoubleSide, rimAmt: 0 }));
+  band.translate(0, 0.026 * H / 0.235, 0); band.rotateX(tilt); band.translate(0, hy, hz);
+  const bm = new THREE.Mesh(band, ctx.toon({ color: o.band, shade: autoShade(o.band, 0.6), side: THREE.DoubleSide, rimAmt: 0, term: 0.05 }));
   band.translate(-W.head.x, -W.head.y, -W.head.z); ctx.J.head.add(bm);
 }
 function mergeVerts(g) {

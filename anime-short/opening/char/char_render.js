@@ -49,6 +49,13 @@ const ff = (...a) => execFileSync('ffmpeg', ['-v', 'error', '-y', ...a]);
       for (const [n, e] of ex) files.push(await shot({ mode: 'face', char: ch, expr: e, yaw: n === 'neutral' ? 0.0 : 0.35, pose: 'stand' }, `${ch}_face_${n}`));
       const f34 = await shot({ mode: 'face', char: ch, expr: { lookX: -0.4 }, yaw: 0.75, pose: 'stand', dist: 0.95 }, `${ch}_face_34`);
       await shot({ mode: 'face', char: ch, expr: {}, yaw: 1.5708, pose: 'stand', dist: 0.95 }, `${ch}_face_side`);
+      if (ch === 'ren') {
+        const ce = [];
+        for (const [n, e] of [['eye_neutral', { brow: 0 }], ['eye_turning', { eyeColorL: '#9a3a52', pupilSlitL: 0.45, glowL: 0.35, brow: -0.4 }], ['eye_crimson', { eyeColorL: '#d0182a', pupilSlitL: 1, glowL: 1, brow: -1, mouth: 'shout' }]])
+          ce.push(await shot({ mode: 'face', char: ch, expr: e, yaw: 0.12, pose: 'stand', focus: 'eyeL', dist: 0.24, fov: 30 }, `ren_${n}`));
+        ce.push(await shot({ mode: 'face', char: ch, expr: { eyeColorL: '#d0182a', pupilSlitL: 1, glowL: 1, brow: -1, mouth: 'a', lookX: 0.2 }, yaw: 0.25, pose: 'stand', dist: 0.7 }, 'ren_crimson_face'));
+        ff(...ce.flatMap(f => ['-i', f]), '-filter_complex', '[0]scale=640:360[a];[1]scale=640:360[b];[2]scale=640:360[c];[3]scale=640:360[d];[a][b][c][d]xstack=inputs=4:layout=0_0|640_0|0_360|640_360[v]', '-map', '[v]', '-q:v', '3', path.join(out, 'ren_crimson_sheet.jpg'));
+      }
       ff(...files.flatMap(f => ['-i', f]), '-filter_complex', '[0]scale=640:360[a];[1]scale=640:360[b];[2]scale=640:360[c];[3]scale=640:360[d];[a][b][c][d]xstack=inputs=4:layout=0_0|640_0|0_360|640_360[v]', '-map', '[v]', '-q:v', '3', path.join(out, `${ch}_faces.jpg`));
       if (only.has('cmp')) ff('-i', REF, '-i', files[0], '-filter_complex', '[0]scale=-2:720[a];[a][1]hstack[v]', '-map', '[v]', '-q:v', '3', path.join(out, `${ch}_cmp.jpg`));
     }

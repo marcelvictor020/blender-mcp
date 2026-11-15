@@ -63,7 +63,7 @@ function build(cfg) {
     const yaw = cfg.yaw || 0; ch.group.rotation.y = yaw; lightFor(ch, cfg.lightYaw ?? 0);
     scene.add(ch.group); chars.push(ch);
     scene.updateMatrixWorld(true);
-    const hc = headCenter(ch);
+    const hc = cfg.focus === 'eyeL' ? ch.headRoot.localToWorld(new THREE.Vector3(ch.spec.face.eyeX * 0.8, ch.spec.face.eyeY + 0.01, 0.4)) : headCenter(ch);
     camera.fov = cfg.fov || 30;
     const d = (cfg.dist || 0.78) * ch.D.H / 0.235;
     camera.position.set(hc.x, hc.y + (cfg.camUp || 0.0), hc.z + d); camera.lookAt(hc.x, hc.y + (cfg.lookUp ?? -0.01), hc.z);

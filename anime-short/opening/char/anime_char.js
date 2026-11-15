@@ -257,7 +257,7 @@ export function bodyDims(spec) {
   D.ankleY = 0.075 * s; D.kneeY = 0.49 * s; D.hipJY = 0.90 * s; D.hipX = (fem ? 0.085 : 0.088) * s;
   D.hipsY = 0.95 * s; D.spineY = 1.07 * s; D.chestY = 1.22 * s; D.neckY = 1.405 * s;
   D.chinY = D.height - H; D.headY = D.chinY + 0.17 * H;
-  D.shY = 1.385 * s - (fem ? 0.01 : 0); D.shX = (fem ? 0.145 : 0.158) * s * (spec.shoulderK || 1);
+  D.shY = 1.373 * s - (fem ? 0.01 : 0); D.shX = (fem ? 0.145 : 0.158) * s * (spec.shoulderK || 1);
   D.elbowY = D.shY - 0.275 * s; D.wristY = D.elbowY - 0.235 * s;
   return D;
 }
@@ -374,6 +374,20 @@ export function makeCharacter(core, spec) {
   const headGeo = headGeometry(HS); addOutlineNormals(headGeo);
   const head = new THREE.Mesh(headGeo, headMat); head.name = 'head'; headRoot.add(head);
   addOutline(head, U, { px: spec.faceLine ?? 1.25, color: spec.skinLine || '#6a3f3a' });
+  // brow decal: same head surface + projection, pulled toward the camera so the brows read through the bangs
+  const browMat = new THREE.ShaderMaterial({
+    uniforms: { uBrow: { value: painter.browTex }, uBias: { value: (spec.browBias ?? 0.13) * D.H }, uLightTint: U.uLightTint },
+    vertexShader: `varying vec3 vOP; varying vec3 vON; uniform float uBias;
+      void main(){ vOP = position; vON = normal; vec4 mv = modelViewMatrix * vec4(position, 1.0); mv.xyz += normalize(-mv.xyz) * uBias; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform sampler2D uBrow; uniform vec3 uLightTint; varying vec3 vOP; varying vec3 vON;
+      void main(){ float fm = smoothstep(0.05, 0.35, normalize(vON).z) * step(0.0, vOP.z);
+        vec4 b = texture2D(uBrow, vec2(vOP.x + 0.5, vOP.y)); float a = b.a * fm; if (a < 0.02) discard;
+        gl_FragColor = vec4(b.rgb * uLightTint, a);
+        #include <colorspace_fragment>
+      }`,
+    transparent: true, depthWrite: false,
+  });
+  const brows = new THREE.Mesh(headGeo, browMat); brows.name = 'brows'; brows.renderOrder = 6; headRoot.add(brows);
   for (const sx of [-1, 1]) {
     const eg = earGeometry(); eg.scale(sx, 1, 1); if (sx < 0) eg.index.array.reverse(); eg.computeVertexNormals(); addOutlineNormals(eg);
     const ear = new THREE.Mesh(eg, skinMat); ear.position.set(sx * (HS.W(0.4) - 0.012), 0.385, -0.03); ear.rotation.set(0, sx * 0.25, sx * -0.08); headRoot.add(ear);
@@ -390,7 +404,7 @@ export function makeCharacter(core, spec) {
   const capGeo = hb.capGeo; const nC = capGeo.attributes.position.count;
   capGeo.setAttribute('aT', new THREE.Float32BufferAttribute(new Float32Array(nC), 1)); capGeo.setAttribute('aPh', new THREE.Float32BufferAttribute(new Float32Array(nC), 1)); capGeo.setAttribute('aS', new THREE.Float32BufferAttribute(new Float32Array(nC).fill(5), 1));
   const cap = new THREE.Mesh(capGeo, hairMat); cap.name = 'hairCap'; headRoot.add(cap);
-  addOutline(cap, U, { px: 1.5, color: hairLine, hair: true });
+  addOutline(cap, U, { px: (spec.hair.linePx ?? 1.7) * 0.88, color: hairLine, hair: true });
   painter.bangShadow = bangShadow(hb.clumps, spec.hair.shadowDrop ?? 0.035, spec.hair.shadowDx ?? 0.0);
 
   // --- body & clothes

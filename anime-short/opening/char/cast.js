@@ -18,8 +18,8 @@ const BASE_FACE = {
 export const REN_SPEC = {
   name: 'Ren', gender: 'm', height: 1.72, headH: 0.235,
   skin: '#f6dccb', skinShade: '#e0aea0', skinLine: '#7a4a44',
-  face: { ...BASE_FACE, iris: '#7d8a99', eyeStyle: 'male', browColor: '#1c2233', plaster: { x: -0.235, y: 0.235, rot: 0.45 }, blush: 0.45 },
-  hair: { style: 'messy', seed: 3, color: '#1c2233', hl: '#3a4a6a', shade: '#10131f', line: '#05060c', hlY: 0.5, hlW: 0.075 },
+  face: { ...BASE_FACE, iris: '#7d8a99', eyeStyle: 'male', browColor: '#262b36', plaster: { x: -0.235, y: 0.235, rot: 0.45 }, blush: 0.45 },
+  hair: { style: 'messy', seed: 3, color: '#3b4250', hl: '#5c6678', shade: '#262b36', line: '#11141b', strandColor: '#242833', hlY: 0.5, hlW: 0.075, linePx: 1.2 },
   wear: {
     top: { color: '#1f2740', shade: '#141a2e', bottom: '#1a1a20', beltY: 0.99, belt: '#0c0c10' },                         // dark navy tee
     legs: { type: 'trousers', color: '#1a1a20', shade: '#0e0e14' },
@@ -55,7 +55,7 @@ export const COLLECTOR_SPEC = {
   skin: '#e9e2da', skinShade: '#c9bcc0', skinLine: '#5a4c54',
   headShape: { W0: 0.4, cheekW: 0.36, chinW: 0.05, jawPow: 1.4, cy: 0.58, faceZ: 0.37, chinZ: 0.35 },
   face: { ...BASE_FACE, iris: '#3a3038', eyeStyle: 'narrow', eyeW: 0.1, eyeH: 0.06, eyeY: 0.42, browColor: '#2a2a30', browY: 0.53, browArch: 0.02,
-    mouthY: 0.12, mouthW: 0.05, blush: 0.0, lineColor: '#1a1418', noseY: 0.25, topShade: 0.36 },
+    mouthY: 0.12, mouthW: 0.05, blush: 0.0, lineColor: '#1a1418', noseY: 0.25, topShade: 0.5, topShadeA: 0.75 },
   expr: { mouth: 'smirk' },
   hair: { style: 'lank', seed: 9, color: '#2a2a30', hl: '#4a4a56', shade: '#16161c', line: '#050507', hlY: 0.2, hlW: 0.05, hlAmt: 0.6 },
   wear: {
@@ -64,7 +64,7 @@ export const COLLECTOR_SPEC = {
     shoes: { type: 'boot', color: '#141416', shade: '#0a0a0c', sole: '#0c0c0e', line: '#000000' },
     coat: { color: '#2a2a30', shade: '#18181e', hem: 0.36, flare: 0.25 },
     gloves: '#121214',
-    hat: { color: '#383842', band: '#5a1218' },
+    hat: { color: '#34343c', shade: '#1b1b21', rim: '#6c6c78', band: '#a31826' },
     jar: true,
   },
 };
