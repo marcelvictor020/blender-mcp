@@ -442,6 +442,38 @@ export function stoneTexture() {
   });
 }
 
+// Large honed flagstones in a running bond (quay promenade).
+export function pavingTexture() {
+  return cached('paving', () => {
+    const S = 1024;
+    const c = canvas(S, S), ctx = c.getContext('2d');
+    const n = new Simplex2(61);
+    const rnd = mulberry32(61);
+    const img = ctx.createImageData(S, S);
+    const rows = 4, rh = S / rows;
+    const offs = [0, 0.37, 0.71, 0.18];
+    const lens = [0.5, 0.33, 0.42, 0.55];
+    const tones = Array.from({ length: 64 }, () => 0.93 + rnd() * 0.1);
+    for (let y = 0; y < S; y++) {
+      const r = Math.floor(y / rh), ly = (y % rh);
+      for (let x = 0; x < S; x++) {
+        const u = (x / S + offs[r]) / lens[r];
+        const slab = Math.floor(u), lu = u - slab;
+        const joint = ly < 2 || ly > rh - 2 || lu < 0.004 || lu > 0.996;
+        const tone = tones[(slab * 7 + r * 13) & 63];
+        let v = (226 + n.fbm(x * 0.012, y * 0.012, 4) * 14 + n.noise(x * 0.25, y * 0.25) * 3) * tone;
+        const pit = n.noise(x * 0.6, y * 0.6) > 0.82 ? -18 : 0;
+        v += pit;
+        if (joint) v *= 0.82;
+        const i = (y * S + x) * 4;
+        img.data[i] = v; img.data[i + 1] = v * 0.965; img.data[i + 2] = v * 0.9; img.data[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    return finish(new THREE.CanvasTexture(c), { srgb: true, aniso: 16 });
+  });
+}
+
 // Radial soft sprite used by spray/mist particles.
 export function softSprite() {
   return cached('sprite', () => {

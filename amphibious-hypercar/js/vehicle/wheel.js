@@ -84,7 +84,7 @@ export class WheelAssembly {
     hub.rotation.z = Math.PI / 2;
     hub.position.x = width / 2 - 0.05;
     this.spin.add(hub);
-    const nut = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.03, 6), M.titanium);
+    const nut = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.03, 6), M.darkTitanium);
     nut.rotation.z = Math.PI / 2;
     nut.position.x = width / 2 - 0.005;
     this.spin.add(nut);

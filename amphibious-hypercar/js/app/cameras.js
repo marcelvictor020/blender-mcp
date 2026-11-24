@@ -90,7 +90,7 @@ export class CameraDirector {
       this.orbit.autoRotate = this.idle > 9;
       this.orbit.autoRotateSpeed = 0.35;
       this.orbit.update();
-      fov = 38;
+      fov = 32;
     } else if (this.mode === 'chase') {
       const fl = _v.set(fwd.x, 0, fwd.z).normalize();
       if (!this.look.dragging) { this.look.ret += dt; if (this.look.ret > 1.2) { this.look.yaw *= 1 - Math.min(1, dt * 2); this.look.pitch *= 1 - Math.min(1, dt * 2); } }
@@ -155,7 +155,8 @@ export class CameraDirector {
     c.t += dt;
     const moving = ctx.speed > 3;
     const shots = moving ? ['lowFront', 'sideTrack', 'drone', 'flyby', 'rearLow', 'waterline', 'podDetail'] : ['orbitLow', 'orbitHigh', 'detailFront', 'detailSide', 'topDown'];
-    if (c.shot < 0 || c.t > c.dur) {
+    if (c.shot < 0 || c.t > c.dur || (c.moving !== moving && c.t > 2.5)) {
+      c.moving = moving;
       c.shot = (c.shot + 1 + Math.floor(Math.random() * 2)) % shots.length;
       c.t = 0;
       c.seed = Math.random();
@@ -166,7 +167,7 @@ export class CameraDirector {
       c.anchor.y = Math.max(ctx.water(c.anchor.x, c.anchor.z), ctx.ground(c.anchor.x, c.anchor.z)) + 1.1;
       c.name = shots[c.shot % shots.length];
     }
-    const name = shots[c.shot % shots.length];
+    const name = c.name;
     const cam = this.camera;
     const up = new THREE.Vector3(0, 1, 0);
     const right = new THREE.Vector3().crossVectors(up, fwd).normalize();
@@ -187,14 +188,12 @@ export class CameraDirector {
       case 'orbitHigh': { const a = c.seed * 6.28 - t * 0.1; P.set(ctx.pos.x + Math.sin(a) * 9, ctx.pos.y + 4.2, ctx.pos.z + Math.cos(a) * 9); fov = 34; break; }
       case 'detailFront': P.copy(ctx.pos).addScaledVector(fwd, 4.2 - t * 0.15).addScaledVector(right, 1.6 * s); P.y = ctx.pos.y + 0.55; L.addScaledVector(fwd, 1.6); fov = 30; break;
       case 'detailSide': P.copy(ctx.pos).addScaledVector(right, 3.4 * s).addScaledVector(fwd, 2.4 - t * 0.5); P.y = ctx.pos.y + 0.2; L.addScaledVector(fwd, 0.4); fov = 34; break;
-      case 'topDown': P.copy(ctx.pos).addScaledVector(fwd, -0.5); P.y += 11 - t * 0.4; L.addScaledVector(fwd, 0.1); fov = 34; break;
+      case 'topDown': P.copy(ctx.pos).addScaledVector(fwd, -2.2); P.y += 11 - t * 0.4; L.addScaledVector(fwd, 0.4); fov = 34; break;
     }
     this._clearSurface(P, ctx, 0.2);
     if (name === 'flyby' || c.t < 0.05) cam.position.copy(P); else cam.position.lerp(P, 1 - Math.exp(-dt * 5));
     cam.up.set(0, 1, 0);
-    if (name === 'topDown') cam.up.copy(fwd);
     cam.lookAt(L);
-    cam.up.set(0, 1, 0);
     return fov;
   }
 }

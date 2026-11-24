@@ -13,7 +13,7 @@ const GradeShader = {
     uUnder: { value: 0 },
     uUnderColor: { value: new THREE.Color(0.03, 0.25, 0.28) },
     uVignette: { value: 0.32 },
-    uSat: { value: 1.06 },
+    uSat: { value: 1.1 },
     uAspect: { value: 1 },
   },
   vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
@@ -47,7 +47,7 @@ export class RenderCore {
     const r = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance', stencil: false });
     r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     r.toneMapping = THREE.ACESFilmicToneMapping;
-    r.toneMappingExposure = 0.82;
+    r.toneMappingExposure = 0.78;
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -62,7 +62,7 @@ export class RenderCore {
     this.composer = new EffectComposer(r, rt);
     this.renderPass = new RenderPass(this.scene, this.camera);
     this.composer.addPass(this.renderPass);
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.18, 0.45, 3.6);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.16, 0.4, 5.0);
     this.composer.addPass(this.bloom);
     this.grade = new ShaderPass(GradeShader);
     this.composer.addPass(this.grade);

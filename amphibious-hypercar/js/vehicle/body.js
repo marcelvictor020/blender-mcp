@@ -152,11 +152,6 @@ export function buildBody(design, M) {
       const trim = new THREE.Mesh(trimG, M.titanium);
       trim.position.set(0, chordY, 0);
       m.add(trim);
-      const back = new THREE.Mesh(geo, M.blackSatin);
-      back.position.x = -side * 0.004;
-      back.rotation.y = 0;
-      back.scale.set(1, 1, 1);
-      m.add(back);
       m.position.set(side * 0.52, cy, z);
       root.add(m);
       out.shields.push({ mesh: m, side, xIn: 0.52, xOut: hwA - 0.03 });

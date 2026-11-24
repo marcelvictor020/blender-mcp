@@ -34,7 +34,7 @@ export class App {
     this.time = 0;
     this.view = 'showcase';
     this.pinned = true;
-    this.turntable = 2.3;
+    this.turntable = 1.45;
     this.spin = true;
     this.master = 0; this.seqDir = 0; this.paused = false; this.seqSpeed = 1; this.manual = false;
     this.targets = { doors: 0, hood: 0, deck: 0, roof: 0 };
@@ -44,7 +44,7 @@ export class App {
     this.explodeTarget = 0; this.cutawayTarget = 0;
     this.labelsOn = true;
     this.dayCycle = false;
-    this.hour = 16.2;
+    this.hour = 17.6;
     this.keys = new Set();
     this.touch = {};
     this.floatTimer = 0; this.shallowTimer = 0;
@@ -94,9 +94,9 @@ export class App {
     core.resize();
     this.setHour(this.hour);
     this._placeOnPlinth();
-    this.camera.position.set(PLINTH.x + 6.2, QUAY.y + 2.1, PLINTH.z - 6.6);
+    this.camera.position.set(PLINTH.x + 5.9, QUAY.y + 1.45, PLINTH.z - 6.3);
     this.director.setMode('orbit', this.car.root.position);
-    this.director.orbit.target.set(PLINTH.x, QUAY.y + 0.85, PLINTH.z);
+    this.director.orbit.target.set(PLINTH.x - 0.6, QUAY.y + 0.75, PLINTH.z + 0.4);
     this._bindKeys();
     ui.setDesign(0);
     ui.setView('showcase');
@@ -105,6 +105,7 @@ export class App {
     await nextFrame();
     this._captureEnv(true);
     this._labelsInit();
+    this._contactShadow();
     this.clock = new THREE.Clock();
     ui.loading(1);
     this.ready = true;
@@ -138,6 +139,7 @@ export class App {
     this.car.M.setXray(this.cfgs[i].xray);
     this.car.setCutaway(this.cutawayTarget);
     this._labelsInit();
+    if (this.envRT) this.car.setEnvMap(this.envRT.texture, 0.55 + 0.5 * (1 - this.sky.night));
     this.lastEnv.design = -1;
     this.ui.toast(DESIGNS[i].name + ' — ' + DESIGNS[i].tagline);
   }
@@ -413,6 +415,7 @@ export class App {
       this._autoModes(dt);
     }
     car.update(dt);
+    this._updateContactShadow();
 
     // explode / cutaway smoothing
     const s = rig.s;
@@ -627,15 +630,20 @@ export class App {
   // ------------------------------------------------------------------ environment & render
   _environment(dt) {
     const sky = this.sky, cam = this.camera;
+    // centre the wide shadow cascade a little ahead of the camera
+    const look = new THREE.Vector3();
+    this.camera.getWorldDirection(look);
+    look.y = 0; look.normalize();
+    sky.farFocus = this.camera.position.clone().addScaledVector(look, 160);
     sky.update(this.car.root.position);
     this.ocean.update(this.time, cam, sky);
     const tu = this.terrain.uniforms;
     tu.uTime.value = this.time;
     tu.uSunDir.value.copy(sky.sunDir);
-    tu.uSunColor.value.copy(sky.sunColor).multiplyScalar(sky.sun.intensity / 3.4);
+    tu.uSunColor.value.copy(sky.sunColor).multiplyScalar(sky.sunTotal / 4.8);
     this.marina.update(this.time, sky.night, (x, z) => this._waterHeight(x, z));
     const sp = this.spray.uniforms;
-    sp.uSun.value.copy(sky.sunColor).multiplyScalar(0.25 + 0.75 * sky.sun.intensity / 3.4);
+    sp.uSun.value.copy(sky.sunColor).multiplyScalar(0.25 + 0.75 * sky.sunTotal / 4.8);
     sp.uAmb.value.copy(sky.zenithColor).multiplyScalar(0.8);
     sp.uScale.value = this.renderer.getDrawingBufferSize(new THREE.Vector2()).y * 0.9;
     // underwater?
@@ -709,7 +717,8 @@ export class App {
     if (this.envRT) this.envRT.dispose();
     this.envRT = rt;
     this.scene.environment = rt.texture;
-    this.scene.environmentIntensity = 0.6 + 0.3 * (1 - n);
+    this.scene.environmentIntensity = 0.3 + 0.12 * (1 - n);
+    for (const c of this.cars) if (c) c.setEnvMap(rt.texture, 0.55 + 0.5 * (1 - n));
     this.lastEnv.hour = this.hour;
     this.lastEnv.pos.copy(p);
     this.lastEnv.design = this.designIndex;
@@ -829,6 +838,53 @@ export class App {
       paths += `<path d="M${x},${y} L${lx},${ly}" stroke="rgba(216,195,160,0.7)" stroke-width="1" fill="none"/>`;
     }
     svg.innerHTML = paths;
+  }
+
+  // Soft ambient-occlusion shadow that anchors the car to whatever it stands on.
+  _contactShadow() {
+    const c = document.createElement('canvas');
+    c.width = 128; c.height = 256;
+    const ctx = c.getContext('2d');
+    const img = ctx.createImageData(128, 256);
+    for (let y = 0; y < 256; y++) for (let x = 0; x < 128; x++) {
+      const u = (x + 0.5) / 128 * 2 - 1, v = (y + 0.5) / 256 * 2 - 1;
+      const d = Math.pow(Math.pow(Math.abs(u), 4) + Math.pow(Math.abs(v), 4), 0.25);
+      const a = Math.pow(Math.max(0, 1 - d), 1.6);
+      const i = (y * 128 + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = 0; img.data[i + 3] = Math.min(255, a * 300);
+    }
+    ctx.putImageData(img, 0, 0);
+    const tex = new THREE.CanvasTexture(c);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.85, color: 0x000000, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, fog: false });
+    mat.color.set(0xffffff);
+    this.shadowBlob = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+    this.shadowBlob.rotation.x = -Math.PI / 2;
+    this.shadowBlob.renderOrder = 2;
+    this.scene.add(this.shadowBlob);
+    this.ocean.hidden.push(this.shadowBlob);
+  }
+
+  _updateContactShadow() {
+    const b = this.shadowBlob, car = this.car;
+    if (!b) return;
+    const d = car.design;
+    const p = car.root.position;
+    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(car.root.quaternion);
+    const yaw = Math.atan2(fwd.x, fwd.z);
+    let gy = this.terrain.groundHeight(p.x, p.z);
+    if (this.pinned) gy = QUAY.y + PLINTH.h + 0.012;
+    const wh = this._waterHeight(p.x, p.z);
+    const lift = (p.y - car.com.y) - gy;
+    const visible = gy > wh - 0.05;
+    b.visible = visible;
+    if (!visible) return;
+    b.position.set(p.x, gy + 0.015, p.z);
+    b.rotation.set(-Math.PI / 2, 0, yaw);
+    const W = (d.wheels.trackF + d.wheels.trackR) / 2 + 0.55;
+    const L = d.body.z1 - d.body.z0 + 0.5;
+    const spread = 1 + Math.max(0, lift) * 0.5;
+    b.scale.set(W * spread, L * spread, 1);
+    b.material.opacity = 0.82 * Math.max(0, 1 - Math.max(0, lift) * 1.2) * (1 - this.sky.night * 0.4);
   }
 
   // ------------------------------------------------------------------ automatic tour

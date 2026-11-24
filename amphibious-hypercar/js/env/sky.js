@@ -12,16 +12,16 @@ export class SkySystem {
     this.sky.name = 'sky';
     scene.add(this.sky);
     const u = this.sky.material.uniforms;
-    u.turbidity.value = 2.4;
-    u.rayleigh.value = 1.5;
-    u.mieCoefficient.value = 0.0042;
+    u.turbidity.value = 2.0;
+    u.rayleigh.value = 2.1;
+    u.mieCoefficient.value = 0.0035;
     u.mieDirectionalG.value = 0.86;
 
     this.sunDir = new THREE.Vector3();
     this.sunColor = new THREE.Color();
     this.horizonColor = new THREE.Color();
     this.zenithColor = new THREE.Color();
-    this.hour = 16.2;
+    this.hour = 17.6;
     this.night = 0;
 
     this.sun = new THREE.DirectionalLight(0xffffff, 3);
@@ -32,11 +32,23 @@ export class SkySystem {
     this.sun.shadow.bias = -0.0004;
     this.sun.shadow.normalBias = 0.03;
     scene.add(this.sun, this.sun.target);
+    // wide, low-frequency cascade so hills, houses and trees cast shadows too
+    this.sunFar = new THREE.DirectionalLight(0xffffff, 1.5);
+    this.sunFar.castShadow = true;
+    this.sunFar.shadow.mapSize.set(4096, 4096);
+    const fc = this.sunFar.shadow.camera;
+    fc.left = -270; fc.right = 270; fc.top = 270; fc.bottom = -270; fc.near = 10; fc.far = 1600;
+    this.sunFar.shadow.bias = -0.0006;
+    this.sunFar.shadow.normalBias = 0.6;
+    this.sunFar.shadow.autoUpdate = false;
+    this.farFrame = 0;
+    scene.add(this.sunFar, this.sunFar.target);
 
     this.hemi = new THREE.HemisphereLight(0xbfd9ff, 0x6b5a45, 0.35);
     scene.add(this.hemi);
 
     this._buildStars();
+    this._buildClouds();
 
     this.pmrem = new THREE.PMREMGenerator(renderer);
     this.envScene = new THREE.Scene();
@@ -79,6 +91,45 @@ export class SkySystem {
     this.scene.add(this.stars);
   }
 
+  _buildClouds() {
+    this.cloudMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uSunDir: { value: this.sunDir }, uSunColor: { value: new THREE.Color(1, 1, 1) }, uZenith: { value: new THREE.Color() },
+        uTime: { value: 0 }, uCover: { value: 0.56 }, uNight: { value: 0 }, uSunI: { value: 1 },
+      },
+      vertexShader: `varying vec3 vDir; void main(){ vDir = position; vec4 p = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * p; gl_Position.z = gl_Position.w * 0.99995; }`,
+      fragmentShader: `
+        uniform vec3 uSunDir; uniform vec3 uSunColor; uniform vec3 uZenith; uniform float uTime; uniform float uCover; uniform float uNight; uniform float uSunI;
+        varying vec3 vDir;
+        float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+        float vn(vec2 p){ vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+          return mix(mix(h21(i), h21(i + vec2(1,0)), u.x), mix(h21(i + vec2(0,1)), h21(i + vec2(1,1)), u.x), u.y); }
+        float fbm(vec2 p){ float s = 0.0, a = 0.5; for (int i = 0; i < 6; i++){ s += a * vn(p); p = p * 2.07 + 1.3; a *= 0.5; } return s; }
+        void main(){
+          vec3 d = normalize(vDir);
+          if (d.y < 0.005) discard;
+          vec2 p = d.xz / (d.y + 0.06) * 1.4 + vec2(uTime * 0.0035, uTime * 0.0012);
+          float base = fbm(p * 0.8);
+          float detail = fbm(p * 3.1 + 7.0);
+          float cum = smoothstep(uCover, uCover + 0.22, base * 0.78 + detail * 0.32);
+          float cir = smoothstep(0.58, 0.9, fbm(vec2(p.x * 0.35, p.y * 2.4) + 19.0)) * 0.4;
+          float a = max(cum, cir) * smoothstep(0.005, 0.16, d.y);
+          float toward = pow(max(dot(d, normalize(uSunDir)), 0.0), 6.0);
+          float body = 0.62 + 0.38 * smoothstep(0.3, 0.8, detail);   // darker undersides
+          vec3 lit = uSunColor * uSunI * (1.35 * body + toward * 1.2) + uZenith * 0.55;
+          lit = mix(lit, uZenith * 0.5 + vec3(0.015, 0.02, 0.03), uNight);
+          gl_FragColor = vec4(lit, a * 0.9);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }`,
+      transparent: true, depthWrite: false, side: THREE.BackSide, fog: false,
+    });
+    this.clouds = new THREE.Mesh(new THREE.SphereGeometry(7500, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), this.cloudMat);
+    this.clouds.frustumCulled = false;
+    this.clouds.renderOrder = -1;
+    this.scene.add(this.clouds);
+  }
+
   // hour in [5, 21.5]
   setHour(hour) {
     this.hour = hour;
@@ -103,9 +154,11 @@ export class SkySystem {
     this.sunColor.setRGB(1.0, lerp(0.97, 0.62, warm), lerp(0.92, 0.36, warm));
     const sunI = smoothstep(-2.5, 6, e);
     this.night = 1 - smoothstep(-6, 3, e);
-    this.sun.intensity = 3.4 * sunI;
+    this.sunTotal = 4.8 * sunI;
+    this.sun.intensity = this.sunTotal * 0.42;
     this.sun.color.copy(this.sunColor);
-    this.hemi.intensity = lerp(0.06, 0.32, smoothstep(-8, 20, e));
+    if (this.sunFar) { this.sunFar.intensity = this.sunTotal * 0.58; this.sunFar.color.copy(this.sunColor); this.sunFar.shadow.needsUpdate = true; }
+    this.hemi.intensity = lerp(0.03, 0.09, smoothstep(-8, 20, e));
     this.hemi.color.setRGB(lerp(0.25, 0.72, sunI), lerp(0.32, 0.84, sunI), lerp(0.55, 1.0, sunI));
 
     this.horizonColor.setRGB(
@@ -114,6 +167,13 @@ export class SkySystem {
       lerp(0.10, lerp(0.95, 0.52, warm), sunI));
     this.zenithColor.setRGB(lerp(0.01, 0.24, sunI), lerp(0.02, 0.45, sunI), lerp(0.05, 0.85, sunI));
     this.starMat.uniforms.uOpacity.value = this.night;
+    if (this.cloudMat) {
+      const cu = this.cloudMat.uniforms;
+      cu.uSunColor.value.copy(this.sunColor);
+      cu.uZenith.value.copy(this.zenithColor);
+      cu.uNight.value = this.night;
+      cu.uSunI.value = sunI;
+    }
     this.envDirty = true;
   }
 
@@ -125,7 +185,7 @@ export class SkySystem {
     this.envSea.material.color.setRGB(0.02 + 0.05 * (1 - this.night), 0.10 * (1 - this.night) + 0.01, 0.13 * (1 - this.night) + 0.02);
     this.envRT = this.pmrem.fromScene(this.envScene, 0.0, 1, 2000);
     this.scene.environment = this.envRT.texture;
-    this.scene.environmentIntensity = 0.55 + 0.25 * (1 - this.night);
+    this.scene.environmentIntensity = 0.3 + 0.1 * (1 - this.night);
     if (old) old.dispose();
     return this.envRT;
   }
@@ -136,6 +196,15 @@ export class SkySystem {
     this.sun.position.set(focus.x + d.x * 120, focus.y + d.y * 120, focus.z + d.z * 120);
     this.sun.target.position.copy(focus);
     this.sun.target.updateMatrixWorld();
+    // the wide cascade follows the view (snapped, refreshed every few frames)
+    const fc = this.farFocus || focus;
+    const sx = Math.round(fc.x / 20) * 20, sz = Math.round(fc.z / 20) * 20;
+    this.sunFar.position.set(sx + d.x * 800, d.y * 800, sz + d.z * 800);
+    this.sunFar.target.position.set(sx, 0, sz);
+    this.sunFar.target.updateMatrixWorld();
+    if (++this.farFrame % 8 === 0) this.sunFar.shadow.needsUpdate = true;
     this.stars.position.copy(focus);
+    this.clouds.position.copy(focus);
+    this.cloudMat.uniforms.uTime.value = performance.now() / 1000;
   }
 }

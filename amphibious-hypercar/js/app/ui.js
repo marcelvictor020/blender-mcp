@@ -237,6 +237,9 @@ export class UI {
   loading(frac, text) {
     $('loading-bar').style.width = (frac * 100).toFixed(0) + '%';
     if (text) $('loading-text').textContent = text;
-    if (frac >= 1) setTimeout(() => $('loading').classList.add('done'), 250);
+    if (frac >= 1) {
+      if (this.app.test) { $('loading').style.display = 'none'; return; }
+      setTimeout(() => $('loading').classList.add('done'), 250);
+    }
   }
 }

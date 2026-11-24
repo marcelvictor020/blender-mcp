@@ -64,6 +64,20 @@ export class Car {
     this.model.add(g);
   }
 
+  // Full-strength reflections of the captured surroundings for the car only
+  // (Scene.environmentIntensity would otherwise override envMapIntensity).
+  setEnvMap(tex, intensity = 1) {
+    this.root.traverse((o) => {
+      if (!o.isMesh) return;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+        if (!m.isMeshStandardMaterial || m.isMeshBasicMaterial) continue;
+        m.envMap = tex;
+        if (m.userData.envScale === undefined) m.userData.envScale = m.envMapIntensity ?? 1;
+        m.envMapIntensity = m.userData.envScale * intensity;
+      }
+    });
+  }
+
   setHeadlights(on, night = 0) {
     for (const s of this.headSpots) s.intensity = on ? 60 + 40 * night : 0;
     this.M.projector.emissiveIntensity = on ? 3 : 0;

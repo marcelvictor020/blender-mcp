@@ -73,6 +73,21 @@ export function naturalHeight(x, z) {
   return -depth + reef + dunes;
 }
 
+// Broad vegetation cover (0 bare/dry grass .. 1 dense macchia/pine wood).
+// Shared by the terrain shader (via a vertex attribute) and plant placement,
+// so trees always stand on darker, wooded ground.
+export function vegDensity(x, z, h, slope) {
+  if (h < 2.2) return 0;
+  const macro = N1.fbm(x * 0.0021 + 13.1, z * 0.0021 - 4.2, 4) * 0.5 + 0.5;
+  const meso = N3.fbm(x * 0.011, z * 0.011, 3) * 0.5 + 0.5;
+  let d = smoothstep(0.3, 0.62, macro * 0.75 + meso * 0.35);
+  d *= 1 - smoothstep(0.55, 0.85, slope);            // cliffs stay bare
+  d *= smoothstep(2.5, 9, h);                         // salt-burnt shoreline
+  d *= 1 - smoothstep(320, 620, h) * 0.7;             // thinner up high
+  // gullies collect moisture and hold more green
+  return clamp(d, 0, 1);
+}
+
 // ---------------------------------------------------------------- road network
 const ROAD_XZ = [
   [1000, -336], [880, -282], [770, -214], [660, -160], [560, -112], [455, -80], [362, -76],
@@ -249,9 +264,43 @@ export class Terrain {
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
       this.heights[j * nx + i] = meshHeight(this.xs[i], this.zs[j]);
     }
+    this._bakeAttributes();
     this.mesh = this._buildMesh();
     this.roadMesh = this._buildRoad();
     this._bakeWaterData();
+  }
+
+  // Horizon-based ambient occlusion + vegetation cover per vertex.
+  _bakeAttributes() {
+    const { nx, nz, heights: H, xs, zs } = this;
+    const ao = new Float32Array(nx * nz), veg = new Float32Array(nx * nz);
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+    const steps = [2, 5, 11, 22];
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+      const k = j * nx + i, h0 = H[k];
+      let occ = 0;
+      for (const [dx, dz] of dirs) {
+        let m = 0;
+        for (const st of steps) {
+          const ii = Math.min(nx - 1, Math.max(0, i + dx * st)), jj = Math.min(nz - 1, Math.max(0, j + dz * st));
+          const dist = Math.hypot(xs[ii] - xs[i], zs[jj] - zs[j]) || 1;
+          m = Math.max(m, (H[jj * nx + ii] - h0) / dist);
+        }
+        occ += Math.atan(m) / (Math.PI / 2);
+      }
+      ao[k] = clamp(1 - (occ / 8) * 1.7, 0.3, 1);
+      const il = Math.max(0, i - 1), ir = Math.min(nx - 1, i + 1), jd = Math.max(0, j - 1), ju = Math.min(nz - 1, j + 1);
+      const sx = (H[j * nx + ir] - H[j * nx + il]) / Math.max(0.1, xs[ir] - xs[il]);
+      const sz = (H[ju * nx + i] - H[jd * nx + i]) / Math.max(0.1, zs[ju] - zs[jd]);
+      const slope = 1 - 1 / Math.sqrt(1 + sx * sx + sz * sz);
+      veg[k] = vegDensity(xs[i], zs[j], h0, slope) * (0.75 + 0.25 * (1 - ao[k]) * 2);
+    }
+    this.ao = ao; this.veg = veg;
+  }
+
+  vegAt(x, z) {
+    const i = findCell(this.xs, x), j = findCell(this.zs, z);
+    return this.veg[j * this.nx + i];
   }
 
   // bilinear sample of the mesh grid
@@ -307,6 +356,8 @@ export class Terrain {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setIndex(new THREE.BufferAttribute(idx, 1));
+    geo.setAttribute('aAO', new THREE.BufferAttribute(this.ao, 1));
+    geo.setAttribute('aVeg', new THREE.BufferAttribute(this.veg, 1));
     geo.computeVertexNormals();
     geo.computeBoundingSphere();
 
@@ -320,11 +371,11 @@ export class Terrain {
     mat.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, this.uniforms);
       sh.vertexShader = sh.vertexShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNrm;')
-        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed,1.0)).xyz;\nvWNrm = normalize(mat3(modelMatrix) * objectNormal);');
+        .replace('#include <common>', '#include <common>\nattribute float aAO; attribute float aVeg;\nvarying vec3 vWPos;\nvarying vec3 vWNrm;\nvarying float vAO; varying float vVeg;')
+        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed,1.0)).xyz;\nvWNrm = normalize(mat3(modelMatrix) * objectNormal);\nvAO = aAO; vVeg = aVeg;');
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', `#include <common>
-varying vec3 vWPos; varying vec3 vWNrm;
+varying vec3 vWPos; varying vec3 vWNrm; varying float vAO; varying float vVeg;
 uniform float uTime; uniform vec3 uSunDir; uniform vec3 uSunColor; uniform float uCaustics;
 ${TERRAIN_GLSL}`)
         .replace('vec4 diffuseColor = vec4( diffuse, opacity );', `
@@ -336,6 +387,8 @@ vec4 diffuseColor = vec4(tAlb, opacity);`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 { vec3 b = terrainBump(vWPos, tN); normal = normalize(normal + (viewMatrix * vec4(b, 0.0)).xyz); }`)
         .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+reflectedLight.indirectDiffuse *= vAO;
+reflectedLight.directDiffuse *= mix(0.72, 1.0, vAO);
 if (vWPos.y < 0.3) {
   float depth = max(0.0, -vWPos.y);
   float cs = caustics(vWPos.xz, uTime) * smoothstep(0.0, 0.6, depth) * exp(-depth * 0.09) * uCaustics;
@@ -467,61 +520,72 @@ vec3 lin(vec3 c){ return pow(c, vec3(2.2)); }
 vec3 terrainAlbedo(vec3 wp, vec3 n, out float rough){
   float slope = 1.0 - n.y;
   float h = wp.y;
-  float big = tfbm(wp.xz * 0.006 + 11.0);
-  float n1 = tfbm(wp.xz * 0.045);
-  float n2 = tfbm(wp.xz * 0.21 + 7.0);
-  float n3 = tfbm(wp.xz * 1.7);
-  // pale limestone with vertical weathering streaks and faint bedding
-  float streak = tfbm(vec2(wp.x * 0.35 + wp.z * 0.35, wp.y * 0.04));
-  float bed = sin(h * 1.1 + n1 * 3.0) * 0.5 + 0.5;
-  vec3 rockA = lin(vec3(0.66, 0.61, 0.53));
-  vec3 rockB = lin(vec3(0.42, 0.38, 0.33));
-  vec3 rockC = lin(vec3(0.64, 0.50, 0.36));
-  vec3 rock = mix(rockB, rockA, smoothstep(0.25, 0.75, streak * 0.8 + n2 * 0.35 + bed * 0.12));
-  rock = mix(rock, rockC, smoothstep(0.55, 0.8, n1) * 0.45);
-  rock *= 0.82 + 0.28 * n3;
-  // macchia (dense dark evergreen) vs garrigue (dry, sparse) mosaic
-  vec3 macchia = lin(vec3(0.20, 0.25, 0.13));
-  vec3 macchiaL = lin(vec3(0.30, 0.34, 0.18));
-  vec3 garrigue = lin(vec3(0.50, 0.47, 0.32));
-  vec3 soil = lin(vec3(0.55, 0.43, 0.30));
-  float dense = smoothstep(0.38, 0.62, big + (n1 - 0.5) * 0.35);
-  float clumps = smoothstep(0.4, 0.6, n2 + (n3 - 0.5) * 0.3) * 0.6;
-  vec3 veg = mix(garrigue, mix(macchiaL, macchia, n3), max(dense, clumps * 0.75));
-  veg = mix(veg, soil, smoothstep(0.66, 0.8, n3) * (1.0 - dense) * 0.5);
-  veg *= 0.88 + 0.22 * n3;
-  // beach sand, wet sand, sea bed
-  vec3 sand = lin(vec3(0.84, 0.77, 0.62)) * (0.93 + 0.1 * n3);
-  vec3 wet = lin(vec3(0.60, 0.54, 0.43));
-  vec3 seabed = lin(vec3(0.78, 0.73, 0.60)) * (0.88 + 0.16 * n2);
-  vec3 seagrass = lin(vec3(0.10, 0.15, 0.08));
-  float grassMask = smoothstep(0.52, 0.6, tfbm(wp.xz * 0.06 + 3.0)) * smoothstep(-3.0, -6.0, h);
-  seabed = mix(seabed, seagrass, grassMask * 0.85);
-  seabed = mix(seabed, rockB * 0.85, smoothstep(0.28, 0.5, slope));
+  float dist = length(wp - cameraPosition);
+  float near = 1.0 - smoothstep(40.0, 420.0, dist);     // micro detail only up close
+  float n1 = tfbm(wp.xz * 0.018);
+  float n2 = tfbm(wp.xz * 0.09 + 7.0);
+  float n3 = tfbm(wp.xz * 0.9);
+  float veg = clamp(vVeg, 0.0, 1.0);
 
-  float rockMask = smoothstep(0.30, 0.50, slope + (n2 - 0.5) * 0.22);
-  rockMask = max(rockMask, smoothstep(0.62, 0.72, n1) * smoothstep(0.18, 0.3, slope));
-  vec3 land = mix(veg, rock, rockMask);
-  float beach = (1.0 - smoothstep(1.4, 2.8, h + n1 * 1.2)) * (1.0 - smoothstep(0.22, 0.4, slope));
+  // --- ground cover: sun-bleached grass -> macchia -> pine litter
+  vec3 straw  = lin(vec3(0.66, 0.58, 0.40));
+  vec3 grassG = lin(vec3(0.47, 0.46, 0.30));
+  vec3 macchia = lin(vec3(0.24, 0.28, 0.16));
+  vec3 wood   = lin(vec3(0.17, 0.19, 0.11));
+  vec3 soil   = lin(vec3(0.52, 0.42, 0.31));
+  vec3 g = mix(straw, grassG, smoothstep(0.35, 0.7, n1));
+  g = mix(g, macchia, smoothstep(0.15, 0.6, veg));
+  g = mix(g, wood, smoothstep(0.6, 0.95, veg));
+  g = mix(g, soil, smoothstep(0.72, 0.85, n2) * (1.0 - veg) * 0.45);
+  g *= 0.9 + 0.2 * mix(0.5, n2, 0.6) + (n3 - 0.5) * 0.18 * near;
+
+  // --- limestone: pale, warm stains, dark run-off streaks, faint bedding
+  float streak = tfbm(vec2((wp.x + wp.z) * 0.12, wp.y * 0.6));
+  float stain = tfbm(wp.xz * 0.03 + vec2(wp.y * 0.05));
+  vec3 lime = lin(vec3(0.64, 0.6, 0.53));
+  vec3 ochre = lin(vec3(0.69, 0.55, 0.39));
+  vec3 grey = lin(vec3(0.47, 0.45, 0.42));
+  vec3 rock = mix(lime, ochre, smoothstep(0.45, 0.75, stain) * 0.55);
+  rock = mix(rock, grey, smoothstep(0.55, 0.8, streak) * 0.45);
+  rock *= 0.82 + 0.3 * tfbm(vec2(wp.x * 0.07 + wp.z * 0.05, wp.y * 0.09)) + (n3 - 0.5) * 0.22 * near;
+
+  float rockMask = smoothstep(0.34, 0.56, slope + (n2 - 0.5) * 0.18);
+  rockMask = max(rockMask, smoothstep(0.7, 0.82, tfbm(wp.xz * 0.05 + 3.3)) * smoothstep(0.12, 0.3, slope) * (1.0 - veg));
+  vec3 land = mix(g, rock, rockMask);
+
+  // --- shore: pebbles/sand, wet band
+  vec3 sand = lin(vec3(0.80, 0.73, 0.58)) * (0.93 + 0.12 * n3);
+  float beach = (1.0 - smoothstep(1.3, 2.8, h + (n1 - 0.5) * 1.5)) * (1.0 - smoothstep(0.24, 0.42, slope));
   land = mix(land, sand, beach);
   vec3 col = land;
-  rough = mix(mix(0.93, 0.8, rockMask), 0.95, beach);
-  if (h < 0.35) {
-    float wetM = smoothstep(0.35, -0.05, h);
-    col = mix(col, wet, wetM * (1.0 - rockMask * 0.5));
+  rough = mix(mix(0.95, 0.82, rockMask), 0.92, beach);
+  if (h < 0.4) {
+    float wetM = smoothstep(0.4, -0.05, h);
+    col = mix(col, col * 0.62, wetM);
     rough = mix(rough, 0.35, wetM);
   }
-  if (h < -0.2) { col = mix(col, seabed, smoothstep(-0.2, -1.2, h)); rough = 0.9; }
+  // --- sea bed: sand with seagrass meadows and rock
+  if (h < -0.2) {
+    vec3 seabed = lin(vec3(0.76, 0.71, 0.58)) * (0.88 + 0.16 * n2);
+    vec3 seagrass = lin(vec3(0.10, 0.15, 0.08));
+    float grassMask = smoothstep(0.52, 0.6, tfbm(wp.xz * 0.05 + 3.0)) * smoothstep(-3.0, -6.0, h);
+    seabed = mix(seabed, seagrass, grassMask * 0.85);
+    seabed = mix(seabed, grey * 0.8, smoothstep(0.28, 0.5, slope));
+    col = mix(col, seabed, smoothstep(-0.2, -1.2, h));
+    rough = 0.9;
+  }
   return col;
 }
 
 vec3 terrainBump(vec3 wp, vec3 n){
   float slope = 1.0 - n.y;
-  float e = 0.35;
-  vec2 p = wp.xz * 0.6 + vec2(wp.y * 0.3);
+  float dist = length(wp - cameraPosition);
+  float near = 1.0 - smoothstep(30.0, 260.0, dist);
+  float e = 0.25;
+  vec2 p = wp.xz * 0.7 + vec2(wp.y * 0.35);
   float a = tfbm(p), bx = tfbm(p + vec2(e, 0.0)), bz = tfbm(p + vec2(0.0, e));
-  float s = mix(0.25, 1.1, smoothstep(0.2, 0.6, slope));
-  return vec3(-(bx - a), 0.0, -(bz - a)) * s * 2.2;
+  float s = mix(0.2, 1.0, smoothstep(0.2, 0.6, slope)) * near;
+  return vec3(-(bx - a), 0.0, -(bz - a)) * s * 2.0;
 }
 
 float causticLayer(vec2 p, float t){

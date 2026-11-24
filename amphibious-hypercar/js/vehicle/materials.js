@@ -131,7 +131,7 @@ export class CarMaterials {
     this.engineRed = new THREE.MeshPhysicalMaterial({ color: 0x6b1410, roughness: 0.6, metalness: 0.4, clearcoat: 0.6, clearcoatRoughness: 0.5 });
     this.engineBlock = new THREE.MeshStandardMaterial({ color: 0x6d6e70, roughness: 0.5, metalness: 0.85 });
     this.gold = new THREE.MeshStandardMaterial({ color: 0xc79a4a, metalness: 1, roughness: 0.18 });
-    this.grille = new THREE.MeshStandardMaterial({ map: tex(grille.map, 6, 2), normalMap: tex(grille.normalMap, 6, 2), color: 0x777777, roughness: 0.55, metalness: 0.3, envMapIntensity: 0.4 });
+    this.grille = new THREE.MeshStandardMaterial({ map: tex(grille.map, 6, 2), normalMap: tex(grille.normalMap, 6, 2), color: 0x3a3a3a, roughness: 0.72, metalness: 0.1, envMapIntensity: 0.25 });
     this.battery = new THREE.MeshStandardMaterial({ color: 0x233040, roughness: 0.45, metalness: 0.6 });
 
     this.led = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xe8f4ff, emissiveIntensity: 6 });

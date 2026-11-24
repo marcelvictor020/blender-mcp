@@ -279,7 +279,7 @@ export class Ocean {
     u.uCenter.value.set(Math.round(camera.position.x), 0, Math.round(camera.position.z));
     u.uSunDir.value.copy(sky.sunDir);
     u.uSunColor.value.copy(sky.sunColor);
-    u.uSunI.value = sky.sun.intensity / 3.4;
+    u.uSunI.value = sky.sunTotal / 4.8;
     u.uHorizon.value.copy(sky.horizonColor);
     u.uZenith.value.copy(sky.zenithColor);
     u.uNear.value = camera.near;
