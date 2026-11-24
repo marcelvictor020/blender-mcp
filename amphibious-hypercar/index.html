@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mareva Amphibia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Manrope:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app"></div>
+<svg id="leaders" aria-hidden="true"></svg>
+<div id="labels" aria-hidden="true"></div>
+
+<div id="ui">
+  <header class="brand">
+    <div class="wordmark">MAREVA <span>AMPHIBIA</span></div>
+    <h1 id="model-name">Thalassa GT</h1>
+    <p id="model-tagline" class="tagline">Front-mid V12 grand tourer</p>
+    <dl id="model-specs" class="specs"></dl>
+  </header>
+
+  <nav class="models" id="models" aria-label="Choose design"></nav>
+
+  <nav class="views" aria-label="View mode">
+    <div class="seg" id="views">
+      <button data-view="showcase" class="on">Showcase</button>
+      <button data-view="drive">Drive</button>
+      <button data-view="cockpit">Cockpit</button>
+      <button data-view="underwater">Underwater</button>
+      <button data-view="cinematic">Cinematic</button>
+    </div>
+    <button id="tour" class="pill">Auto tour</button>
+  </nav>
+
+  <section class="timeline" aria-label="Transformation">
+    <div class="tl-head">
+      <span class="tl-label">Transformation</span>
+      <span id="tl-stage" class="tl-stage">Road</span>
+    </div>
+    <div class="tl-row">
+      <button id="tl-road" class="icon" title="Reverse to road (T)" aria-label="Reverse to road">&#9664;</button>
+      <button id="tl-pause" class="icon" title="Pause / resume" aria-label="Pause">&#10074;&#10074;</button>
+      <button id="tl-marine" class="icon" title="Deploy marine mode (T)" aria-label="Deploy marine mode">&#9654;</button>
+      <div class="track" id="tl-track">
+        <div class="fill" id="tl-fill"></div>
+        <div class="ticks">
+          <span style="left:3%">Seal</span><span style="left:20%">Sponsons</span><span style="left:46%">Arms</span><span style="left:62%">Pods</span><span style="left:82%">Impellers</span>
+        </div>
+        <div class="handle" id="tl-handle"></div>
+      </div>
+      <button id="tl-foil" class="pill small" title="Hydrofoils (F)">Foils</button>
+    </div>
+  </section>
+
+  <aside class="panel" id="panel">
+    <div class="tabs" role="tablist">
+      <button data-tab="configure" class="on" role="tab">Configure</button>
+      <button data-tab="inspect" role="tab">Inspect</button>
+      <button data-tab="systems" role="tab">Systems</button>
+      <button data-tab="environment" role="tab">Scene</button>
+    </div>
+    <div class="tab-body on" data-body="configure">
+      <h3>Paint</h3>
+      <div class="swatches" id="paints"></div>
+      <div class="chips" id="finishes"></div>
+      <h3>Wheels</h3>
+      <div class="chips" id="wheel-styles"></div>
+      <div class="swatches small" id="wheel-finishes"></div>
+      <h3>Interior</h3>
+      <div class="swatches small" id="leathers"></div>
+      <div class="chips" id="trims"></div>
+      <h3>Lighting</h3>
+      <div class="chips" id="light-colors"></div>
+      <div class="chips">
+        <button class="chip" id="headlights">Headlights</button>
+        <button class="chip" id="ambient">Cabin ambient</button>
+      </div>
+    </div>
+    <div class="tab-body" data-body="inspect">
+      <h3>Body</h3>
+      <div class="chips">
+        <button class="chip" data-toggle="doors">Doors</button>
+        <button class="chip" data-toggle="hood">Bonnet</button>
+        <button class="chip" data-toggle="deck">Rear deck</button>
+        <button class="chip" data-toggle="roof">Roof</button>
+      </div>
+      <h3>Engineering</h3>
+      <label class="slider"><span>Cutaway</span><input type="range" id="cutaway" min="0" max="1" step="0.01" value="0"></label>
+      <label class="slider"><span>Exploded</span><input type="range" id="explode" min="0" max="1" step="0.01" value="0"></label>
+      <div class="chips">
+        <button class="chip" id="xray">X-ray skin</button>
+        <button class="chip on" id="labels-toggle">Labels</button>
+      </div>
+      <p class="note">Drag to orbit any angle. Pause the transformation mid-way from the timeline to study a stage.</p>
+    </div>
+    <div class="tab-body" data-body="systems">
+      <h3>Individual systems</h3>
+      <div class="sys" id="systems"></div>
+      <label class="slider"><span>Sequence speed</span><input type="range" id="seq-speed" min="0.25" max="2" step="0.05" value="1"></label>
+      <div class="chips">
+        <button class="chip on" id="auto-transform">Auto-transform at the shoreline</button>
+        <button class="chip on" id="auto-foil">Auto foils above 14 kn</button>
+      </div>
+    </div>
+    <div class="tab-body" data-body="environment">
+      <label class="slider"><span>Time of day <output id="tod-out">16:10</output></span><input type="range" id="tod" min="5.5" max="21.5" step="0.05" value="16.2"></label>
+      <label class="slider"><span>Sea state <output id="sea-out">Moderate</output></span><input type="range" id="sea" min="0" max="1" step="0.01" value="0.42"></label>
+      <label class="slider"><span>Water clarity</span><input type="range" id="clarity" min="0" max="1" step="0.01" value="0.6"></label>
+      <div class="chips">
+        <button class="chip on" id="q-high">High quality</button>
+        <button class="chip" id="q-bal">Balanced</button>
+        <button class="chip" id="day-cycle">Animate day</button>
+      </div>
+    </div>
+    <button class="collapse" id="panel-toggle" aria-label="Hide panel">&#8250;</button>
+  </aside>
+
+  <section class="telemetry" id="telemetry" hidden>
+    <div class="spd"><span id="t-speed">0</span><small id="t-unit">km/h</small></div>
+    <div class="t-mode" id="t-mode">ROAD</div>
+    <dl class="t-grid">
+      <dt>Ride</dt><dd id="t-ride">—</dd>
+      <dt>Depth</dt><dd id="t-depth">—</dd>
+      <dt>Heading</dt><dd id="t-hdg">—</dd>
+      <dt>Thrust</dt><dd id="t-thrust">—</dd>
+    </dl>
+  </section>
+
+  <div class="keys" id="keys" hidden>
+    <span><b>W A S D</b> drive</span><span><b>Space</b> brake</span><span><b>Shift</b> boost</span><span><b>T</b> transform</span><span><b>F</b> foils</span><span><b>C</b> camera</span><span><b>R</b> reset</span>
+  </div>
+
+  <div class="touch" id="touch" hidden>
+    <div class="pad left"><button data-k="left">&#9664;</button><button data-k="right">&#9654;</button></div>
+    <div class="pad right"><button data-k="brake">&#9660;</button><button data-k="throttle">&#9650;</button></div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<div id="loading">
+  <div class="wordmark big">MAREVA <span>AMPHIBIA</span></div>
+  <p id="loading-text">Preparing the coastline…</p>
+  <div class="bar"><div id="loading-bar"></div></div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
