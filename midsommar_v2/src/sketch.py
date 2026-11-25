@@ -15,11 +15,13 @@ def sketchify(img, line_gain=1.0, flat_sigma=14, work_scale=0.5):
     sm = cv2.resize(u8, None, fx=work_scale, fy=work_scale, interpolation=cv2.INTER_AREA)
     flat = cv2.pyrMeanShiftFiltering(np.ascontiguousarray(sm[..., ::-1]), sp=flat_sigma, sr=26)[..., ::-1]
     flat = cv2.resize(flat, (w, h), interpolation=cv2.INTER_CUBIC).astype(np.float32) / 255.0
-    g = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    g = cv2.cvtColor(np.clip(flat, 0, 1).astype(np.float32), cv2.COLOR_RGB2GRAY)
     b1 = cv2.GaussianBlur(g, (0, 0), 1.2)
     b2 = cv2.GaussianBlur(g, (0, 0), 2.8)
     d = b1 - 0.97 * b2
     lines = np.clip(-d * 20.0 - 0.10, 0, 1) * line_gain
+    dens = cv2.blur(np.clip(lines, 0, 1), (21, 21))
+    lines = lines * np.clip(1.5 - 3.2 * dens, 0.20, 1.0)                  # a hand never inks every blade of grass
     # hatching: a second, softer layer of darker areas in diagonal strokes (hand-drawn tone)
     yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
     hatch = 0.5 + 0.5 * np.sin((xx * 0.7 + yy * 0.7) / 3.2)

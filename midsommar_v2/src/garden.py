@@ -432,27 +432,13 @@ def daisies(x0, w):
 
 # ============================================================================================ environment assembly
 def build_environment(x0=GX0, w=GW, verbose=True):
+    """sky + far shore + mirrored lake come from the shared WORLD render (the very same pixels the pond and the flow stage use); here the
+    lawn takes over where the land is, the lake keeps its lily pads and reeds, and the shore gets its bright rim."""
     import time
-    from water import mirror_water
     t0 = time.time()
-    sky = sky_garden(x0, w)
-    sky = clouds_garden(sky, x0, w)
-    img = np.zeros((H, w, 3), np.float32)
-    img[:HZ] = sky
-    hz_c = np.array([0.99, 0.86, 0.60], np.float32)
-    layers = forest_wall(x0, w)
-    mst = mist(x0, w, HZ + 60)
-    for li, (rgb, a) in enumerate(layers):
-        sl = img[HZ - 520:HZ + 60]
-        img[HZ - 520:HZ + 60] = sl * (1 - a[..., None]) + rgb
-        m = mst[HZ - 520:HZ + 60][:, :] * (0.50 + 0.30 * li)
-        img[HZ - 520:HZ + 60] = img[HZ - 520:HZ + 60] * (1 - m[..., None]) + hz_c * m[..., None] * 0.95
-    if verbose: print('forest', round(time.time() - t0, 1))
-    sr, sa = light_shafts(x0, w, H)
-    img = img * (1 - sa[..., None] * 0.3) + sr * 1.0
-    full = img.copy()
-    water_c = np.array([0.06, 0.16, 0.20], np.float32)
-    lake = mirror_water(full, x0, w, water_c, seed=17)
+    wx0, world = cache_load('f_world')
+    img = world[:, x0 - wx0:x0 - wx0 + w].copy()
+    lake = img[HZ:].copy()
     ys = np.arange(HZ, H, dtype=np.float32)[:, None]
     xs = np.arange(x0, x0 + w, dtype=np.float32)[None, :]
     ly = lake_y(xs)
@@ -460,13 +446,11 @@ def build_environment(x0=GX0, w=GW, verbose=True):
     wat = cv2.GaussianBlur(wat, (0, 0), 1.2)
     lawn = lawn_color(x0, w)
     img[HZ:] = lawn
-    img[HZ:] = img[HZ:] * (1 - wat[..., None]) + lake[HZ:] * wat[..., None]
-    gr_, ga_ = glitter(x0, w)
-    img = 1 - (1 - img) * (1 - np.clip(gr_ * ga_[..., None] * 1.0, 0, 1))
+    img[HZ:] = img[HZ:] * (1 - wat[..., None]) + lake * wat[..., None]
     lr, la = lake_extras(x0, w)
     img = img * (1 - la[..., None]) + lr
     edge = np.exp(-((ys - ly) / 7.0) ** 2) * (xs < 10100)
-    img[HZ:] = img[HZ:] * (1 - 0.30 * edge[..., None]) + np.array([0.90, 0.86, 0.70], np.float32) * (0.20 * edge[..., None])
+    img[HZ:] = img[HZ:] * (1 - 0.30 * edge[..., None]) + np.array([0.95, 0.88, 0.70], np.float32) * (0.22 * edge[..., None])
     if verbose: print('lake+lawn', round(time.time() - t0, 1))
     return img
 

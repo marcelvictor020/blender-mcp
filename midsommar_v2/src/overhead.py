@@ -27,6 +27,26 @@ def grass(w, h, x0=0, seed=3):
     return np.clip(col, 0, 1)
 
 
+def flower_scatter(w, h, rng):
+    """the lawn seen from above is not bare: poppies, cornflowers, ox-eye daisies, buttercups and clover scattered over it, each with a tiny shadow"""
+    L = Layer(w, h, 0, 0, 2)
+    c = L.ctx
+    kinds = [((0.86, 0.14, 0.10), (0.10, 0.06, 0.06), 5.6), ((0.30, 0.44, 0.92), (0.22, 0.14, 0.52), 4.4), ((0.98, 0.97, 0.92), (0.96, 0.74, 0.14), 4.8),
+             ((0.99, 0.84, 0.14), (0.80, 0.52, 0.06), 4.2), ((0.90, 0.44, 0.66), (0.60, 0.20, 0.40), 4.0)]
+    for i in range(int(w * h / 4200.0)):
+        x, y = rng.uniform(0, w), rng.uniform(0, h)
+        col, eye, r = kinds[int(rng.choice(5, p=[0.22, 0.22, 0.26, 0.18, 0.12]))]
+        r = r * rng.uniform(0.8, 1.35)
+        c.set_source_rgba(0.04, 0.07, 0.02, 0.30); c.new_path(); c.save(); c.translate(x + r * 0.7, y + r * 0.5); c.scale(r * 1.1, r * 0.8); c.arc(0, 0, 1, 0, 2 * math.pi); c.restore(); c.fill()
+        n = 5 if col[0] < 0.95 else 11
+        for k in range(n):
+            a = 2 * math.pi * k / n + x
+            c.set_source_rgb(*[v * (0.82 if k % 2 else 1.0) for v in col])
+            c.new_path(); c.save(); c.translate(x + math.cos(a) * r * 0.55, y + math.sin(a) * r * 0.55); c.rotate(a); c.scale(r * 0.62, r * (0.34 if n > 5 else 0.5)); c.arc(0, 0, 1, 0, 2 * math.pi); c.restore(); c.fill()
+        c.set_source_rgb(*eye); c.new_path(); c.arc(x, y, r * 0.28, 0, 2 * math.pi); c.fill()
+    return L.get()
+
+
 def top_girl(c, x, y, fa, S, dress, hair, rng, nb_hands):
     """one girl seen from above; (x,y) body centre, fa = facing angle (toward the centre of the ring). v axis = facing."""
     fx, fy = math.cos(fa), math.sin(fa)
@@ -174,6 +194,8 @@ def render_overhead(w, h, seed=7, cx_frac=0.50, cy_frac=0.56, r_out_frac=0.40, r
     (the chain that walked in from the lake). Painted in gouache + ink, long shadows down-right."""
     rng = np.random.default_rng(seed)
     img = grass(w, h, 0, seed)
+    fl_, fa_ = flower_scatter(w, h, np.random.default_rng(seed + 5))
+    img = img * (1 - fa_[..., None]) + fl_
     cx, cy = cx_frac * w, cy_frac * h
     S = s_frac * h
     th, X, Y = spiral_path(cx, cy, r_out_frac * w, r_in_frac * w, turns, 0.70 * math.pi)

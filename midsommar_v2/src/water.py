@@ -92,8 +92,8 @@ def add_ribbon_cloud(img, x0, w):
     # cauliflower detail on the surface; edges raggedised more and more as it turns to vapour
     n1 = fbm(x0, 0, w, h, 26, 4, 31); n2 = fbm(x0, 0, w, h, 9, 3, 32)
     inside = (Hm > 0).astype(np.float32)
-    Hm = np.clip(Hm * (1 + 0.12 * n1) + 2.2 * n2 * inside - 8.0 * vap * (n2 + 0.45) * inside, 0, None)
-    Hm = cv2.GaussianBlur(Hm, (0, 0), 2.6)
+    Hm = np.clip(Hm * (1 + 0.05 * n1) + 0.8 * n2 * inside - 8.0 * vap * (n2 + 0.45) * inside, 0, None)
+    Hm = cv2.GaussianBlur(Hm, (0, 0), 3.2)
     col = shade_cloud(Hm, (0.80, 0.86, 1.0), (1.0, 0.64, 0.48))
     col = col * (1 - 0.45 * vap)[..., None] + np.array([0.50, 0.57, 0.72], np.float32) * (0.45 * vap)[..., None]
     a = np.clip(Hm / (16.0 + 22.0 * vap), 0, 1) ** 0.9 * (1 - 0.28 * vap)

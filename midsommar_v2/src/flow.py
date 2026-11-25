@@ -16,6 +16,7 @@ from trees import leaf, catmull
 from fold import leaf2
 import garden as G
 import chain as CH
+import critters as CR
 from blend import smear_blend, stagger_blend
 
 TAU = 2 * math.pi
@@ -52,6 +53,22 @@ LEAF_STOPS = [(4300, (0.05, 0.20, 0.18)), (5200, (0.10, 0.34, 0.28)), (6200, (0.
 BARK_DARK = [(4300, (0.025, 0.045, 0.040)), (6000, (0.07, 0.06, 0.04)), (8000, (0.22, 0.15, 0.06))]
 BARK_BASE = [(4300, (0.10, 0.12, 0.09)), (6000, (0.26, 0.22, 0.12)), (8000, (0.58, 0.44, 0.18))]
 BARK_LIT = [(4300, (0.24, 0.26, 0.17)), (6000, (0.52, 0.45, 0.24)), (8000, (0.98, 0.82, 0.44))]
+
+
+ACC_DUSK = [(0.08, 0.30, 0.26), (0.20, 0.46, 0.34), (0.42, 0.22, 0.44), (0.84, 0.44, 0.60), (0.62, 0.52, 0.86), (0.92, 0.78, 0.38)]
+ACC_MID = [(0.34, 0.50, 0.20), (0.66, 0.62, 0.22), (0.92, 0.62, 0.18), (0.90, 0.46, 0.50), (0.20, 0.46, 0.34), (0.56, 0.40, 0.70)]
+ACC_GOLD = [(0.90, 0.74, 0.26), (0.95, 0.58, 0.16), (0.74, 0.32, 0.14), (0.50, 0.52, 0.18), (0.97, 0.90, 0.62), (0.86, 0.44, 0.40)]
+
+
+def leaf_family(x, rng):
+    """leaves of many colours ride the current: teal / plum / rose / lilac at dusk, moss / amber / rose mid-way, gold / russet / cream at the sun"""
+    t_ = float(smoothstep(5200, 7000, x)); u = float(smoothstep(6800, 8300, x))
+    r = rng.random()
+    pool = ACC_DUSK if r > t_ else (ACC_MID if rng.random() > u else ACC_GOLD)
+    if u > 0.6 and rng.random() < u: pool = ACC_GOLD
+    c = pool[int(rng.integers(len(pool)))]
+    j = rng.uniform(0.86, 1.12)
+    return tuple(float(np.clip(v * j + rng.normal(0, 0.02), 0, 1)) for v in c)
 
 
 def draw_ribbon(c, pts, r0, r1, seed, lit_side=1, taper=0.8, with_bark=True):
@@ -106,13 +123,14 @@ def vine_with_leaves(c, pts, r0, seed, curl=True):
             sz = rng.uniform(34, 70) * (0.8 + 0.6 * float(smoothstep(4300, 6200, x)) * (1 - float(smoothstep(7600, 8400, x))))
             c1 = tuple(min(1.0, v * 1.35 + 0.07) for v in col)
             leaf2(c, x, y, sz, ang + sg * rng.uniform(0.6, 1.2), tuple(v * rng.uniform(0.85, 1.1) for v in col), c1)
-        if rng.random() < 0.20:
-            fc = [(0.97, 0.94, 0.86), (0.96, 0.78, 0.80), (0.98, 0.86, 0.42)][int(rng.integers(3))]
+        if rng.random() < 0.42:
+            fc = [(0.97, 0.94, 0.86), (0.96, 0.62, 0.70), (0.98, 0.86, 0.42), (0.52, 0.62, 0.96), (0.88, 0.22, 0.20), (0.74, 0.58, 0.94)][int(rng.integers(6))]
+            fs = rng.uniform(1.0, 1.7)
             for k in range(5):
                 a = TAU * k / 5 + rng.uniform(0, 1)
-                c.set_source_rgba(*fc, 0.95)
-                c.new_path(); c.save(); c.translate(x + math.cos(a) * 9, y + math.sin(a) * 9); c.rotate(a); c.scale(11, 6); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
-            c.set_source_rgba(0.95, 0.70, 0.16, 1); c.new_path(); c.arc(x, y, 4, 0, TAU); c.fill()
+                c.set_source_rgba(*fc, 0.97)
+                c.new_path(); c.save(); c.translate(x + math.cos(a) * 9 * fs, y + math.sin(a) * 9 * fs); c.rotate(a); c.scale(11 * fs, 6 * fs); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
+            c.set_source_rgba(0.95, 0.70, 0.16, 1); c.new_path(); c.arc(x, y, 4 * fs, 0, TAU); c.fill()
     if curl:
         ex, ey = float(P[-1, 0]), float(P[-1, 1])
         a0 = math.atan2(P[-1, 1] - P[-4, 1], P[-1, 0] - P[-4, 0])
@@ -148,8 +166,10 @@ def leaves_layer(x0, w, tier, n, seed):
         y = rng.uniform(-30, 640) if rng.random() < 0.82 else rng.uniform(640, 1100)
         a = float(flow_angle(x, y)) + rng.normal(0, 0.42)
         sz = rng.lognormal(math.log(58), 0.42) * size_mul * (0.65 + 0.85 * bell)
-        col = lerpc(LEAF_STOPS, x + rng.normal(0, 260))
-        col = tuple(float(np.clip(v * rng.uniform(0.80, 1.14), 0, 1)) for v in col)
+        if rng.random() < 0.72: col = leaf_family(x, rng)
+        else:
+            col = lerpc(LEAF_STOPS, x + rng.normal(0, 260))
+            col = tuple(float(np.clip(v * rng.uniform(0.80, 1.14), 0, 1)) for v in col)
         shade_k = {0: 0.62, 1: 0.92, 2: 1.10}[tier]
         c0 = tuple(v * shade_k for v in col)
         c1 = tuple(min(1.0, v * 1.45 + 0.07) for v in c0)
@@ -187,6 +207,53 @@ def petals_layer(x0, w, seed=3, n=900):
     return L.get()
 
 
+def kurbits(c, x, y, r, t, rng):
+    """a Dalarna folk flower (flat colour, ink outline, dotted rim) that turns into a real, shaded flower as the current carries it (t: 0 -> 1)"""
+    pal = [((0.78, 0.14, 0.14), (0.98, 0.85, 0.30)), ((0.20, 0.38, 0.74), (0.97, 0.92, 0.80)), ((0.96, 0.74, 0.18), (0.78, 0.14, 0.14)), ((0.12, 0.46, 0.34), (0.97, 0.92, 0.80))][int(rng.integers(4))]
+    ink = (0.10, 0.07, 0.06)
+    ow = (1 - t) * max(1.5, r * 0.055)
+    rot = rng.uniform(0, TAU)
+    for ring, (rad, ln, wd, col, n) in enumerate(((1.0, 0.98, 0.34, pal[0], 8), (0.66, 0.66, 0.24, pal[1], 8), (0.36, 0.36, 0.17, pal[0], 6))):
+        for k in range(n):
+            a = rot + TAU * k / n + ring * TAU / (2 * n)
+            c.save(); c.translate(x, y); c.rotate(a)
+            L_, W_ = r * ln, r * wd
+            c.new_path(); c.move_to(r * 0.10, 0); c.curve_to(L_ * 0.25, -W_ * 1.1, L_ * 0.80, -W_ * 0.95, L_, 0); c.curve_to(L_ * 0.80, W_ * 0.95, L_ * 0.25, W_ * 1.1, r * 0.10, 0); c.close_path()
+            g = cairo.LinearGradient(r * 0.1, 0, L_, 0)
+            g.add_color_stop_rgb(0, *[v * (1 - 0.45 * t) for v in col]); g.add_color_stop_rgb(0.6, *col); g.add_color_stop_rgb(1, *[min(1, v * (1 + 0.25 * t) + 0.04 * t) for v in col])
+            c.set_source(g)
+            if ow > 0.2: c.fill_preserve(); c.set_source_rgba(*ink, 0.95); c.set_line_width(ow); c.stroke()
+            else: c.fill()
+            if t < 0.5 and ring == 0:
+                c.set_source_rgb(*pal[1]); c.new_path(); c.arc(L_ * 0.78, 0, max(1.2, r * 0.045), 0, TAU); c.fill()
+            c.restore()
+    c.set_source_rgb(*[v for v in pal[1]]); c.new_path(); c.arc(x, y, r * 0.17, 0, TAU); c.fill_preserve()
+    if ow > 0.2: c.set_source_rgba(*ink, 0.95); c.set_line_width(ow); c.stroke()
+    else: c.new_path()
+    c.set_source_rgb(0.94, 0.70, 0.12); c.new_path(); c.arc(x, y, r * 0.075, 0, TAU); c.fill()
+
+
+def kurbits_layer(x0, w, n=30, seed=77):
+    L = Layer(w, H, x0, 0, 2)
+    c = L.ctx
+    rng = np.random.default_rng(seed)
+    placed = 0
+    while placed < n:
+        x = rng.uniform(FX0 + 300, FX1 - 500)
+        y = rng.uniform(90, 700)
+        a = float(flow_angle(x, y))
+        if abs(x - 7330) < 160 and abs(y - 766) < 200: continue
+        t_ = float(smoothstep(4500, 7600, x))
+        r = rng.uniform(26, 58) * (0.8 + 0.5 * math.exp(-((x - 6200) / 1800.0) ** 2))
+        tail = r * rng.uniform(2.5, 5)
+        g = cairo.LinearGradient(x, y, x - math.cos(a) * tail, y - math.sin(a) * tail)
+        g.add_color_stop_rgba(0, 1.0, 0.9, 0.7, 0.28); g.add_color_stop_rgba(1, 1.0, 0.9, 0.7, 0)
+        c.set_source(g); c.set_line_width(r * 0.8); c.new_path(); c.move_to(x, y); c.line_to(x - math.cos(a) * tail, y - math.sin(a) * tail); c.stroke()
+        kurbits(c, x, y, r, t_, rng)
+        placed += 1
+    return L.get()
+
+
 def mist_streams(x0, w):
     puffs = []
     rng = np.random.default_rng(66)
@@ -216,6 +283,33 @@ def mist_streams(x0, w):
     return col * a[..., None], a
 
 
+def critters(out, x0):
+    """crisp living details on the finished painting: swans with cygnets, candle-boats heaped with flowers, sky lanterns, butterflies, fireflies"""
+    rng = np.random.default_rng(1717)
+    out = np.ascontiguousarray(out)
+    CR.swan_family(out, 5420 - x0, 1168, 120, rng)
+    CR.swan_family(out, 6160 - x0, 1290, 150, rng, tint=(1.0, 0.96, 0.92))
+    CR.flower_boat(out, 5010 - x0, 1236, 100, 11, pal=0)
+    CR.flower_boat(out, 6620 - x0, 1252, 124, 12, pal=1)
+    CR.flower_boat(out, 7360 - x0, 1168, 82, 13, pal=2)
+    for (lx, ly, S) in CR.lantern_flock():
+        if x0 + 40 < lx < x0 + FW - 40 and lx < 8750:
+            CR.sky_lantern(out, lx - x0, ly, S, day=float(smoothstep(6800, 8400, lx)) * 0.55, warm=1.0)
+    kinds_dusk = ['blue', 'white', 'yellow']
+    kinds_gold = ['monarch', 'yellow', 'admiral', 'white']
+    items = []
+    for i in range(22):
+        x = rng.uniform(4900, 8350); y = rng.uniform(140, 720)
+        if abs(x - 7330) < 160 and abs(y - 766) < 200: continue
+        kind = (kinds_dusk if x < 6300 else kinds_gold)[i % (3 if x < 6300 else 4)]
+        S = rng.uniform(15, 26)
+        items.append((x - x0, y, S, float(flow_angle(x, y)) + math.pi / 2 + rng.normal(0, 0.4), kind, rng.uniform(0.35, 0.95), int(rng.integers(1 << 20))))
+    CR.butterflies(out, items)
+    CR.fireflies(out, rng, 90, (4450 - x0, 6600 - x0), (740, 1320), size=(1.3, 3.4), glow=0.95)
+    CR.fireflies(out, rng, 30, (6600 - x0, 7800 - x0), (700, 1200), size=(1.2, 2.4), glow=0.55, color=(1.0, 0.90, 0.55))
+    return out
+
+
 def render_flow(paint_it=True, verbose=True):
     import time
     from paint import paint
@@ -232,7 +326,7 @@ def render_flow(paint_it=True, verbose=True):
     xsf = xs.astype(np.float32)[None, :]
     mr, ma = mist_streams(x0, w)
     img = img * (1 - ma[..., None]) + mr
-    lb, lba = leaves_layer(x0, w, 0, 420, 5)
+    lb, lba = leaves_layer(x0, w, 0, 300, 5)
     img = img * (1 - lba[..., None]) + lb
     # vines + two canopy ribbons: they grow out of the arch's canopy (alpha ramps up from nothing so there is no seam at 4300)
     L = Layer(w, H, x0, 0, 2)
@@ -248,7 +342,10 @@ def render_flow(paint_it=True, verbose=True):
     rr, ra = L.get()
     ramp = smoothstep(4560, 5100, xsf)
     img = img * (1 - (ra * ramp)[..., None]) + rr * ramp[..., None]
-    gm, gma = leaves_layer(x0, w, 1, 520, 7)
+    gm, gma = leaves_layer(x0, w, 1, 330, 7)
+    img = img * (1 - gma[..., None]) + gm
+    kr, kra = kurbits_layer(x0, w)
+    gma = kra; gm = kr
     img = img * (1 - gma[..., None]) + gm
     # the chain of girls on the water: reflections first, then the girls
     ch = CH.render_chain(x0, w, 4700, 8750, verbose=verbose)
@@ -256,7 +353,7 @@ def render_flow(paint_it=True, verbose=True):
     mist_foot = np.exp(-(((np.arange(H, dtype=np.float32)[:, None] - (HZ + 120)) / 150.0) ** 2)) * fbm01(x0, 0, w, H, 200, 3, 77, aniso=6.0) * 0.20
     img = img * (1 - ch['alpha'][..., None]) + ch['canvas'] * ch['alpha'][..., None]
     img = img * (1 - mist_foot[..., None] * (1 - ch['alpha'])[..., None]) + np.array([0.92, 0.88, 0.80], np.float32) * (mist_foot * (1 - ch['alpha']))[..., None]
-    gf, gfa = leaves_layer(x0, w, 2, 160, 9)
+    gf, gfa = leaves_layer(x0, w, 2, 100, 9)
     img = img * (1 - gfa[..., None]) + gf
     pr, pa = petals_layer(x0, w)
     img = img * (1 - pa[..., None]) + pr
@@ -280,13 +377,20 @@ def render_flow(paint_it=True, verbose=True):
     mL = smoothstep(4560, 5100, xsf); mR = 1 - smoothstep(8250, 8700, xsf)
     out = a_img * (1 - mL[..., None]) + out * mL[..., None]
     out = out * mR[..., None] + b_img * (1 - mR[..., None])
+    cache_save('f_flow_base', x0, out)
+    out = critters(out, x0)
     return np.clip(out, 0, 1).astype(np.float32)
 
 
 if __name__ == '__main__':
     import time
     t = time.time()
-    img = render_flow()
+    import os
+    if os.environ.get('FLOW_REUSE') == '1':
+        _, base_ = cache_load('f_flow_base')
+        img = np.clip(critters(base_, FX0), 0, 1).astype(np.float32)
+    else:
+        img = render_flow()
     print('flow', round(time.time() - t, 1), 's')
     cache_save('f_flow', FX0, img)
     preview(img, WORK + '/f_flow_preview.png', 2200)

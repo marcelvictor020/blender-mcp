@@ -13,6 +13,9 @@ import garden as G
 import chain as CH
 from garden import gpt, lake_y, GX0, GX1, GW, CXG, BASE_Y, APEX_Y, HALF, FG, HCAM, SUN_G
 from trees import leaf
+import house as HS
+import meadow as MD
+import critters as CR
 
 TAU = 2 * math.pi
 DRESSES, BELTS, HAIRS, SKINS = CH.DRESSES, CH.BELTS, CH.HAIRS, CH.SKINS
@@ -71,146 +74,6 @@ def maypole(w, x0, base, s, height_m=7.4):
     return L.get()
 
 
-# ============================================================================================ the temple (plank A-frame)
-def temple(x0, w):
-    ap = (CXG, APEX_Y); bl = (CXG - HALF, BASE_Y); br = (CXG + HALF, BASE_Y)
-    tri = Layer(w, H, x0, 0, 2)
-    c = tri.ctx
-    c.new_path(); c.move_to(*ap); c.line_to(*br); c.line_to(*bl); c.close_path(); c.set_source_rgb(1, 1, 1); c.fill()
-    _, mask = tri.get()
-    ys = np.arange(H, dtype=np.float32)[:, None]
-    xs = np.arange(x0, x0 + w, dtype=np.float32)[None, :]
-    ph = 23.0
-    k = np.floor((ys - APEX_Y) / ph)
-    fr = (ys - APEX_Y) / ph - k
-    rnd = np.sin(k * 12.9898 + 4.1) * 43758.5453 % 1.0
-    tone = 0.90 + 0.20 * rnd
-    grain = fbm(x0, 0, w, H, 9, 4, 301, aniso=55.0) * 0.5 + fbm(x0, 0, w, H, 4, 3, 302, aniso=70.0) * 0.5
-    knots = np.exp(-(((np.sin(xs * 0.043 + k * 3.1) * 0.5 + 0.5) - 0.5) / 0.04) ** 2) * (rnd > 0.55) * np.exp(-((fr - 0.5) / 0.22) ** 2) * 0.25
-    base = np.array([0.88, 0.66, 0.30], np.float32)
-    col = base[None, None, :] * (tone * (1 + 0.14 * grain))[..., None]
-    seam = np.exp(-(fr / 0.045) ** 2) + np.exp(-((1 - fr) / 0.03) ** 2) * 0.5
-    col = col * (1 - 0.55 * np.clip(seam, 0, 1))[..., None] * (1 - knots)[..., None]
-    u = (xs - bl[0]) / (br[0] - bl[0])
-    lit = 1.14 - 0.58 * smoothstep(0.0, 1.0, u) ** 0.85
-    col = col * lit[..., None]
-    foot = smoothstep(BASE_Y - 140, BASE_Y, ys)
-    col = col * (1 - 0.12 * foot)[..., None] + np.array([0.18, 0.26, 0.05], np.float32) * (0.10 * foot)[..., None]
-    col = col + np.array([0.20, 0.12, 0.02], np.float32) * (np.exp(-((u) / 0.07) ** 2) * 0.5)[..., None]
-    rgb = np.clip(col, 0, 1)
-    L = Layer(w, H, x0, 0, 2)
-    c = L.ctx
-    for side in (-1, 1):
-        xb = CXG + side * HALF
-        c.set_source_rgb(0.62, 0.43, 0.18); c.set_line_width(13)
-        c.new_path(); c.move_to(ap[0], ap[1] + 4); c.line_to(xb - side * 6, BASE_Y); c.stroke()
-        c.set_source_rgba(1.0, 0.86, 0.52, 0.40 if side < 0 else 0.15); c.set_line_width(3)
-        c.new_path(); c.move_to(ap[0] - side * 5, ap[1] + 12); c.line_to(xb - side * 11, BASE_Y); c.stroke()
-    lit_set = {(-1, 0, 2), (-1, 0, 4), (1, 0, 1), (1, 0, 3), (-1, 1, 2), (1, 1, 1)}
-    for side in (-1, 1):
-        d = np.array([side * HALF, BASE_Y - APEX_Y], np.float32); L_ = float(np.linalg.norm(d)); d = d / L_
-        nrm = np.array([-d[1], d[0]], np.float32) * (1 if side > 0 else -1)
-        nrm = nrm if nrm[0] * side < 0 else -nrm
-        for row, off in enumerate((46, 106)):
-            n_w = 5 if row == 0 else 4
-            for i in range(n_w):
-                t = (0.20 + 0.60 * i / (n_w - 1)) * (1 - 0.05 * row)
-                P0 = np.array([CXG, APEX_Y], np.float32) + d * (t * L_)
-                xx, yy = P0 + nrm * off
-                wv, hv = 20, 28
-                lit_w = (side, row, i) in lit_set
-                c.set_source_rgb(0.74, 0.54, 0.24); c.new_path(); c.rectangle(xx - wv / 2 - 3, yy - hv / 2 - 3, wv + 6, hv + 6); c.fill()
-                c.set_source_rgb(*(1.0, 0.82, 0.40) if lit_w else (0.08, 0.07, 0.09)); c.new_path(); c.rectangle(xx - wv / 2, yy - hv / 2, wv, hv); c.fill()
-                if lit_w:
-                    gg = cairo.RadialGradient(xx, yy, 2, xx, yy, 62); gg.add_color_stop_rgba(0, 1, .8, .35, .50); gg.add_color_stop_rgba(1, 1, .8, .35, 0)
-                    c.set_source(gg); c.new_path(); c.arc(xx, yy, 62, 0, TAU); c.fill()
-                c.set_source_rgba(0.28, 0.17, 0.06, 0.9); c.set_line_width(1.6); c.new_path(); c.move_to(xx, yy - hv / 2); c.line_to(xx, yy + hv / 2); c.move_to(xx - wv / 2, yy); c.line_to(xx + wv / 2, yy); c.stroke()
-    c.set_source_rgb(0.62, 0.44, 0.20); c.new_path(); c.rectangle(CXG - 40, 262, 80, 84); c.fill()
-    c.set_source_rgb(0.05, 0.045, 0.06); c.new_path(); c.rectangle(CXG - 31, 271, 62, 66); c.fill()
-    c.set_source_rgba(0.40, 0.27, 0.10, 0.9); c.set_line_width(2.5); c.new_path(); c.rectangle(CXG - 31, 271, 62, 66); c.stroke()
-    dw, dh = 118, 200
-    dl, dr_, da = (CXG - dw, BASE_Y), (CXG + dw, BASE_Y), (CXG, BASE_Y - dh)
-    c.set_source_rgb(0.03, 0.03, 0.04); c.new_path(); c.move_to(*da); c.line_to(*dr_); c.line_to(*dl); c.close_path(); c.fill()
-    for kk, sc in enumerate((0.66, 0.42, 0.26)):
-        apx, apy = CXG, HZ - (HZ - da[1]) * sc
-        by = HZ + (BASE_Y - HZ) * sc
-        c.set_source_rgba(0.95, 0.74, 0.30, 0.85 - 0.2 * kk); c.set_line_width(5.0 - 1.4 * kk)
-        c.new_path(); c.move_to(apx, apy); c.line_to(CXG + dw * sc, by); c.line_to(CXG - dw * sc, by); c.close_path(); c.stroke()
-    gg = cairo.RadialGradient(CXG, HZ, 1, CXG, HZ, 40); gg.add_color_stop_rgba(0, 1.0, 0.82, 0.45, 0.95); gg.add_color_stop_rgba(1, 1.0, 0.7, 0.3, 0)
-    c.set_source(gg); c.new_path(); c.arc(CXG, HZ, 40, 0, TAU); c.fill()
-    la, ra_ = L.get()
-    out_rgb = rgb * mask[..., None]
-    out_rgb = out_rgb * (1 - ra_[..., None]) + la
-    return out_rgb, np.clip(mask, 0, 1)
-
-
-def tri_x(y, side):
-    t = (y - APEX_Y) / (BASE_Y - APEX_Y)
-    return CXG + side * HALF * t
-
-
-def ivy_layer(x0, w):
-    """climbing ivy: runners with paired leaves up both edges, across the lower facade and spilling over the roof edge (golden-hour greens)"""
-    L = Layer(w, H, x0, 0, 2)
-    c = L.ctx
-    r = np.random.default_rng(73)
-    pal = [(0.16, 0.34, 0.10), (0.22, 0.42, 0.12), (0.30, 0.50, 0.14), (0.12, 0.26, 0.08), (0.42, 0.55, 0.16), (0.36, 0.48, 0.12)]
-
-    def runner(x, y, ang, length, depth=0):
-        px, py = x, y
-        for k in range(int(length / 11)):
-            a = ang + r.normal(0, .22)
-            px += math.cos(a) * 11; py += math.sin(a) * 11
-            c.set_source_rgba(0.08, 0.16, 0.05, 1); c.set_line_width(2.2); c.new_path(); c.move_to(px - math.cos(a) * 11, py - math.sin(a) * 11); c.line_to(px, py); c.stroke()
-            for sd in (-1, 1):
-                if r.random() < .72:
-                    leaf(c, px, py, r.uniform(15, 27), a + sd * r.uniform(.7, 1.5), pal[int(r.integers(len(pal)))])
-            if depth < 1 and r.random() < .06:
-                runner(px, py, a + r.choice([-1, 1]) * r.uniform(.5, 1.1), length * 0.35, depth + 1)
-    for side, top in ((-1, 0.40), (1, 0.62)):
-        for j in range(4):
-            yy = BASE_Y - 6 - j * 6
-            xx = tri_x(yy, side) - side * (14 + 12 * j)
-            ang = math.atan2(APEX_Y - BASE_Y, -side * HALF) + r.normal(0, .06)
-            runner(xx, yy, ang, (BASE_Y - APEX_Y) * top * r.uniform(.75, 1.1) / 0.9)
-    for j in range(9):
-        runner(r.uniform(CXG - HALF * .72, CXG + HALF * .72), BASE_Y - 4, -math.pi / 2 + r.normal(0, .55), r.uniform(60, 200))
-    for j in range(16):
-        side = r.choice([-1, 1]); yy = r.uniform(APEX_Y + 90, BASE_Y - 210)
-        runner(tri_x(yy, side), yy, math.pi / 2 - side * 0.9 + r.normal(0, .3), r.uniform(25, 70))
-    return L.get()
-
-
-def doors_and_woman(x0, w):
-    L = Layer(w, H, x0, 0, 2)
-    c = L.ctx
-    dw = 118
-    for side in (-1, 1):
-        hx = CXG + side * (dw + 2)
-        pts = [(hx, BASE_Y), (hx + side * 40, BASE_Y - 8), (hx + side * 46, BASE_Y - 214), (hx + side * 6, BASE_Y - 192)]
-        gd = cairo.LinearGradient(pts[0][0], 0, pts[1][0], 0)
-        if side < 0: gd.add_color_stop_rgb(0, 0.20, 0.50, 0.74); gd.add_color_stop_rgb(1, 0.38, 0.72, 0.90)
-        else: gd.add_color_stop_rgb(0, 0.14, 0.38, 0.60); gd.add_color_stop_rgb(1, 0.24, 0.52, 0.74)
-        c.set_source(gd); c.new_path(); c.move_to(*pts[0]); [c.line_to(*p) for p in pts[1:]]; c.close_path(); c.fill()
-        c.set_source_rgba(0.08, 0.20, 0.34, 0.9); c.set_line_width(2.0); c.new_path(); c.move_to(*pts[0]); [c.line_to(*p) for p in pts[1:]]; c.close_path(); c.stroke()
-        c.set_source_rgba(0.88, 0.96, 1.0, 0.55); c.set_line_width(2.2)
-        c.new_path(); c.move_to(pts[0][0] + side * 6, pts[0][1] - 18); c.line_to(pts[2][0] - side * 5, pts[2][1] + 16); c.move_to(pts[1][0] - side * 5, pts[1][1] - 14); c.line_to(pts[3][0] + side * 5, pts[3][1] + 16); c.stroke()
-        for kk in range(3):
-            c.set_source_rgba(0.06, 0.18, 0.30, 0.45); c.set_line_width(1.4)
-            f = (kk + 1) / 4
-            c.new_path(); c.move_to(pts[0][0] + (pts[1][0] - pts[0][0]) * f, pts[0][1] + (pts[1][1] - pts[0][1]) * f); c.line_to(pts[3][0] + (pts[2][0] - pts[3][0]) * f, pts[3][1] + (pts[2][1] - pts[3][1]) * f); c.stroke()
-    la, aa = L.get()
-    interior = Light(key_dir=(-0.45, -0.20, 0.85), key_col=(1.0, 0.86, 0.62), key_gain=0.55, amb_col=(0.55, 0.52, 0.58), amb_gain=0.38,
-                     bounce_col=(0.30, 0.22, 0.10), bounce_gain=0.3, rim_dir=(0.9, -0.2, 0.2), rim_col=(1.0, 0.8, 0.5), rim_gain=0.45)
-    sp = fig.render(150, dict(view='front', yaw=0.0, arm_l=(-0.118, 0.470), arm_r=(0.118, 0.470), hair=(0.30, 0.20, 0.12), dress=(0.95, 0.93, 0.88),
-                               crown=True, smile=0.0, feet=False, hem_y=0.0, bow=True), interior, seed=17)
-    ox, oy = sp['anchor']
-    rgb_s = sp['rgb'] / np.maximum(sp['a'], 1e-4)[..., None]
-    pm = np.zeros((H, w, 3), np.float32); pa = np.zeros((H, w), np.float32)
-    _over(pm, pa, rgb_s, sp['a'], int(round(CXG - x0 - ox)), int(round(BASE_Y - 3 - oy)))
-    return la, aa, pm, pa
-
-
 # ============================================================================================ walkers on the far lawn + birds
 def walkers_garden(x0, w):
     """the white-robed procession keeps walking the far edge of the lawn, in front of the forest foot"""
@@ -237,6 +100,34 @@ def birds_garden(x0, w):
     rgb, a = L.get()
     return cv2.GaussianBlur(rgb, (0, 0), 0.6) * 1.0, cv2.GaussianBlur(a, (0, 0), 0.7)
 
+
+
+def festive(out, x0, w, s_pole):
+    """crisp details painted on top: bunting with folk flowers between the maypole and the house, a doe and her fawn at the forest edge, sky lanterns
+    drifting on, butterflies over the meadow, fireflies waking in the shade of the trees"""
+    rng = np.random.default_rng(404)
+    cx, by = RING['cx'], RING['base_y']
+    top = by - 7.4 * s_pole
+    sh = lambda p: (p[0] - x0, p[1])
+    gold = [(0.97, 0.94, 0.86), (0.96, 0.78, 0.24), (0.40, 0.62, 0.90), (0.84, 0.20, 0.18), (0.30, 0.60, 0.34)]
+    CR.festoon(out, sh((cx, top + 0.6 * s_pole)), sh((CXG, APEX_Y + 6)), 90, 34, rng, fw=30, pal=gold)
+    CR.festoon(out, sh((cx, top + 1.5 * s_pole)), sh((CXG - HALF + 24, BASE_Y - 26)), 70, 22, rng, fw=26, pal=gold[1:] + gold[:1])
+    CR.festoon(out, sh((CXG, APEX_Y + 6)), sh((CXG - HALF * 0.97, BASE_Y - 24)), 8, 30, rng, fw=22, pal=gold)
+    CR.festoon(out, sh((CXG, APEX_Y + 6)), sh((CXG + HALF * 0.97, BASE_Y - 24)), 8, 30, rng, fw=22, pal=gold[2:] + gold[:2])
+    CR.deer_pair(out, 11560 - x0, HZ + 196, 118)
+    CR.deer_pair(out, 12460 - x0, HZ + 150, 84)
+    for (lx, ly, S) in CR.lantern_flock():
+        if x0 + 40 < lx < x0 + w - 40 and lx >= 8750:
+            CR.sky_lantern(out, lx - x0, ly, S, day=0.55, warm=0.8)
+    kinds = ['monarch', 'blue', 'yellow', 'white', 'admiral']
+    items = []
+    for i in range(18):
+        x = rng.uniform(8900, 12600); y = rng.uniform(980, 1290)
+        S = 11 + 16 * (y - 980) / 310.0
+        items.append((x - x0, y, S * rng.uniform(0.85, 1.2), rng.uniform(-0.9, 0.9), kinds[i % 5], rng.uniform(0.35, 0.95), int(rng.integers(1 << 20))))
+    CR.butterflies(out, items)
+    CR.fireflies(out, rng, 46, (10800 - x0, 12880 - x0), (700, 1010), size=(1.2, 2.6), glow=0.55, color=(1.0, 0.92, 0.55))
+    return out
 
 # ============================================================================================ assembly
 def render_garden(x0=GX0, w=GW, paint_it=True, verbose=True):
@@ -265,17 +156,12 @@ def render_garden(x0=GX0, w=GW, paint_it=True, verbose=True):
     cv2.fillConvexPoly(pole_sh, (poly * 4).astype(np.int32), 1.0, lineType=cv2.LINE_AA, shift=2)
     shadow = np.clip(np.maximum(np.maximum(ch['shadow'], 0.5 * tshadow), 0.55 * cv2.GaussianBlur(pole_sh, (0, 0), 3.0)), 0, 1) * land
     img = img * (1 - 0.50 * shadow[..., None]) + np.array([0.04, 0.09, 0.14], np.float32) * (0.50 * shadow[..., None])
-    tr, ta = temple(x0, w)
-    img = img * (1 - ta[..., None]) + tr
-    la, aa, pm, pa = doors_and_woman(x0, w)
-    img = img * (1 - aa[..., None]) + la
-    img = img * (1 - pa[..., None]) + pm
-    iv, iva = ivy_layer(x0, w)
-    img = img * (1 - iva[..., None]) + iv
-    fb, fa = G.flower_beds(x0, w)
-    img = img * (1 - fa[..., None]) + fb
+    hr, ta = HS.render_house(x0, w)
+    img = img * (1 - ta[..., None]) + hr
     dz, dza = G.daisies(x0, w)
     img = img * (1 - dza[..., None]) + dz
+    mr_, ma_ = MD.meadow(x0, w, path=(CXG, BASE_Y))
+    img = img * (1 - ma_[..., None]) + mr_
     wc, wa = walkers_garden(x0, w)
     img = img * (1 - wa[..., None]) + wc * wa[..., None]
     img = img * (1 - ch['alpha_b'][..., None]) + ch['canvas_b'] * ch['alpha_b'][..., None]
@@ -294,7 +180,7 @@ def render_garden(x0=GX0, w=GW, paint_it=True, verbose=True):
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     edges = np.clip(np.hypot(cv2.Sobel(gray, cv2.CV_32F, 1, 0), cv2.Sobel(gray, cv2.CV_32F, 0, 1)) * 1.6, 0, 1)
     people = np.maximum(ch['alpha'], ch['alpha_b'])
-    detail = np.clip(edges + (people > 0.5) * 0.6 + (ta > 0.5) * 0.3 + (mpa > 0.5) * 0.4, 0, 1)
+    detail = np.clip(edges + (people > 0.5) * 0.6 + (ta > 0.5) * 0.3 + (mpa > 0.5) * 0.4 + (ma_ > 0.3) * 0.35, 0, 1)
     fine_hard = (people > 0.5) | (mpa > 0.6)
     sk = 0.30 + 0.35 * cv2.GaussianBlur((people > 0.3).astype(np.float32), (0, 0), 4.0)
     out, n = paint(img, passes=((9, 1.0, 0.0), (5.5, 1.0, 0.03), (3.4, 1.0, 0.04), (2.1, 1.1, 0.05), (1.4, 1.3, 0.07)),
@@ -302,6 +188,7 @@ def render_garden(x0=GX0, w=GW, paint_it=True, verbose=True):
     if verbose: print('painted', n, round(time.time() - t0, 1))
     br, ba = birds_garden(x0, w)
     out = out * (1 - ba[..., None]) + br
+    out = festive(out, x0, w, s_pole)
     return np.clip(out, 0, 1).astype(np.float32)
 
 
@@ -314,3 +201,4 @@ if __name__ == '__main__':
     preview(img, WORK + '/g_preview.png', 2200)
     save_png(WORK + '/g_ring.png', img[:, 8640 - GX0:9720 - GX0])
     save_png(WORK + '/g_temple.png', img[:, 9720 - GX0:10800 - GX0])
+    save_png(WORK + '/g_s11.png', img[:, 10800 - GX0:11880 - GX0])

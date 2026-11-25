@@ -53,6 +53,7 @@ def birds_layer(x0, w):
     L = Layer(w, H, x0, 0, ss=2)
     for (bx, by, bs, ba, seed) in BIRDS:
         if bx < 2300: continue
+        if FACE['cx'] - 0.55 * FACE['S'] < bx < FACE['cx'] + 0.50 * FACE['S'] and FACE['cy'] - 0.65 * FACE['S'] < by < FACE['cy'] + 0.60 * FACE['S']: continue
         draw_bird_real(L.ctx, bx, by, bs * 0.95, ba * 0.7, seed, (seed % 100) * 0.4 + bx * 0.011)
     rgb, a = L.get()
     a = cv2.GaussianBlur(a, (0, 0), 0.7)
