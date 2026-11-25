@@ -4,6 +4,23 @@
 `python3 slice_panorama.py` re-cuts PNG slides from the master. `contact_sheet.jpg` shows all sixteen; `border_check.jpg` shows every border
 with a red hairline on the cut. Everything is generated in code (numpy + cairo + OpenCV) - no image-generation model, no copied reference.
 
+## What v5 changes (more realism: reflections, perspective, real shade)
+Studied what painters do to make a picture read as real - lost-and-found edges, a core shadow and reflected light inside every shadow, cast shadows with
+soft penumbras, water darker and softer than what it mirrors, atmospheric perspective, cumulus built from cauliflower crests with dark creases and
+warm rims - and applied it:
+* **Shadows obey perspective** (`util.sun_shadow_dir`, `chain.py`, `garden_scene.py`): shadow lines are parallel in 3D, so in the picture they radiate from the point
+  on the horizon under the sun. Every girl, the maypole and the avenue posts cast long, soft, blue-violet shadows along those lines - over the sea of cloud
+  in slide 7, over the meadow and across the mown path in slides 9-10 (they also darken the flowers and grass tips they fall on).
+* **A one-point-perspective avenue** (`garden_scene.lantern_posts`): painted oxblood posts with lanterns and bunting run to the door, spaced by the same
+  ground-plane mapping as the path and the meadow.
+* **Reflections** (`src/reflect.py`): ribbons, lanterns and butterflies are mirrored into the lake with the same ripple slicing as the sky; the lake is
+  darker and softer than the sky it mirrors; water keeps its ripples through the ink finish.
+* **Lost-and-found edges** (`ink.py`): the ink contour is drawn on the shadow side of a shape and fades out on the lit side, in a dark tone of what it encloses;
+  the finish flattens less (0.66) so skies keep their gradations.
+* **Sea of cloud** (`flow2.cloud_sea`): large billows with ridged crests, cool creases, warm rim light and haze toward the horizon.
+* **Girls** are rendered at 3x supersampling with an unsharp pass where solid, are paler and bluer with distance, and outlined only on their shadow side;
+  birds always show their wings (no more dark beans).
+
 ## What v4 changes (after the feedback "creative, beautiful, well drawn - not a weird paint")
 * **Ink and gouache, not an oil-paint filter** (`src/ink.py`). Studying John Bauer's *Princess Tuvstarr* (big simple shapes, flat washes, one thin confident dark
   contour, almost-mirror water, a few tiny precise details) and modern Scandinavian folk-pattern illustration (calm sun with a face, bows, wisteria, tidy symmetry),

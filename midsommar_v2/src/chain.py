@@ -149,7 +149,7 @@ def on_water(g):
     return g['x'] < 10100 and g['y'] < float(G.lake_y(g['x'])) + 1.0
 
 
-def render_chain(x0, w, xmin, xmax, verbose=False, split_y=None):
+def render_chain(x0, w, xmin, xmax, verbose=False, split_y=None, shadow_kx=1.15, shadows_all=False, ss=2, shadow_dir=None, shadow_blur=0.009, shadow_strength=0.66):
     """sprites for girls with xmin <= x < xmax; returns dict(canvas, alpha, shadow, refl, refl_a) in (H,w) canvas coords"""
     girls = build_chain()
     light = sun_light()
@@ -159,10 +159,17 @@ def render_chain(x0, w, xmin, xmax, verbose=False, split_y=None):
     sel = [g for g in girls if xmin <= g['x'] < xmax]
     sel.sort(key=lambda g: g['y'])
     for g in sel:
-        sp = fig.render(g['T'], pose_for(g, girls), light, seed=g['seed'])
+        sp = fig.render(g['T'], pose_for(g, girls), light, seed=g['seed'], ss=ss)
         ox, oy = sp['anchor']
         x0s, y0s = int(round(g['x'] - x0 - ox)), int(round(g['y'] - oy))
         a_ = sp['a']
+        kx_ = shadow_kx(g['x']) if callable(shadow_kx) else shadow_kx
+        ky_ = 0.52
+        if shadow_dir is not None:
+            kx_, ky_ = shadow_dir(g['x'], g['y'])
+        if shadows_all:
+            sa_, pad_ = fig.cast_shadow(sp, kx=kx_, ky=ky_, blur=shadow_blur, strength=shadow_strength)
+            _max_blit(out['shadow'], sa_, int(round(g['x'] - x0 - ox - pad_)), y0s)
         if on_water(g):                                                    # reflection: flipped, soft, dim; ripples at the feet
             fl_rgb, fl_a = sp['rgb'][::-1], a_[::-1]
             ry0 = int(round(g['y'] + 2))
@@ -171,10 +178,11 @@ def render_chain(x0, w, xmin, xmax, verbose=False, split_y=None):
             sub_rgb = fl_rgb[ys.start - ry0:ys.stop - ry0]; sub_a = fl_a[ys.start - ry0:ys.stop - ry0]
             _over(out['refl'], out['refl_a'], cv2.GaussianBlur(sub_rgb / np.maximum(sub_a, 1e-4)[..., None], (0, 0), 1.6), cv2.GaussianBlur(sub_a, (0, 0), sigmaX=2.0, sigmaY=1.2) * 0.42, x0s, ys.start)
         else:
-            sa, pad = fig.cast_shadow(sp, kx=1.15, ky=0.52, blur=0.009, strength=0.66)
-            _max_blit(out['shadow'], sa, int(round(g['x'] - x0 - ox - pad)), y0s)
+            if not shadows_all:
+                sa, pad = fig.cast_shadow(sp, kx=kx_, ky=ky_, blur=shadow_blur, strength=shadow_strength)
+                _max_blit(out['shadow'], sa, int(round(g['x'] - x0 - ox - pad)), y0s)
     for g in sel:
-        sp = fig.render(g['T'], pose_for(g, girls), light, seed=g['seed'])
+        sp = fig.render(g['T'], pose_for(g, girls), light, seed=g['seed'], ss=ss)
         ox, oy = sp['anchor']
         x0s, y0s = int(round(g['x'] - x0 - ox)), int(round(g['y'] - oy))
         a_ = sp['a']

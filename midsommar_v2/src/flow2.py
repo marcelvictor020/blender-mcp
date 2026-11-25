@@ -52,44 +52,58 @@ def drag(img, x0, w):
 
 # ------------------------------------------------------------------------------------------------------------- the sea of cloud
 def cloud_sea(x0, w, seed=5):
-    """a sea of cloud seen from just above it: ground-plane value noise, octaves faded out per pixel where they would alias (so it dissolves into
-    mist toward the horizon), lit from the sun side, dusk-lilac at the left, gold at the right. returns (rgb, n) for rows HZ..H"""
+    """a sea of cumulus seen from just above it, drawn the way painters build sunset cloud: cauliflower crests (ridged billows), dark cool creases, a warm
+    rim on every crest, the sun-facing slopes lighter than the viewer-facing ones, flat bases that crowd toward the horizon in true ground-plane perspective
+    (octaves that would alias are faded per pixel, so the distance melts into haze). returns (rgb, h) for rows HZ..H; h in 0..1 is the billow height."""
     nh = H - HZ
     k = np.arange(1, nh + 1, dtype=np.float32)[:, None]
     xs = np.arange(x0, x0 + w, dtype=np.float32)[None, :]
     cx = 6300.0
     U = (xs - cx) / k
     V = 1000.0 / k
-    dU, dV = 1.0 / k, 1000.0 / (k * k)
-    foot = np.maximum(dU, dV)
-    wU = 0.35 * (vnoise(U * 1.7, V * 1.7, seed + 40) - 0.5)
-    wV = 0.35 * (vnoise(U * 1.7 + 9.1, V * 1.7 + 4.3, seed + 41) - 0.5)
+    foot = np.maximum(1.0 / k, 1000.0 / (k * k))
+    wU = 0.30 * (vnoise(U * 1.5, V * 1.5, seed + 40) - 0.5)
+    wV = 0.30 * (vnoise(U * 1.5 + 9.1, V * 1.5 + 4.3, seed + 41) - 0.5)
     Uw, Vw = U + wU, V + wV
 
-    def field(u, v):
+    def field(u, v, f0, sd, octs=6):
         acc = np.zeros_like(u); tot = np.zeros_like(u)
-        for o in range(6):
-            f = 1.5 * (2.0 ** o)
+        for o in range(octs):
+            f = f0 * (2.0 ** o)
             wo = np.clip((0.5 - f * foot) / 0.25, 0, 1)
             amp = 0.55 ** o
-            acc += wo * amp * vnoise(u * f, v * f, seed + o * 7)
+            acc += wo * amp * vnoise(u * f, v * f, sd + o * 7)
             tot += wo * amp
-        return acc / np.maximum(tot, 1e-4), tot
+        return acc / np.maximum(tot, 1e-4)
 
-    n, tot = field(Uw, Vw)
-    n = np.clip((n - 0.5) * 1.5 + 0.5, 0, 1)
-    eps = 0.16
-    n2, _ = field(Uw + 0.55 * eps, Vw + 0.83 * eps)
-    n2 = np.clip((n2 - 0.5) * 1.5 + 0.5, 0, 1)
-    lit = np.clip(0.70 + 2.4 * (n - n2) + 0.30 * (n - 0.5), 0.30, 1)
+    def height(u, v):
+        n = field(u, v, 0.80, seed, 4)
+        r = field(u + 3.3, v + 1.7, 1.7, seed + 90, 3)
+        ridge = 1.0 - np.abs(2.0 * r - 1.0)
+        return np.clip((0.66 * n + 0.34 * ridge - 0.30) * 1.9, 0, 1)
+
+    h = height(Uw, Vw)
+    sgn = np.where(xs < SUN_X, 1.0, -1.0).astype(np.float32)
+    eps = 0.14
+    h2 = height(Uw + eps * 0.40 * sgn, Vw + eps * 0.92)
+    d = h - h2                                                                     # >0: the slope falls away toward the sun (it faces the light)
+    h = h.astype(np.float32); d = d.astype(np.float32)
+    hb = cv2.GaussianBlur(h, (0, 0), 1.2)
+    gm = np.hypot(cv2.Sobel(hb, cv2.CV_32F, 1, 0), cv2.Sobel(hb, cv2.CV_32F, 0, 1))
+    top = smoothstep(0.30, 0.86, h)
+    lit = np.clip(0.30 + 0.58 * top + 0.28 * np.clip(0.5 + 3.0 * d, 0, 1) - 0.12, 0, 1)
+    ao = 0.72 + 0.28 * smoothstep(0.10, 0.60, h)                                   # creases between the billows are the darkest, coolest part
+    rim = np.clip(gm * 7.0, 0, 1) * smoothstep(0.35, 0.85, h)
     t = smoothstep(5200, 7400, xs)[..., None]
-    sh = np.array([0.62, 0.56, 0.78], np.float32) * (1 - t) + np.array([0.80, 0.68, 0.70], np.float32) * t
-    li = np.array([1.00, 0.88, 0.88], np.float32) * (1 - t) + np.array([1.00, 0.94, 0.76], np.float32) * t
-    rgb = sh * (1 - lit[..., None]) + li * lit[..., None]
+    sh = np.array([0.50, 0.44, 0.72], np.float32) * (1 - t) + np.array([0.70, 0.58, 0.70], np.float32) * t
+    li = np.array([1.00, 0.84, 0.80], np.float32) * (1 - t) + np.array([1.00, 0.93, 0.72], np.float32) * t
+    rm = np.array([1.00, 0.88, 0.70], np.float32) * (1 - t) + np.array([1.00, 0.96, 0.78], np.float32) * t
+    rgb = (sh * (1 - lit[..., None]) + li * lit[..., None]) * ao[..., None]
+    rgb = rgb + rim[..., None] * rm * 0.55
     hz = np.array([0.90, 0.74, 0.80], np.float32) * (1 - t) + np.array([1.0, 0.86, 0.62], np.float32) * t
-    haze = np.exp(-k / 70.0)[..., None]
-    rgb = rgb * (1 - 0.8 * haze) + hz * 0.8 * haze
-    return rgb.astype(np.float32), n.astype(np.float32)
+    haze = np.exp(-k / 75.0)[..., None]
+    rgb = rgb * (1 - 0.85 * haze) + hz * 0.85 * haze
+    return np.clip(rgb, 0, 1).astype(np.float32), (0.22 + 0.78 * h).astype(np.float32)
 
 
 def sea_alpha(x0, w, n):

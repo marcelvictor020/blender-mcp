@@ -31,14 +31,22 @@ def wobble(arr, amp, seed, cell=46):
     return cv2.remap(arr, gx + dx, gy + dy, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
 
 
-def outline(mask, width=2.0, closing=7):
-    """ink line round the outside of a mask (holes in foliage are closed so only the silhouette is drawn)"""
+def outline(mask, width=2.0, closing=7, light_x=None):
+    """ink line round the outside of a mask (holes in foliage are closed so only the silhouette is drawn). With light_x (+1: light comes from the right,
+    -1: from the left, scalar or (1,w)) the line is found on the shadow side of every shape and lost on the lit side - a painter's lost-and-found edge."""
     m = (mask > 0.5).astype(np.uint8)
     if closing > 1:
         m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (closing, closing)))
     edge = m - cv2.erode(m, np.ones((3, 3), np.uint8))
     line = cv2.GaussianBlur(edge.astype(np.float32), (0, 0), max(0.6, width * 0.55))
-    return np.clip(line * (1.8 + 0.5 * width), 0, 1)
+    line = np.clip(line * (1.8 + 0.5 * width), 0, 1)
+    if light_x is not None:
+        mf = cv2.GaussianBlur(m.astype(np.float32), (0, 0), 2.2)
+        gx = cv2.Sobel(mf, cv2.CV_32F, 1, 0); gy = cv2.Sobel(mf, cv2.CV_32F, 0, 1)
+        nx = -gx / (np.hypot(gx, gy) + 1e-4)                                   # outward normal, x component
+        nxl = np.clip(nx * light_x, -1, 1)
+        line = line * (0.30 + 0.70 * np.clip(0.5 - 0.5 * nxl, 0, 1))
+    return line
 
 
 def paper(h, w, seed=3):
@@ -48,8 +56,9 @@ def paper(h, w, seed=3):
     return 1.0 + 0.030 * fine + 0.022 * mid + 0.014 * fib
 
 
-def finish(img, lines=(), keep=None, flat=0.88, pool=0.12, grain=1.0, seed=1, register=1.2):
-    """lines: [(mask, width_px, alpha)]; keep: 0..1 map of areas that must stay as drawn (faces, windows, flowers, stars)"""
+def finish(img, lines=(), keep=None, flat=0.66, pool=0.12, grain=1.0, seed=1, register=1.2, light_x=None, tint=0.30):
+    """lines: [(mask, width_px, alpha)] (alpha may be a (1,w) array); keep: 0..1 map of areas that must stay as drawn (faces, windows, flowers, stars);
+    light_x: +1 / -1 / (1,w): which side the light comes from, so that outlines are found on the shadow side and lost on the lit side"""
     h, w = img.shape[:2]
     fl = flatten(img)
     k = flat * (1.0 if keep is None else (1.0 - np.clip(keep, 0, 1)))
@@ -60,10 +69,11 @@ def finish(img, lines=(), keep=None, flat=0.88, pool=0.12, grain=1.0, seed=1, re
     base = base * (1 - pool * e[..., None] * np.array([0.9, 1.0, 0.8], np.float32))          # pigment pools a little at the edges
     ink = np.zeros((h, w), np.float32)
     for (mask, width, alpha) in lines:
-        ink = np.maximum(ink, outline(mask, width) * alpha)
+        ink = np.maximum(ink, outline(mask, width, light_x=light_x) * alpha)
     if register > 0:
         ink = wobble(ink, register, seed + 11)
     ink = np.clip(ink * (0.92 + 0.16 * fbm01(0, 0, w, h, 9, 2, seed + 5)), 0, 1)             # the pen is not equally dark everywhere
-    out = base * (1 - ink[..., None]) + INK * ink[..., None]
+    line_col = base * tint + INK * (1 - tint)                                                # a line is drawn in a dark version of what it encloses
+    out = base * (1 - ink[..., None]) + line_col * ink[..., None]
     out = out * (1 + grain * (paper(h, w, seed) - 1.0))[..., None]
     return np.clip(out, 0, 1).astype(np.float32)

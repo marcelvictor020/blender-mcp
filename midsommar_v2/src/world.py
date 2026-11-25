@@ -120,6 +120,7 @@ def build(verbose=True):
     if verbose: print('shore', round(time.time() - t0, 1))
     wc = lake_colour(x0, w)
     lake = mirror_water(img, x0, w, wc, seed=17)
+    lake[HZ:] = lake[HZ:] * 0.88                                           # water is almost always darker than the sky it mirrors
     # soft mist lying on the water in the dusk part, pearl-coloured; a glint path under the sun
     ysf = np.arange(H, dtype=np.float32)[:, None]
     low = np.exp(-((ysf - (HZ + 70)) / 110.0) ** 2) * (0.18 + 0.82 * fbm01(x0, 0, w, H, 200, 4, 71, aniso=6.0)) * (0.34 * tdusk + 0.16 * (1 - tdusk))

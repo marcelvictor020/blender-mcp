@@ -333,3 +333,12 @@ def cache_load(name):
 
 def rng(seed):
     return np.random.default_rng(seed)
+
+
+def sun_shadow_dir(gx, gy, sun_x=7330.0, length=1.9, hz=None):
+    """image-space direction of the cast shadow of a vertical object standing at (gx, gy): shadow lines are parallel in 3D, so in the picture they
+    radiate away from the point on the horizon under the sun. Returns (kx, ky) for fig.cast_shadow (shadow tip = foot + height * (kx, ky))."""
+    hz = HZ if hz is None else hz
+    dx, dy = gx - sun_x, max(gy - hz, 4.0)
+    n = math.hypot(dx, dy)
+    return length * dx / n, length * dy / n

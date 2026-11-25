@@ -18,6 +18,7 @@ import house as HS
 import meadow as MD
 import critters as CR
 import ribbons as RB
+import reflect as RF
 
 TAU = 2 * math.pi
 DRESSES, BELTS, HAIRS, SKINS = CH.DRESSES, CH.BELTS, CH.HAIRS, CH.SKINS
@@ -104,6 +105,74 @@ def birds_garden(x0, w):
 
 
 
+POST_Z = [8.0, 10.6, 14.0, 18.5, 24.5, 32.0]
+
+
+def post_list():
+    """(px, py, sc) of every post of the avenue: one ground-plane mapping shared with the meadow, the path and the house"""
+    out = []
+    for Zd in sorted(POST_Z, reverse=True):
+        py = HZ + G.HCAM * G.FG / Zd
+        sc = (py - HZ) / G.HCAM
+        for side in (-1, 1):
+            out.append((CXG + side * 1.75 * G.FG / Zd, py, sc))
+    return out
+
+
+def posts_shadow(x0, w):
+    """long soft shadows of the avenue posts lying across the path, all running away from the sun's footpoint (a one-point-perspective fan)"""
+    m = np.zeros((H, w), np.float32)
+    for (px, py, sc) in post_list():
+        ux, uy = sun_shadow_dir(px, py, length=1.0)
+        ln = 2.45 * sc * 1.5
+        th = max(2.0, 0.085 * sc)                                              # thickness measured across the shadow, not across the post
+        nx_, ny_ = -uy, ux
+        bx, by = px - x0, py
+        pts = np.array([[bx - th * nx_, by - th * ny_], [bx + th * nx_, by + th * ny_], [bx + ux * ln + 0.55 * th * nx_, by + uy * ln + 0.55 * th * ny_],
+                        [bx + ux * ln - 0.55 * th * nx_, by + uy * ln - 0.55 * th * ny_]], np.float32)
+        cv2.fillConvexPoly(m, (pts * 4).astype(np.int32), 1.0, lineType=cv2.LINE_AA, shift=2)
+    return cv2.GaussianBlur(m, (0, 0), 2.4)
+
+
+def lantern_posts(out, x0, w, rng):
+    """an avenue of painted posts with lanterns running to the door, with bunting from post to post: the strongest perspective cue in the garden
+    (heights, spacing and widths all follow the same ground-plane mapping as the meadow, the path and the house)"""
+    FGl, HC = G.FG, G.HCAM
+    L = Layer(w, H, x0, 0, 2)
+    c = L.ctx
+    tops = {-1: [], 1: []}
+    for (px, py, sc) in post_list():
+        if True:
+            side = -1 if px < CXG else 1
+            if not (x0 - 80 < px < x0 + w + 80): continue
+            ph, pw = 2.45 * sc, max(1.6, 0.070 * sc)
+            gp = cairo.LinearGradient(px - pw, 0, px + pw, 0)
+            gp.add_color_stop_rgb(0, 0.82, 0.34, 0.24); gp.add_color_stop_rgb(0.55, 0.60, 0.17, 0.15); gp.add_color_stop_rgb(1, 0.30, 0.08, 0.09)
+            c.set_source(gp); c.new_path(); c.rectangle(px - pw, py - ph, 2 * pw, ph); c.fill_preserve()
+            c.set_source_rgba(0.17, 0.11, 0.10, 0.8); c.set_line_width(max(0.7, 0.012 * sc)); c.stroke()
+            for b in range(3):                                                    # painted bands like a dalarna post
+                by = py - ph * (0.18 + 0.12 * b)
+                c.set_source_rgb(0.97, 0.90, 0.62); c.new_path(); c.rectangle(px - pw, by, 2 * pw, 0.05 * sc); c.fill()
+            lw, lh = 0.17 * sc, 0.30 * sc
+            ly = py - ph - lh
+            gl = cairo.RadialGradient(px, ly + lh * 0.5, 1, px, ly + lh * 0.5, 0.95 * sc)
+            gl.add_color_stop_rgba(0, 1.0, 0.82, 0.45, 0.55); gl.add_color_stop_rgba(0.4, 1.0, 0.66, 0.28, 0.20); gl.add_color_stop_rgba(1, 1.0, 0.6, 0.2, 0)
+            c.set_source(gl); c.new_path(); c.arc(px, ly + lh * 0.5, 0.95 * sc, 0, TAU); c.fill()
+            c.new_path(); c.move_to(px - lw * 0.7, ly + lh); c.line_to(px - lw, ly + lh * 0.2); c.line_to(px, ly - lh * 0.12); c.line_to(px + lw, ly + lh * 0.2); c.line_to(px + lw * 0.7, ly + lh); c.close_path()
+            gg = cairo.LinearGradient(0, ly, 0, ly + lh); gg.add_color_stop_rgb(0, 1.0, 0.95, 0.70); gg.add_color_stop_rgb(1, 1.0, 0.72, 0.30)
+            c.set_source(gg); c.fill_preserve(); c.set_source_rgba(0.17, 0.11, 0.10, 0.85); c.set_line_width(max(0.7, 0.014 * sc)); c.stroke()
+            tops[side].append((px - x0, ly - 0.02 * sc))
+    rgb, a = L.get()
+    out = out * (1 - a[..., None]) + rgb
+    gold = [(0.97, 0.94, 0.86), (0.96, 0.78, 0.24), (0.40, 0.62, 0.90), (0.84, 0.20, 0.18), (0.30, 0.60, 0.34)]
+    for side in (-1, 1):
+        P = sorted(tops[side], key=lambda p: -p[1])                              # near -> far
+        for (p0, p1) in zip(P[:-1], P[1:]):
+            span = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
+            CR.festoon(out, p0, p1, 0.10 * span, max(4, int(span / 26)), rng, fw=max(7, 0.40 * span / max(4, int(span / 26)) + 6), pal=gold)
+    return out
+
+
 def festive(out, x0, w, s_pole):
     """crisp details painted on top: bunting with folk flowers between the maypole and the house, a doe and her fawn at the forest edge, sky lanterns
     drifting on, butterflies over the meadow, fireflies waking in the shade of the trees"""
@@ -121,9 +190,11 @@ def festive(out, x0, w, s_pole):
     CR.festoon(out, sh((CXG, APEX_Y + 6)), sh((CXG + HALF * 0.97, BASE_Y - 24)), 8, 30, rng, fw=22, pal=gold[2:] + gold[:2])
     CR.deer_pair(out, 11560 - x0, HZ + 196, 118)
     CR.deer_pair(out, 12460 - x0, HZ + 150, 84)
+    before_sky = out.copy()
     for (lx, ly, S) in CR.lantern_flock():
         if x0 + 40 < lx < x0 + w - 40 and lx >= 8750:
             CR.sky_lantern(out, lx - x0, ly, S, day=0.55, warm=0.8)
+    out = lantern_posts(out, x0, w, rng)
     kinds = ['monarch', 'blue', 'yellow', 'white', 'admiral']
     items = []
     for i in range(18):
@@ -131,6 +202,9 @@ def festive(out, x0, w, s_pole):
         S = 11 + 16 * (y - 980) / 310.0
         items.append((x - x0, y, S * rng.uniform(0.85, 1.2), rng.uniform(-0.9, 0.9), kinds[i % 5], rng.uniform(0.35, 0.95), int(rng.integers(1 << 20))))
     CR.butterflies(out, items)
+    _ys = np.arange(H, dtype=np.float32)[:, None]; _xs = np.arange(x0, x0 + w, dtype=np.float32)[None, :]
+    lake_m = ((_ys < G.lake_y(_xs) - 6) & (_xs < 10200)).astype(np.float32)
+    out = RF.add_reflections(out, before_sky, x0, w, lake_m)
     CR.fireflies(out, rng, 46, (10800 - x0, 12880 - x0), (700, 1010), size=(1.2, 2.6), glow=0.55, color=(1.0, 0.92, 0.55))
     return out
 
@@ -152,21 +226,26 @@ def render_garden(x0=GX0, w=GW, paint_it=True, verbose=True):
     ytop = BASE_Y - 8
     ybot = BASE_Y + 78 + 0.16 * np.clip(dx, 0, None)
     tshadow = np.clip(ax * smoothstep(ytop, ytop + 16, ys) * (1 - smoothstep(ybot - 24, ybot + 72, ys)), 0, 1)
-    ch = CH.render_chain(x0, w, 7650, 10200, verbose=verbose, split_y=RING['base_y'])
-    # long pole shadow (to the right) + the dancers' shadows
+    ch = CH.render_chain(x0, w, 7650, 10200, verbose=verbose, split_y=RING['base_y'], shadow_dir=lambda gx, gy: sun_shadow_dir(gx, gy, length=1.35), ss=3, shadow_blur=0.020, shadow_strength=0.62)
+    # long pole shadow along the line away from the sun's footpoint + the dancers' shadows + the avenue posts
     s_pole = FG / CH.ring_geometry()[1]
     pole_sh = np.zeros((H, w), np.float32)
     px, py = RING['cx'] - x0, RING['base_y']
-    poly = np.array([[px - 7, py], [px + 7, py], [px + 7.4 * s_pole * 1.15 + 12, py + 7.4 * s_pole * 0.52], [px + 7.4 * s_pole * 1.15 - 12, py + 7.4 * s_pole * 0.52]], np.float32)
+    ux, uy = sun_shadow_dir(RING['cx'], RING['base_y'], length=1.0)
+    Lp_ = 7.4 * s_pole * 1.35
+    nxp, nyp = -uy, ux
+    poly = np.array([[px - 7 * nxp, py - 7 * nyp], [px + 7 * nxp, py + 7 * nyp], [px + ux * Lp_ + 12 * nxp, py + uy * Lp_ + 12 * nyp], [px + ux * Lp_ - 12 * nxp, py + uy * Lp_ - 12 * nyp]], np.float32)
     cv2.fillConvexPoly(pole_sh, (poly * 4).astype(np.int32), 1.0, lineType=cv2.LINE_AA, shift=2)
-    shadow = np.clip(np.maximum(np.maximum(ch['shadow'], 0.5 * tshadow), 0.55 * cv2.GaussianBlur(pole_sh, (0, 0), 3.0)), 0, 1) * land
-    img = img * (1 - 0.50 * shadow[..., None]) + np.array([0.04, 0.09, 0.14], np.float32) * (0.50 * shadow[..., None])
+    post_sh = posts_shadow(x0, w)
+    shadow = np.clip(np.maximum(np.maximum(np.maximum(ch['shadow'], 0.5 * tshadow), 0.55 * cv2.GaussianBlur(pole_sh, (0, 0), 3.0)), 0.9 * post_sh), 0, 1) * land
     hr, ta = HS.render_house(x0, w)
     img = img * (1 - ta[..., None]) + hr
     dz, dza = G.daisies(x0, w)
     img = img * (1 - dza[..., None]) + dz
     mr_, ma_ = MD.meadow(x0, w, path=(CXG, BASE_Y))
     img = img * (1 - ma_[..., None]) + mr_
+    shadow_col = np.array([0.07, 0.09, 0.24], np.float32)                      # golden-hour shadows are blue-violet (lit by the sky, not the sun)
+    img = img * (1 - 0.56 * shadow[..., None]) + shadow_col * (0.56 * shadow[..., None])   # shadows fall on the grass and flowers too
     wc, wa = walkers_garden(x0, w)
     img = img * (1 - wa[..., None]) + wc * wa[..., None]
     img = img * (1 - ch['alpha_b'][..., None]) + ch['canvas_b'] * ch['alpha_b'][..., None]
@@ -188,9 +267,10 @@ def render_garden(x0=GX0, w=GW, paint_it=True, verbose=True):
     people = np.maximum(ch['alpha'], ch['alpha_b'])
     if os.environ.get('FINISH', 'ink') == 'ink':
         import ink as INK
-        keep = np.clip(0.75 * (ma_ > 0.3) + 0.55 * (ta > 0.5) + 0.65 * (people > 0.5) + 0.6 * (mpa > 0.5), 0, 1).astype(np.float32)
+        lake_keep = ((ys > HZ + 2) & (ys < G.lake_y(xs) - 3) & (xs < 10200)).astype(np.float32)
+        keep = np.clip(0.75 * (ma_ > 0.3) + 0.55 * (ta > 0.5) + 0.65 * (people > 0.5) + 0.6 * (mpa > 0.5) + 0.85 * lake_keep, 0, 1).astype(np.float32)
         keep = cv2.GaussianBlur(keep, (0, 0), 2.0)
-        out = INK.finish(img, lines=[(ta > 0.5, 2.6, 0.95), (people > 0.5, 1.6, 0.85), (mpa > 0.5, 1.8, 0.9)], keep=keep, seed=9)
+        out = INK.finish(img, lines=[(ta > 0.5, 2.6, 0.95), (people > 0.5, 1.6, 0.85), (mpa > 0.5, 1.8, 0.9)], keep=keep, seed=9, light_x=-1.0)
         if verbose: print('inked', round(time.time() - t0, 1))
         br, ba = birds_garden(x0, w)
         out = out * (1 - ba[..., None]) + br

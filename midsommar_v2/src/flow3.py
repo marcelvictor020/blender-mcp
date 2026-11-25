@@ -20,12 +20,14 @@ import flow as F
 import flow2 as F2
 import ribbons as RB
 import ink as INK
+import reflect as RF
 from blend import stagger_blend
 
 TAU = 2 * math.pi
 FX0, FX1 = F.FX0, F.FX1
 FW = FX1 - FX0
-SC = (5120.0, 330.0, 380.0)                      # centre + radius of the fold
+SC = (5120.0, 330.0, 380.0)
+SUN_X_ = 7330.0                      # centre + radius of the fold
 
 
 def swirl(img, x0, cx, cy, R, twist):
@@ -115,14 +117,25 @@ def render_flow3(paint_it=True, verbose=True):
     img = swirl(img, x0, *SC, 2.7)                                                # the fold
     sv_rgb, sv_a = spiral_vine(x0, w)
     img = img * (1 - sv_a[..., None]) + sv_rgb
-    ch = CH.render_chain(x0, w, 4700, 8750, verbose=verbose)
+    ch = CH.render_chain(x0, w, 4700, 8750, verbose=verbose, shadow_dir=lambda gx, gy: sun_shadow_dir(gx, gy, length=1.25), shadows_all=True, ss=3, shadow_blur=0.022, shadow_strength=0.60)
     form = smoothstep(4850, 6500, xsf)
+    lake_y = G.lake_y(xsf)
+    land = ((ys > lake_y) & (xsf > 6900)).astype(np.float32)
+    surf = np.clip(np.maximum(A_full, land), 0, 1)                                 # shadows fall on cloud and on grass, not on open water (there: reflections)
+    sh = np.clip(ch['shadow'] * surf, 0, 1) * (0.55 + 0.20 * smoothstep(5200, 7400, xsf))
+    img = img * (1 - sh[..., None]) + np.array([0.22, 0.16, 0.34], np.float32) * sh[..., None]
     ghost = 0.24 + 0.76 * form
     ga = ch['alpha'] * ghost
     ga = ga * form + cv2.GaussianBlur(ga, (0, 0), 2.2) * (1 - form)
     mist_c = np.array([0.93, 0.89, 0.97], np.float32)
     gc = ch['canvas'] * (0.30 + 0.70 * form)[..., None] + mist_c * (0.70 * (1 - form))[..., None]
     gc = gc * form[..., None] + cv2.GaussianBlur(gc, (0, 0), 2.2) * (1 - form)[..., None]
+    gsharp = gc + 0.75 * (gc - cv2.GaussianBlur(gc, (0, 0), 1.1))                    # faces and hands: crisp where the figure is solid
+    gc = np.where((ga > 0.45)[..., None], gsharp, gc)
+    hz_amt = (0.34 * np.exp(-np.maximum(ys - HZ, 0) / 150.0))[..., None]              # aerial perspective: the far girls are paler and bluer
+    hz_col = np.array([0.86, 0.76, 0.88], np.float32) * (1 - smoothstep(5200, 7400, xsf))[..., None] + np.array([1.0, 0.88, 0.70], np.float32) * smoothstep(5200, 7400, xsf)[..., None]
+    gc = gc * (1 - hz_amt) + hz_col * hz_amt
+    gc = np.clip(gc, 0, 1)
     ra_ = ch['refl_a'] * ghost * (1 - A_full)
     img = img * (1 - ra_[..., None]) + ch['refl'] * ra_[..., None]
     img = img * (1 - ga[..., None]) + gc * ga[..., None]
@@ -136,22 +149,30 @@ def render_flow3(paint_it=True, verbose=True):
     img = np.clip(img, 0, 1).astype(np.float32)
     if verbose: print('composited', round(time.time() - t0, 1))
     if not paint_it: return img
-    keep = np.clip(0.55 * (ga > 0.4) + 0.80 * (pa > 0.3) + 0.8 * (sv_a > 0.5), 0, 1).astype(np.float32)
+    water_keep = ((ys > HZ + 2) & (ys < lake_y) | ((ys > HZ + 2) & (xsf < 6900))).astype(np.float32) * (1 - A_full)
+    keep = np.clip(0.55 * (ga > 0.4) + 0.80 * (pa > 0.3) + 0.8 * (sv_a > 0.5) + 0.85 * water_keep, 0, 1).astype(np.float32)
     keep[HZ - 48:HZ + 14, :] = np.maximum(keep[HZ - 48:HZ + 14, :], 0.85)                     # the walkers on the far shore stay figures, not fins
     keep = cv2.GaussianBlur(keep, (0, 0), 1.6)
-    out = INK.finish(img, lines=[(ch['alpha'] > 0.4, 1.2, 0.62 * form), (sv_a > 0.5, 1.2, 0.5)], keep=keep, seed=21)
+    lx = np.where(xsf < SUN_X_, 1.0, -1.0).astype(np.float32)
+    out = INK.finish(img, lines=[(ch['alpha'] > 0.4, 1.3, 0.80 * form), (sv_a > 0.5, 1.2, 0.5)], keep=keep, seed=21, light_x=lx)
     mL = smoothstep(4380, 5050, xsf); mR = 1 - smoothstep(8250, 8700, xsf)
     out = a_img * (1 - mL[..., None]) + out * mL[..., None]
     out = out * mR[..., None] + b_img * (1 - mR[..., None])
     cache_save('f_flow_base', x0, out)
-    return post(out, x0, w)
+    lake = ((ys < lake_y) | (xsf < 6900)).astype(np.float32) * (1 - A_full) * (1 - np.clip(ch['alpha'] * 2, 0, 1))
+    np.save(WORK + '/flow_water_mask.npy', lake.astype(np.float16))
+    return post(out, x0, w, lake)
 
 
-def post(out, x0, w):
-    """crisp things drawn on the finished picture: the ribbons, then the living details"""
+def post(out, x0, w, water_mask=None):
+    """crisp things drawn on the finished picture: the ribbons, then the living details - and their reflections in the lake"""
+    if water_mask is None:
+        water_mask = np.load(WORK + '/flow_water_mask.npy').astype(np.float32)
+    before = out.copy()
     rr, ra = RB.ribbon_layer(x0, w)
     out = out * (1 - ra[..., None]) + rr
     out = F2.critters2(out, x0)
+    out = RF.add_reflections(out, before, x0, w, water_mask)
     return np.clip(out, 0, 1).astype(np.float32)
 
 

@@ -32,6 +32,7 @@ def draw_bird_real(c, x, y, s, ang, seed, phase):
     c.rotate(ang)
     c.scale(s, s)
     up = math.sin(phase)
+    up = math.copysign(0.42 + 0.58 * abs(up), up) if abs(up) < 0.999 else up        # a bird in flight always shows its wings
     for side, sh in ((1, 1.0), (-1, 0.82)):                                # near wing, far wing
         wy = -1.05 * up * sh
         c.new_path()

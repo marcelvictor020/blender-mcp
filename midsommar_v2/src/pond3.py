@@ -13,6 +13,7 @@ import sculpt as SC
 import pond2 as P2
 import arch2 as AR
 import critters as CR
+import reflect as RF
 from folk import Z
 
 X0, X1 = 2000, 8200
@@ -150,10 +151,11 @@ def render_pond(x0=X0, w=CW, paint_it=True, verbose=True):
     if os.environ.get('FINISH', 'ink') == 'ink':
         import ink as INK
         boat_full = np.zeros((H, w), np.float32); boat_full[oy:oy + BT.BH, ox:ox + BT.BW] = boat_a
-        keep = np.clip(1.0 * (fine_soft > 0.5) + 0.62 * (ac > 0.4) + 0.5 * (wa > 0.5), 0, 1).astype(np.float32)
+        water_keep = (np.arange(H, dtype=np.float32)[:, None] > HZ + 2).astype(np.float32) * np.ones((1, w), np.float32) * (1 - np.clip(wa + ac, 0, 1))
+        keep = np.clip(1.0 * (fine_soft > 0.5) + 0.62 * (ac > 0.4) + 0.5 * (wa > 0.5) + 0.8 * water_keep, 0, 1).astype(np.float32)
         keep[HZ - 48:HZ + 14, :] = np.maximum(keep[HZ - 48:HZ + 14, :], 0.85)
         keep = cv2.GaussianBlur(keep, (0, 0), 1.6)
-        out = INK.finish(img, lines=[(wa > 0.5, 2.2, 0.80), (boat_full > 0.5, 1.8, 0.85)], keep=keep, seed=7)
+        out = INK.finish(img, lines=[(wa > 0.5, 2.2, 0.80), (boat_full > 0.5, 1.8, 0.85)], keep=keep, seed=7, light_x=1.0)
         if verbose: print('inked', round(time.time() - t0, 1))
     else:
         out, n = paint(img, passes=((11, 1.0, 0.0), (6.5, 1.0, 0.025), (3.8, 1.0, 0.03), (2.2, 1.1, 0.04), (1.4, 1.3, 0.06)),
@@ -170,12 +172,16 @@ def render_pond(x0=X0, w=CW, paint_it=True, verbose=True):
     out = out * (1 - bra[..., None]) + brd
     rng = np.random.default_rng(99)
     # lanterns rising from the girl's boat through the skylight of the arch, then fireflies in the leaves and over the water
+    before_sky = out.copy()
     for (lx, ly, S, wm) in ((3905, 575, 10.5, 1.0), (3838, 452, 9.5, 1.0), (3942, 352, 8.0, 0.9), (3795, 240, 7.0, 0.9), (3880, 150, 6.0, 0.8), (3820, 60, 5.0, 0.7)):
         CR.sky_lantern(out, lx - x0, ly, S, day=0.0, warm=wm)
     CR.swan_family(out, 2430 - x0, 1222, 140, rng)
     CR.flower_boat(out, 2960 - x0, 1085, 74, 21, pal=1)
     CR.fireflies(out, rng, 70, (3120 - x0, 4560 - x0), (260, 1000), size=(1.4, 3.6), glow=1.0)
     CR.fireflies(out, rng, 36, (3300 - x0, 4400 - x0), (880, 1250), size=(1.2, 2.8), glow=0.8, color=(1.0, 0.86, 0.50))
+    boat_full2 = np.zeros((H, w), np.float32); boat_full2[oy:oy + BT.BH, ox:ox + BT.BW] = boat_a
+    wmask = 1.0 - np.clip(wa + 0.8 * ac + boat_full2, 0, 1)
+    out = RF.add_reflections(out, before_sky, x0, w, wmask)                    # the rising lanterns are also standing in the lake
     # gold-leaf flecks near the lantern
     r = Z(99)
     sp_ = np.zeros((H, w), np.float32)
