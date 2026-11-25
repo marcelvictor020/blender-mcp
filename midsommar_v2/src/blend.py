@@ -64,3 +64,14 @@ def stagger_blend(A, B, xs0, xc, width, seed=1, amp=200.0, soft_min=0.10, fine=1
     m = m * smoothstep(xs0, xs0 + e, X)
     m = 1 - (1 - m) * smoothstep(xs0 + w, xs0 + w - e, X)
     return A * (1 - m[..., None]) + B * m[..., None]
+
+
+def lowfreq_match(A, B, xs0, xa, xb, sigma=70.0, strength=0.9):
+    """pull A's colour field toward B's - low frequencies only - as x goes from xa to xb, so that the line-by-line join trades DETAIL (folk outline for painted water,
+    dusk cloud for sunset cloud) and not a step of colour: no stain where one picture's blue meets the other's lilac"""
+    h, w = A.shape[:2]
+    X = (np.arange(w, dtype=np.float32) + xs0)[None, :]
+    k = smoothstep(xa, xb, X)[..., None] * strength
+    La = cv2.GaussianBlur(np.ascontiguousarray(A, np.float32), (0, 0), sigma)
+    Lb = cv2.GaussianBlur(np.ascontiguousarray(B, np.float32), (0, 0), sigma)
+    return np.clip(A + (Lb - La) * k, 0, 1)

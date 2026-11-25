@@ -6,7 +6,7 @@ import numpy as np
 import cv2
 import cairo
 from util import *
-from blend import smear_blend, stagger_blend
+from blend import smear_blend, stagger_blend, lowfreq_match
 import sketch as SK
 from shared import TEMPLE
 from hall import S0, HC, HE, AS
@@ -35,7 +35,7 @@ def build(verbose=True):
     Design space holds every stage at the position it was authored. Two design slides are never shown: the dull sea-of-cloud slide (design 6, the lake is
     simply cut from the fold straight into the sunset, with a row-by-row melt across 600 px) and the moon page between the invitation and the hallway (the
     invitation melts into the drawing of the same meadow, and the hallway starts). The moon ends the carousel instead, melting out of the overhead dance."""
-    from blend import stagger_blend
+    from blend import stagger_blend, lowfreq_match
     canvas = np.zeros((H, W, 3), np.float32)
     x0f, folk = cache_load('f_folk')
     x0p, pond = cache_load('f_pond')
@@ -47,7 +47,14 @@ def build(verbose=True):
     A = seg(folk, x0f, 1600, 3200)
     Bp = seg(pond, x0p, 1600, 3200)
     Bp[:, :max(0, x0p - 1600)] = A[:, :max(0, x0p - 1600)]
-    canvas[:, 1600:3200] = stagger_blend(A, Bp, 1600, 2640.0, 500.0, seed=5, amp=200.0)
+    cut = max(0, x0p - 1600)                                                       # the lake's own image starts at x0p: the join starts there too (no hard edge where it begins)
+    Bt = Bp.copy()                                                                 # the colour the lake will have at its first column, carried leftward: the folk picture warms toward it before the border
+    if cut > 0:
+        edge = cv2.GaussianBlur(np.ascontiguousarray(Bp[:, cut:cut + 160].mean(1, keepdims=True)), (0, 0), sigmaX=0.1, sigmaY=30.0)
+        Bt[:, :cut] = edge
+    A2 = lowfreq_match(A, Bt, 1600, 1740.0, 1600 + cut + 40.0, sigma=55.0, strength=0.97)
+    canvas[:, 1600:1600 + cut] = A2[:, :cut]
+    canvas[:, 1600 + cut:3200] = stagger_blend(A2[:, cut:], Bp[:, cut:], 1600 + cut, 2640.0, 560.0, seed=5, amp=200.0, soft_min=0.25, fine=0.7)
     canvas[:, 3200:4300] = seg(pond, x0p, 3200, 4300)
     canvas[:, 4300:8700] = seg(flow, x0w, 4300, 8700)
     canvas[:, 8700:12900 + SHIFT] = seg(garden, x0g, 8700, 12900 + SHIFT)
@@ -126,9 +133,9 @@ def build(verbose=True):
     Wf = W - 2 * SL
     fin = np.zeros((H, Wf, 3), np.float32)
     fin[:, :5100] = canvas[:, :5100]
-    fin[:, 5100:5700] = stagger_blend(canvas[:, 5100:5700], canvas[:, 6180:6780], 5100, 5400.0, 440.0, seed=17, amp=120.0)
+    fin[:, 5100:5700] = stagger_blend(lowfreq_match(canvas[:, 5100:5700], canvas[:, 6180:6780], 5100, 5120.0, 5400.0), canvas[:, 6180:6780], 5100, 5400.0, 460.0, seed=17, amp=110.0, soft_min=0.30, fine=0.6)
     fin[:, 5700:10300] = canvas[:, 6780:11380]
-    fin[:, 10300:10800] = stagger_blend(canvas[:, 11380:11880], skh[:, 12460 - a2:12960 - a2], 10300, 10560.0, 420.0, seed=19, amp=70.0)
+    fin[:, 10300:10800] = stagger_blend(lowfreq_match(canvas[:, 11380:11880], skh[:, 12460 - a2:12960 - a2], 10300, 10340.0, 10600.0, strength=0.7), skh[:, 12460 - a2:12960 - a2], 10300, 10560.0, 440.0, seed=19, amp=70.0, soft_min=0.30, fine=0.6)
     fin[:, 10800:] = skh[:, 12960 - a2:W - a2]
     if verbose: print('cut + joined')
     # ---- 4. silk ribbons from the fold to the far house (drawn in finished coordinates, so they are one continuous object)
@@ -136,16 +143,77 @@ def build(verbose=True):
     rx0, rw = 4900, 1500
     rr, ra = RB.ribbon_layer(rx0, rw)
     fin[:, rx0:rx0 + rw] = fin[:, rx0:rx0 + rw] * (1 - ra[..., None]) + rr
+    # ---- 4b. one more string of bunting runs from the house's apex across the 9|10 border to the finial of the gate: the garden is one world, and so is its bunting
+    import critters as CR
+    rb_ = np.random.default_rng(404)
+    sub_ = fin[:, 9060:10460]
+    CR.festoon(sub_, (9192 - 9060, 54), (10262 - 9060, 326), 150, 40, rb_, fw=26)
+    fin[:, 9060:10460] = sub_
     # ---- 5. the moon, the sun's twin, melts out of the overhead dance
     import moon_slide as MS
     xm0, moon = cache_load('f_moon')                                # first column = finished x 15700
     out = np.zeros((H, W_FINAL, 3), np.float32)
-    zb = 15900                                                      # the ring dance sits whole in its own slide; the night takes over only in the last 300 px
-    out[:, :zb] = fin[:, :zb]
-    out[:, zb:zb + 300] = stagger_blend(fin[:, zb:zb + 300], moon[:, zb - xm0:zb - xm0 + 300], zb, zb + 150.0, 240.0, seed=23, amp=46.0)
-    out[:, zb + 300:] = moon[:, zb + 300 - xm0:]
+    xe0, ext = cache_load('f_board_ext')                            # the lawn keeps bending up past the end of the hallway canvas (finished x 16200 ..)
+    fin_ext = np.concatenate([fin[:, :xe0], ext], 1)
+    # the camera has levelled on the horizon by 16320. The SKY is one gradient in both pictures, so it simply changes hands at 16340 (a short feather): the moon's petals are never
+    # cut; the GROUND (the dark lawn / the painted folk hills) melts row by row, sideways, over the next 280 px
+    zb, zw = 16340, 280
+    x1_ = zb + zw
+    out[:, :zb - 30] = fin_ext[:, :zb - 30]
+    A_ = fin_ext[:, zb - 30:x1_ + 10]; B_ = moon[:, zb - 30 - xm0:x1_ + 10 - xm0]
+    Xr = (np.arange(A_.shape[1], dtype=np.float32) + zb - 30)[None, :]
+    yy_ = np.arange(H, dtype=np.float32)[:, None]
+    ms = smoothstep(zb - 18, zb + 18, Xr)
+    sky_ = A_ * (1 - ms[..., None]) + B_ * ms[..., None]
+    gr_ = stagger_blend(A_, B_, zb - 30, zb + zw / 2.0, 96.0, seed=23, amp=58.0, soft_min=0.3, fine=1.0)
+    wsky = 1.0 - smoothstep(HZ - 5, HZ + 9, yy_)
+    out[:, zb - 30:x1_ + 10] = sky_ * wsky[..., None] + gr_ * (1 - wsky[..., None])
+    out[:, x1_ + 10:] = moon[:, x1_ + 10 - xm0:]
+    out = moonbeams(out)
+    # the lanterns the dance sent up (seen from above on the lawn) drift on into the moon's sky, now seen from the side: the same drifting lanterns as the whole journey
+    import critters as CR
+    rl = np.random.default_rng(55)
+    for (lx, ly, ls) in LANT_END:
+        CR.sky_lantern(out[:, 15900:17280], lx - 15900, ly, ls, day=0.0, warm=1.0)
     if verbose: print('moon joined', out.shape)
     return out
+
+
+LANT_END = [(16190, 640, 13.0), (16262, 560, 11.5), (16171, 470, 10.5), (16318, 395, 10.0), (16236, 300, 9.0), (16402, 520, 9.5), (16452, 242, 8.0), (16388, 150, 7.5),
+            (16505, 330, 8.0), (16548, 640, 8.5), (16196, 170, 7.0), (17128, 190, 7.5), (17195, 470, 8.0), (17160, 640, 9.0), (17240, 300, 6.5), (16120, 700, 12.5)]
+
+
+def moonbeams(img, cx=16810.0, cy=362.0, R=245.0, x_a=15000):
+    """the moon's own petal rays do not stop at its slide: they go on as long soft shafts of moonlight over the dusk lawn, touching the dancers - one object that
+    crosses the border (the way the tree's bough does), instead of two pictures joined"""
+    import cairo
+    x_b = img.shape[1]
+    wreg = x_b - x_a
+    h = img.shape[0]
+    L = Layer(wreg, h, x_a, 0, 1)
+    c = L.ctx
+    c.set_operator(cairo.OPERATOR_ADD)
+    n = 13
+    for k in range(n):
+        phi = math.pi + (k - (n - 1) / 2.0) * 0.150 + 0.03 * math.sin(k * 2.1)
+        dx, dy = math.cos(phi), math.sin(phi)
+        nx, ny = -dy, dx
+        r0, r1 = 2.00 * R, 2.00 * R + 1900.0
+        hw0, hw1 = 8.0, 150.0 + 40.0 * math.sin(k * 1.7)
+        ax, ay = cx + dx * r0, cy + dy * r0
+        bx, by = cx + dx * r1, cy + dy * r1
+        g = cairo.LinearGradient(ax, ay, bx, by)
+        A = 0.20 * (0.75 + 0.25 * math.sin(k * 1.3 + 0.4))
+        g.add_color_stop_rgba(0.0, 0.62, 0.74, 1.0, A)
+        g.add_color_stop_rgba(0.35, 0.62, 0.74, 1.0, A * 0.42)
+        g.add_color_stop_rgba(1.0, 0.62, 0.74, 1.0, 0.0)
+        c.set_source(g)
+        c.new_path(); c.move_to(ax + nx * hw0, ay + ny * hw0); c.line_to(bx + nx * hw1, by + ny * hw1); c.line_to(bx - nx * hw1, by - ny * hw1); c.line_to(ax - nx * hw0, ay - ny * hw0); c.close_path(); c.fill()
+    rgb, _ = L.get()
+    rgb = cv2.GaussianBlur(np.clip(rgb, 0, 1), (0, 0), 7.0)
+    reg = img[:, x_a:x_b]
+    img[:, x_a:x_b] = 1 - (1 - reg) * (1 - np.clip(rgb, 0, 1))
+    return img
 
 
 def grade(img, seed=1):

@@ -1,10 +1,29 @@
-# Midsummer carousel v7 - sixteen slides, one world
+# Midsummer carousel v8 - sixteen slides, one world
 
 `panorama_17280x1350.png` is the lossless master (`.jpg` for sharing); `slides/slide_01..16.jpg` are the cuts (1080 x 1350, swipe left to right).
 `python3 slice_panorama.py` re-cuts PNG slides from the master. `contact_sheet.jpg` shows all sixteen; `border_check.jpg` shows every border
 with a red hairline on the cut. Everything is generated in code (numpy + cairo + OpenCV) - no image-generation model, no copied reference.
 
-## What v7 changes (the final pass)
+## What v8 changes (everything must connect - the ending, and the way pictures hand over)
+Feedback after v7: the last picture did not blend into the night; the dance should go from the evening outside the house to the night of the moon, still circling;
+everything should be joined the way the tree is (one object that really crosses the border), not two pictures dissolved into each other; more realism.
+* **The camera tilts up (slides 15-16, `overhead.tilt_to_horizon`).** The dance is seen from straight above on the lawn outside the house. Past the ring every column
+  of the picture is imaged by a lens a little more level than the one before: the lawn bends up and squashes toward the distance (its flowers, shadows and haze), the
+  horizon comes down into the frame with the last line of light on it, the stars come out, and the night sky of the moon slide *is* that sky (`moon_slide.base_night`
+  gradient, lowered so its glow sits on this horizon). The moon's own light crosses the border the other way: long soft shafts run from its petals over the lawn
+  (`compose2.moonbeams`), and the sky lanterns the dancers sent up (seen from above on the lawn) drift into the moon's sky as lanterns seen from the side.
+* **Evening to night, continuously (`overhead.light_terms`, `tod_curve`).** The golden hour of slide 14 (low sun, long shadows down-right, the laid feast table lit by its
+  candles) becomes dusk round the dance and moonlight at the end: ambient sky, low sun and moon are mixed per column, the shadows swing from the sun's direction to the
+  moon's, each girl is lit by her own place in the evening (`girl_light`: warm key, cool bounce, a cool rim by night), the candles, fireflies and lanterns come on.
+* **More real girls** (`body3d.py`): hair is long wandering strands in clumps that radiate from a parting when seen from above, a smoother back mass, flyaway hairs,
+  fine brow hairs, a shaded eyeball with a lid crease, a rounder face; wreaths are irregular, petals are petals; overhead girls look at the pole or past it, their
+  hands clasp, their skirts have pleats; the flower meadow clusters the way real meadows do and the lawn is made of single blades.
+* **Joins:** every row-by-row melt first matches the two pictures' *colour fields* (`blend.lowfreq_match`; for the folk lake the lake's edge colour is carried left so the
+  navy water warms toward it before the border) so that only detail changes, never a step of colour; zones start and end pure (no rectangles); at the moon the sky is one
+  gradient in both pictures, so it simply changes hands in a short feather (the moon's petals are never cut) and only the ground melts row by row; one more string of
+  bunting runs from the house across the 9|10 border to the gate finial.
+
+## What v7 changed (the final pass)
 Feedback: the tree on 4 must blend into 3; fewer girls on the lake; a shorter ribbon and no ribbons held in the overhead dance; no moon page before the house -
 end on the moon instead; the sea-of-cloud page is dull - get to the sun at once and give it something to reflect; the overhead dance whole, centred and in
 one picture; the girls must look like people; the smile creepier but not forced. What was done:
@@ -120,8 +139,8 @@ v2 had the right structure but the realistic slides were dark, flat and green. v
 | 9-10 | the plank A-frame with its lantern-post avenue; the invitation: two smiling girls at a garlanded gate whose frames run to a golden light |
 | 11 | the first doorframe: the meadow turns into a drawing and the corridor begins |
 | 12-13 | one-point-perspective triangular corridor; the girl who turns back; a ring of young people round nothing; the chair in the last doorway |
-| 14-15 | out of the house on to the lawn: the laid feast, the procession, and the whole spiral dance seen from above |
-| 16 | the moon, the sun's night twin, awake; the ring dance below, one dancer has stepped out of it |
+| 14-15 | out of the house on to the lawn in the golden hour: the laid feast, the procession, then the whole spiral dance seen from above at dusk; the camera tilts up past the ring |
+| 16 | the lawn meets the night horizon; the moon, the sun's twin, awake, its light running across the lawn; the ring dance below, one dancer has stepped out of it |
 
 Horizon row 783 (58 %) throughout. Verified by `src/export2.py`: exact sizes, slides re-assemble into the panorama bit-for-bit, and every one of the 15 borders is
 within 1.7x of the picture's own column-to-column texture.

@@ -138,13 +138,27 @@ def hall_items():
     return items
 
 
+BOARD_TOD = (13400.0, 14000.0, 16250.0)           # finished x of the board's first column, where the evening starts, where it is night
+BOARD_TILT = (15860.0, 16030.0, 16320.0)          # finished x: the lens starts to pitch up / the horizon comes into the frame / the horizon is level on row 783
+BOARD_LANTERNS = [(1760, 300, 12), (1980, 250, 10), (2290, 330, 13), (2480, 470, 11), (2630, 640, 13), (2560, 900, 10), (2700, 380, 9), (2750, 560, 9), (2400, 1100, 11), (1800, 1050, 10),
+                  (1500, 600, 9), (2650, 230, 8), (2720, 780, 8)]
+BOARD_EXT = 520                                   # columns rendered beyond the hall canvas (finished x 16200 ..): the lawn goes on bending up into the night under the moon slide
+
+
 def board(x0, w):
-    """the overhead ring dance on a plywood board beyond the last doorframe; returns (rgb, mask) over the hall's canvas rect"""
+    """the overhead ring dance on a plywood board beyond the last doorframe, from the golden hour outside the house to the night of the moon; the camera tilts up
+    at its right end until the lawn meets the horizon of the next slide. returns (rgb, mask, extension) over the hall's canvas rect"""
     bx0 = 15560
     bw = HX1 - bx0
-    paint = OV.render_overhead(bw, H, seed=7, cx_frac=(17790 - bx0) / bw, cy_frac=0.55, r_out_frac=0.262, r_in_frac=0.080, turns=1.8, wref=1330, ribbons=False, th0=-0.76 * math.pi, tail=12, step_k=1.25, fold=1.0, feast=((1040.0, 500.0), -0.82, 820.0, 132.0))
+    bwx = bw + BOARD_EXT
+    paint = OV.render_overhead(bwx, H, seed=7, cx_frac=(17670 - bx0) / bwx, cy_frac=0.55, r_out_frac=0.236, r_in_frac=0.074, turns=1.8, wref=1330, ribbons=False, th0=-0.76 * math.pi, tail=12, step_k=1.25, fold=1.5,
+                               feast=((1040.0, 500.0), -0.82, 820.0, 132.0), tod=BOARD_TOD)
     from paint import paint as _paint
     paint, _ = _paint(paint, passes=((6.0, 1.0, 0.0), (3.4, 1.0, 0.03), (2.0, 1.1, 0.04)), default_flow=0.0, default_w=0.4, seed=17, struct_keep=0.50, relief=0.30, verbose=False)
+    paint, yh = OV.tilt_to_horizon(paint, BOARD_TOD[0], *BOARD_TILT)
+    paint = OV.night_finish(paint, BOARD_TOD, BOARD_LANTERNS, yh=yh)
+    ext = paint[:, bw:]
+    paint = paint[:, :bw]
     yy, xx = np.mgrid[0:H, 0:bw]
     jamb = jamb_x(yy) - 3.0
     m = smoothstep(-1.5, 2.5, (xx + bx0) - jamb)
@@ -154,7 +168,7 @@ def board(x0, w):
     full = np.zeros((H, w, 3), np.float32); fm = np.zeros((H, w), np.float32)
     full[:, bx0 - x0:bx0 - x0 + bw] = paint
     fm[:, bx0 - x0:bx0 - x0 + bw] = m
-    return full, fm
+    return full, fm, ext
 
 
 def render_hall(x0=HX0, w=HW, verbose=True, paint_base=True):
@@ -188,7 +202,8 @@ def render_hall(x0=HX0, w=HW, verbose=True, paint_base=True):
     gr_, ga_ = warp(gr_, dxg, dyg), warp(ga_, dxg, dyg)
     img = img * (1 - ga_[..., None]) + gr_
     # the overhead board beyond the last doorframe
-    brd, bm = board(x0, w)
+    brd, bm, ext = board(x0, w)
+    render_hall.ext = ext
     img = img * (1 - bm[..., None]) + brd * bm[..., None]
     if verbose: print('board', round(time.time() - t0, 1))
     # ribs + people, far -> near (runs of ribs share one cairo layer)
@@ -240,6 +255,7 @@ if __name__ == '__main__':
     img = render_hall()
     print('hall', round(time.time() - t, 1), 's')
     cache_save('f_hall', HX0, img)
+    cache_save('f_board_ext', W - 2160, render_hall.ext)
     preview(img, WORK + '/f_hall_preview.png', 2400)
     for k in range(5):
         save_png(WORK + f'/f_hall_s{13 + k}.png', img[:, 13040 + 1080 * k - HX0: 13040 + 1080 * (k + 1) - HX0])

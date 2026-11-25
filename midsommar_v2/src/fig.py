@@ -643,6 +643,9 @@ def _face(c, fx, hh, p, L, rnd, male):
         if not p['eyes_closed']:
             shape(); c.set_source_rgba(0.97, 0.93, 0.90, 1); c.fill_preserve()
             c.save(); c.clip()
+            gs_ = cairo.RadialGradient(ex, ey, w_ * 0.12, ex, ey, w_ * 0.58)                      # the eyeball is round: its white falls into shade toward the corners and under the lid
+            gs_.add_color_stop_rgba(0, 0.90, 0.84, 0.84, 0.0); gs_.add_color_stop_rgba(0.62, 0.78, 0.68, 0.68, 0.10); gs_.add_color_stop_rgba(1, 0.50, 0.38, 0.38, 0.55)
+            c.set_source(gs_); c.paint()
             ix = ex - sx * 0.006 * hh + yaw * 0.014 * hh
             ir = (0.056 - 0.008 * cr) * hh
             g = cairo.RadialGradient(ix, ey, 0, ix, ey, ir + 0.004 * hh)
@@ -672,17 +675,42 @@ def _face(c, fx, hh, p, L, rnd, male):
         c.set_line_width(0.014 * hh)                                           # outer lashes
         for k in range(3):
             c.new_path(); c.move_to(ex + sx * w_ * (0.40 + 0.06 * k), ey - h_ * (0.70 - 0.12 * k)); c.line_to(ex + sx * w_ * (0.56 + 0.07 * k), ey - h_ * (1.05 - 0.10 * k)); c.stroke()
+        c.set_source_rgba(0.50, 0.26, 0.24, 0.40); c.set_line_width(0.010 * hh)                  # the crease of the upper lid
+        c.new_path(); c.move_to(ex - w_ * 0.50, ey - h_ * 0.35); c.curve_to(ex - w_ * 0.22, ey - h_ * 1.75, ex + w_ * 0.24, ey - h_ * 1.75, ex + w_ * 0.54, ey - h_ * 0.45); c.stroke()
+        c.set_source_rgba(0.80, 0.42, 0.42, 0.55); c.new_path(); c.save(); c.translate(ex - sx * w_ * 0.47, ey + h_ * 0.12); c.scale(0.020 * hh, 0.014 * hh); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()   # the pink of the inner corner
+        gu_ = cairo.RadialGradient(ex, ey + h_ * 1.25, 0, ex, ey + h_ * 1.25, w_ * 0.55)                                                                                                         # a faint shadow under the eye
+        gu_.add_color_stop_rgba(0, 0.52, 0.34, 0.40, 0.20); gu_.add_color_stop_rgba(1, 0.52, 0.34, 0.40, 0)
+        c.set_source(gu_); c.new_path(); c.save(); c.translate(ex, ey + h_ * 1.25); c.scale(1.0, 0.45); c.arc(0, 0, w_ * 0.55, 0, TAU); c.restore(); c.fill()
         c.set_source_rgba(0.45, 0.28, 0.26, 0.35 + 0.25 * cr)                  # lower lid (a visible rim of white beneath the iris when she stares)
         c.set_line_width(0.012 * hh)
         c.new_path(); c.move_to(ex - w_ * 0.4, ey + h_ * 0.55); c.curve_to(ex - w_ * 0.1, ey + h_ * 0.9, ex + w_ * 0.1, ey + h_ * 0.9, ex + w_ * 0.4, ey + h_ * 0.55); c.stroke()
-        # brow (raised, one a hair higher than the other when she is not quite right)
+        # brow (raised, one a hair higher than the other when she is not quite right): drawn as many fine hairs along an arch, thick and upright at the nose end, thin and flat at the tail
         bx, by = fx(sx * 0.225, 0.150 + (0.030 + (0.012 if sx > 0 else 0.0)) * cr)
         bc = hair_c * 0.55
-        c.set_source_rgba(float(bc[0]), float(bc[1]), float(bc[2]), 0.85 if male else 0.62)
-        c.set_line_width((0.050 if male else 0.032) * hh)
-        c.new_path(); c.move_to(bx - sx * 0.12 * hh * -1, by + 0.02 * hh)
-        c.move_to(bx + sx * -0.115 * hh * -1 * -1, by + 0.02 * hh)
-        c.curve_to(bx - sx * 0.06 * hh, by - (0.035 + 0.020 * cr) * hh, bx + sx * 0.06 * hh, by - (0.050 + 0.025 * cr) * hh, bx + sx * 0.130 * hh, by + 0.012 * hh); c.stroke()
+        p0 = (bx - sx * 0.115 * hh, by + 0.02 * hh)
+        p1 = (bx - sx * 0.06 * hh, by - (0.035 + 0.020 * cr) * hh)
+        p2 = (bx + sx * 0.06 * hh, by - (0.050 + 0.025 * cr) * hh)
+        p3 = (bx + sx * 0.130 * hh, by + 0.012 * hh)
+        nb = 34
+        br_ = np.random.default_rng(int(abs(ex) * 7 + sx * 3 + 11) % 100000)
+        for q in range(nb):
+            tq = (q + br_.uniform(-0.3, 0.3)) / (nb - 1)
+            tq = min(max(tq, 0.0), 1.0)
+            xq = (1 - tq) ** 3 * p0[0] + 3 * (1 - tq) ** 2 * tq * p1[0] + 3 * (1 - tq) * tq ** 2 * p2[0] + tq ** 3 * p3[0]
+            yq = (1 - tq) ** 3 * p0[1] + 3 * (1 - tq) ** 2 * tq * p1[1] + 3 * (1 - tq) * tq ** 2 * p2[1] + tq ** 3 * p3[1]
+            dxq = 3 * ((1 - tq) ** 2 * (p1[0] - p0[0]) + 2 * (1 - tq) * tq * (p2[0] - p1[0]) + tq ** 2 * (p3[0] - p2[0]))
+            dyq = 3 * ((1 - tq) ** 2 * (p1[1] - p0[1]) + 2 * (1 - tq) * tq * (p2[1] - p1[1]) + tq ** 2 * (p3[1] - p2[1]))
+            nn = math.hypot(dxq, dyq) + 1e-9
+            ux_, uy_ = dxq / nn, dyq / nn
+            lift_ = -sx * (0.55 - 0.45 * tq) * 0.55                                  # the hairs rise away from the nose end and lie flatter toward the tail
+            ca_, sa_ = math.cos(lift_), math.sin(lift_)
+            hx_, hy_ = ux_ * ca_ - uy_ * sa_, ux_ * sa_ + uy_ * ca_
+            ln_ = (0.036 - 0.014 * tq) * hh * br_.uniform(0.8, 1.2)
+            wd_ = (0.0070 if male else 0.0048) * hh * (1.0 - 0.45 * tq)
+            shade_ = br_.uniform(0.80, 1.12)
+            c.set_source_rgba(float(min(1, bc[0] * shade_)), float(min(1, bc[1] * shade_)), float(min(1, bc[2] * shade_)), (0.80 if male else 0.60) * (1.0 - 0.35 * tq))
+            c.set_line_width(wd_)
+            c.new_path(); c.move_to(xq - hx_ * ln_ * 0.5, yq - hy_ * ln_ * 0.5); c.line_to(xq + hx_ * ln_ * 0.5, yq + hy_ * ln_ * 0.5); c.stroke()
     # mouth
     mx, my = fx(0.0, -0.285)
     sm = p['smile']
@@ -795,14 +823,15 @@ def _crown(c, P, T, rnd, back, yaw, head_c, side=False, fc=1, wilt=0.0):
     for i, (th, front) in enumerate(order):
         if not front:
             continue
-        x = cx + rx * math.cos(th)
-        y = cy + ry * math.sin(th) * (1 if not back else -1) - 0.006 * T
+        endk = abs(math.cos(th)) ** 3                                                   # 1 at the temples, 0 over the brow
+        x = cx + rx * 0.95 * math.cos(th)
+        y = cy + ry * math.sin(th) * (1 if not back else -1) - 0.006 * T + 0.012 * T * endk
         col = pal[i % len(pal)]
         if wilt > 0:
             dead = (0.62, 0.52, 0.34)
             col = tuple(col[k] * (1 - 0.75 * wilt) + dead[k] * 0.75 * wilt for k in range(3))
             y += 0.006 * T * wilt * (1 + (i % 3))
-        r = (0.0125 + 0.004 * rnd.random()) * T * (1 - 0.18 * wilt)
+        r = (0.0125 + 0.004 * rnd.random()) * T * (1 - 0.18 * wilt) * (1.0 - 0.38 * endk)
         for k in range(5):
             a = TAU * k / 5 + i
             c.set_source_rgba(col[0] * 0.80, col[1] * 0.80, col[2] * 0.82, 1)

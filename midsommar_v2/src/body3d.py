@@ -246,12 +246,12 @@ class Body:
         d = np.maximum(d, -(Q[:, 1] + 0.050) - 0.0) if False else d
         # back mass: flattened ellipsoids falling from the nape to the lower back (in the BODY frame, so it does not turn with the head)
         db = None
-        for k in range(7):
-            t = k / 6.0
+        for k in range(11):
+            t = k / 10.0
             yy = 0.905 - 0.305 * t
             rx = 0.062 + 0.016 * math.sin(math.pi * min(1.0, t * 1.1)) - 0.010 * t
-            c = sd_ell(P, (0.004 * math.sin(t * 5 + self.ph[4]), yy, -0.046 - 0.004 * t), (rx, 0.036, 0.030 - 0.006 * t))
-            db = c if db is None else smin(db, c, 0.020)
+            c = sd_ell(P, (0.004 * math.sin(t * 5 + self.ph[4]), yy, -0.046 - 0.004 * t), (rx, 0.030, 0.030 - 0.006 * t))
+            db = c if db is None else smin(db, c, 0.034)
         d = smin(d, db, 0.020)
         for sx in (-1, 1):                                                    # locks falling in front of the shoulders: one broad, one thin, tapering, each with its own wave
             ph_ = self.ph[5] + sx
@@ -262,7 +262,7 @@ class Body:
             d = smin(d, c, 0.014)
             t_ = sd_ell(P, (sx * 0.050 - 0.004 * sx, 0.800, 0.026), (0.006, 0.060, 0.012))                                    # a thin loose strand across the blouse
             d = smin(d, t_, 0.006)
-        d = d + 0.0030 * np.sin(P[:, 0] * 210.0 + P[:, 1] * 11.0 + self.ph[3]) * (P[:, 1] < 0.86)                              # the grooves between locks
+        d = d + (0.0013 * np.sin(P[:, 0] * 330.0 + P[:, 1] * 9.0 + self.ph[3]) + 0.0007 * np.sin(P[:, 0] * 760.0 + P[:, 1] * 14.0 + self.ph[4])) * (P[:, 1] < 0.86)      # the grooves between locks (fine)
         return d
 
     def _arm(self, P, key):
@@ -386,23 +386,25 @@ def sample_tex(rgb, al, hh, n, qx, qy):
 
 
 def crown_top(c, cx, cy, T, rnd, wilt=0.0):
-    """a wreath seen from straight above: a ring of leaves and little blossoms round the head"""
-    n = 18
-    R_ = 0.064 * T
+    """a wreath seen from straight above: an uneven ring of leaves and mixed blossoms round the head, a few stems trailing"""
+    n = 22
+    R_ = 0.066 * T
     for i in range(n):
-        th = TAU * i / n + rnd.uniform(-0.06, 0.06)
-        x, y = cx + R_ * math.cos(th), cy + R_ * 0.96 * math.sin(th)
-        c.set_source_rgba(0.20 + 0.06 * rnd.random(), 0.34 + 0.08 * rnd.random(), 0.12, 0.95)
-        c.save(); c.translate(x, y); c.rotate(th + math.pi / 2 + rnd.normal(0, 0.3)); c.scale(0.020 * T, 0.0085 * T); c.new_path(); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
-    pal = [(0.97, 0.95, 0.90), (0.70, 0.78, 0.96), (0.98, 0.84, 0.30), (0.96, 0.78, 0.80), (0.97, 0.95, 0.90), (0.88, 0.92, 1.0), (0.92, 0.42, 0.50)]
-    for i in range(n):
-        th = TAU * (i + 0.5) / n
-        x, y = cx + R_ * math.cos(th), cy + R_ * 0.96 * math.sin(th)
-        col = pal[i % len(pal)]
+        th = TAU * i / n + rnd.uniform(-0.10, 0.10)
+        rr = R_ * rnd.uniform(0.88, 1.12)
+        x, y = cx + rr * math.cos(th), cy + rr * 0.96 * math.sin(th)
+        c.set_source_rgba(0.18 + 0.08 * rnd.random(), 0.32 + 0.10 * rnd.random(), 0.12, 0.96)
+        c.save(); c.translate(x, y); c.rotate(th + math.pi / 2 + rnd.normal(0, 0.45)); c.scale(rnd.uniform(0.016, 0.026) * T, 0.0085 * T); c.new_path(); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
+    pal = [(0.96, 0.78, 0.82), (0.70, 0.78, 0.96), (0.98, 0.84, 0.30), (0.92, 0.50, 0.58), (0.97, 0.95, 0.90), (0.80, 0.70, 0.94), (0.98, 0.66, 0.34), (0.90, 0.92, 1.0), (0.86, 0.36, 0.44)]
+    for i in range(16):
+        th = TAU * (i + rnd.uniform(0.05, 0.95)) / 16
+        rr = R_ * rnd.uniform(0.86, 1.14)
+        x, y = cx + rr * math.cos(th), cy + rr * 0.96 * math.sin(th)
+        col = pal[int(rnd.integers(0, len(pal)))]
         if wilt > 0:
             dead = (0.62, 0.52, 0.34)
             col = tuple(col[k] * (1 - 0.7 * wilt) + dead[k] * 0.7 * wilt for k in range(3))
-        r = (0.0125 + 0.004 * rnd.random()) * T
+        r = rnd.uniform(0.009, 0.019) * T
         for k in range(5):
             a = TAU * k / 5 + i
             c.set_source_rgba(col[0] * 0.80, col[1] * 0.80, col[2] * 0.82, 1)
@@ -598,10 +600,18 @@ def render(T, pose=None, light=None, seed=0, ss=2, top=False):
     py = (Vx[hidx] * T * 3.1).astype(np.int32) % 240
     weave = tile[py, px]
     Pm_h = Ph @ Rb
-    ty_ = ((Pm_h[:, 1] * 150.0).astype(np.int32)) % 240
-    tx_ = ((Pm_h[:, 0] * 90.0).astype(np.int32)) % 240
-    ph_s = Pm_h[:, 0] * 330.0 + 2.2 * tile[ty_, tx_] + 1.2 * np.sin(Pm_h[:, 1] * 20.0 + Pm_h[:, 0] * 40.0)
-    strand = 0.62 * (0.5 + 0.5 * np.sin(ph_s)) + 0.38 * (0.5 + 0.5 * np.sin(ph_s * 2.7 + 1.3 * tile[(ty_ * 2) % 240, (tx_ + 77) % 240]))
+    ty_ = ((Pm_h[:, 1] * 45.0).astype(np.int32)) % 240                      # long in y: a strand keeps its line for a good length
+    tx_ = ((Pm_h[:, 0] * 150.0).astype(np.int32)) % 240
+    n1 = tile[ty_, tx_]
+    n2 = tile[((Pm_h[:, 1] * 28.0 + 90).astype(np.int32)) % 240, ((Pm_h[:, 0] * 60.0 + 30).astype(np.int32)) % 240]
+    ph_v = Pm_h[:, 0] * (300.0 + 70.0 * n2) + 4.5 * n1 + 1.6 * np.sin(Pm_h[:, 1] * 6.0 + 2.0 * n2)          # hanging hair: lines that wander and change pitch
+    th_c = np.arctan2(Pm_h[:, 2] + 0.004, Pm_h[:, 0])                         # seen from above the strands radiate from the parting
+    ph_r = th_c * 52.0 + 3.0 * n1
+    crown = np.clip((Pm_h[:, 1] - 0.940) / 0.030, 0, 1)
+    ph_s = ph_v * (1 - crown) + ph_r * crown
+    strand = 0.52 * (0.5 + 0.5 * np.sin(ph_s)) + 0.30 * (0.5 + 0.5 * np.sin(ph_s * 2.3 + 1.7 * n1)) + 0.18 * (0.5 + 0.5 * np.sin(ph_s * 0.29 + 2.0 * n2))
+    strand = np.clip(strand, 0, 1) ** 1.25
+    part = np.exp(-(Pm_h[:, 0] / 0.0042) ** 2) * (Pm_h[:, 2] > -0.012) * crown                                  # the parting: a pale-ish line of scalp
     # ---- hair: strands bend the normal so that the key light skips along them (the highlight breaks up into hairs)
     hair_m = pid == 2
     if hair_m.any():
@@ -642,7 +652,8 @@ def render(T, pose=None, light=None, seed=0, ss=2, top=False):
     tdh = np.abs(Hv @ Tg)
     sinTH = np.sqrt(np.clip(1 - tdh * tdh, 0, 1))
     hl = (sinTH ** 70) * 0.55 * hair * sh * np.clip(ndl + 0.5, 0, 1)
-    col[hair] *= (0.74 + 0.40 * strand[hair])[:, None] * (0.86 + 0.20 * np.clip((Pm_h[hair, 1] - 0.60) / 0.30, 0, 1))[:, None]
+    col[hair] *= (0.70 + 0.46 * strand[hair])[:, None] * (0.86 + 0.20 * np.clip((Pm_h[hair, 1] - 0.60) / 0.30, 0, 1))[:, None]
+    col[hair] = col[hair] * (1 - 0.55 * part[hair])[:, None] + np.array([0.55, 0.40, 0.32], np.float32)[None, :] * (0.30 * part[hair])[:, None] * key_col.mean()
     col += hl[:, None] * np.clip(hair_c * 1.4 + 0.25, 0, 1)[None, :] * key_col.mean()
     # rim
     if L.rim_gain > 0:
@@ -690,6 +701,22 @@ def render(T, pose=None, light=None, seed=0, ss=2, top=False):
         PH = lambda u, v: (ox + u * T, oy - v * T)
         fc = 1 if p['facing'] >= 0 else -1
         hy_turn = body.head_yaw
+        if T >= 180 and not top and not male:                                                 # flyaway hair: a few dozen single hairs lifting off the skull, caught by the light
+            hr_ = np.random.default_rng(int(seed) + 303)
+            hcx, hcy = PH(0.012 * hy_turn, 0.912)
+            hc = np.clip(np.asarray(p['hair'], np.float32) * 1.18 + 0.05, 0, 1)
+            for q in range(18):
+                side_ = -1 if q % 2 else 1
+                th_ = (-math.pi * 0.5) + side_ * hr_.uniform(0.62, 1.22) * math.pi * 0.5                 # round the temples and the upper sides only, never over the crown
+                r0 = 0.0535 * T * hr_.uniform(0.92, 1.0)
+                x0_, y0_ = hcx + math.cos(th_) * r0 * 0.96, hcy + math.sin(th_) * r0 * 1.10
+                ln_ = hr_.uniform(0.014, 0.034) * T
+                c.set_source_rgba(float(hc[0]), float(hc[1]), float(hc[2]), hr_.uniform(0.18, 0.38))
+                c.set_line_width(max(0.5, hr_.uniform(0.0008, 0.0013) * T))
+                c.new_path(); c.move_to(x0_, y0_)
+                c.curve_to(x0_ + math.cos(th_) * ln_ * 0.5, y0_ + math.sin(th_) * ln_ * 0.4, x0_ + math.cos(th_) * ln_ * 0.9 + side_ * 0.004 * T, y0_ + math.sin(th_) * ln_ * 0.5 + 0.010 * T,
+                           x0_ + math.cos(th_) * ln_ * 0.9 + side_ * 0.008 * T, y0_ + 0.026 * T)
+                c.stroke()
         if top:
             crown_top(c, ox, oy - 0.004 * T, T, rnd, p['wilt'])
         else:
