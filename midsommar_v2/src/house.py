@@ -111,9 +111,9 @@ def tri_mask():
 
 
 # ------------------------------------------------------------------------------------------------ pieces
-def bargeboards(c):
+def bargeboards(c, sides=(-1, 1)):
     ap = (CXG, APEX_Y)
-    for side in (-1, 1):
+    for side in sides:
         xb = CXG + side * HALF
         dx, dy = xb - ap[0], BASE_Y - ap[1]
         L = math.hypot(dx, dy); ux, uy = dx / L, dy / L; nx, ny = -uy * side, ux * side
@@ -591,6 +591,131 @@ def render_house(x0, w):
     full_rgb[BY0:BY1, xa:xa + WL] = rgb
     full_a[BY0:BY1, xa:xa + WL] = alpha
     return full_rgb, full_a
+
+
+def facade_k(K, rx0, ry0, wo, ho):
+    """the same clapboard as facade(), evaluated at K times the size over the house-space rectangle [rx0, rx0 + wo / K] x [ry0, ry0 + ho / K]: every board, joint, nail and
+    knot is computed in house units, so a close-up is crisp, not an enlarged picture. (ho, wo, 3).
+    Boards have their own tone, horizontal grain (growth-ring streaks), a bevel (lit top edge, shadowed lower edge, dark gap), staggered butt joints with
+    nail pairs and rust runs, a few knots; silvering at the top, damp and algae at the foot; wide soft rain streaks (not hair-lines)."""
+    ys = (ry0 + (np.arange(ho, dtype=np.float32) + 0.5) / K)[:, None]
+    xs = (rx0 + (np.arange(wo, dtype=np.float32) + 0.5) / K)[None, :]
+    fx0, fy0 = int(round(rx0 * K)), int(round(ry0 * K))
+    FB = lambda cell, octv, seed, aniso=1.0: fbm(fx0, fy0, wo, ho, cell * K, octv, seed, aniso=aniso)
+    FB01 = lambda cell, octv, seed, aniso=1.0: fbm01(fx0, fy0, wo, ho, cell * K, octv, seed, aniso=aniso)
+    ph = 18.0
+    kk = np.floor((ys - APEX_Y) / ph); fr = (ys - APEX_Y) / ph - kk
+    h1 = lambda a: np.sin(a * 12.9898 + 4.1) * 43758.5453 % 1.0
+    r1, r2, r3, r4 = h1(kk), h1(kk + 17.3), h1(kk + 91.7), h1(kk + 5.9)
+    ochre = np.array([0.82, 0.60, 0.16], np.float32); gold = np.array([0.99, 0.82, 0.30], np.float32); grey = np.array([0.70, 0.62, 0.44], np.float32)
+    tone = np.broadcast_to(r1, (ho, wo))
+    # each board is cut into lengths; every length gets its own tone (boards come from different trees)
+    Lj = (230 + 150 * r3)
+    off = 400 * r2
+    seg = np.floor((xs - off) / Lj)
+    jx = (xs - off) - seg * Lj
+    dj = np.minimum(jx, Lj - jx)
+    ts = h1(seg * 3.7 + kk * 1.9)
+    tone = np.clip(0.45 * r1 + 0.55 * ts, 0, 1)
+    tone = tone ** 0.85
+    base = ochre[None, None, :] * (1 - tone)[..., None] + gold[None, None, :] * tone[..., None]
+    sil = np.clip((ts - 0.74) * 3.0, 0, 1) * 0.55 + (r2 > 0.86) * 0.35                       # a few silvered, weathered boards
+    base = base * (1 - sil[..., None]) + grey[None, None, :] * sil[..., None]
+    # growth-ring grain: long wavy lines along the board
+    gz = FB(5, 3, 311, aniso=70.0)
+    ring = 0.5 + 0.5 * np.sin((fr * ph) * 1.55 + gz * 9.0 + r4 * 6.0)
+    fine = FB(2, 2, 312, aniso=110.0)
+    col = base * (1 + 0.085 * (ring - 0.5) * 2 + 0.055 * fine)[..., None]
+    # bevel: lit top edge, shadowed lower edge, dark gap
+    hi = smoothstep(0.0, 0.10, fr) * (1 - smoothstep(0.10, 0.26, fr))
+    sh = smoothstep(0.66, 1.0, fr)
+    gap = smoothstep(0.93, 1.0, fr)
+    col = col * (1 + 0.30 * hi - 0.34 * sh - 0.56 * gap)[..., None]
+    # butt joints + nail pairs (with a rust run below each nail)
+    joint = np.exp(-(dj / 1.1) ** 2) * (fr < 0.94)
+    col = col * (1 - 0.55 * joint)[..., None]
+    for sgn in (-1, 1):
+        dxn = dj - 9.0
+        nail = np.exp(-((dxn ** 2 + ((fr - 0.46) * ph) ** 2) / 1.5)) * (jx < Lj / 2 if sgn < 0 else jx >= Lj / 2)
+        col = col * (1 - 0.60 * nail)[..., None] + 0.20 * np.exp(-((dxn ** 2 + ((fr - 0.46) * ph - 1.0) ** 2) / 0.8))[..., None] * 0.0
+        run = np.exp(-(dxn / 1.6) ** 2) * np.clip(1 - np.abs((fr - 0.46) * ph - 8.0) / 8.0, 0, 1) * (jx < Lj / 2 if sgn < 0 else jx >= Lj / 2)
+        col = col * (1 - 0.16 * run)[..., None] + np.array([0.30, 0.16, 0.06], np.float32) * (0.10 * run)[..., None]
+    # knots: rare dark whorls
+    kn_cell = 130.0
+    kx = np.floor(xs / kn_cell); ky = kk
+    krand = h1(kx * 7.3 + ky * 3.1)
+    kcx = (kx + 0.2 + 0.6 * h1(kx * 1.7 + ky)) * kn_cell
+    kdx = xs - kcx; kdy = (fr - 0.5) * ph
+    kd2 = (kdx / 5.5) ** 2 + (kdy / 3.4) ** 2
+    knot = (krand > 0.86) * (np.exp(-kd2) * 0.55 + np.exp(-((np.sqrt(kd2) - 1.6) ** 2) / 0.30) * 0.30)
+    col = col * (1 - 0.55 * np.clip(knot, 0, 1))[..., None]
+    # large-scale: silvered at the top, damp/dark + algae at the foot, wide soft rain streaks
+    ty0 = np.clip((ys - APEX_Y) / (BASE_Y - APEX_Y), 0, 1)
+    col = col * (1 - 0.10 * (1 - ty0))[..., None] + np.array([0.20, 0.17, 0.12], np.float32) * (0.06 * (1 - ty0))[..., None]
+    st = FB(90, 3, 303, aniso=0.16)
+    col = col * (1 - 0.07 * np.clip(st * 2.2, 0, 1))[..., None]
+    gy = smoothstep(BASE_Y - 170, BASE_Y, ys)
+    grime = gy * (0.40 + 0.60 * FB01(60, 3, 305, aniso=2.5))
+    col = col * (1 - 0.40 * grime)[..., None] + np.array([0.26, 0.36, 0.13], np.float32) * (0.26 * grime)[..., None]
+    # sunlight raking from the left
+    u = np.clip((xs - (CXG - HALF)) / (2 * HALF), 0, 1)
+    ty = np.clip((ys - APEX_Y) / (BASE_Y - APEX_Y), 0, 1)
+    sun = np.array([1.0, 0.86, 0.62], np.float32); amb = np.array([0.20, 0.19, 0.32], np.float32)
+    light = sun[None, None, :] * (1.14 - 0.56 * u)[..., None] + amb[None, None, :] * (0.34 + 0.24 * (1 - ty))[..., None]
+    col = col * light
+    rb = np.clip(1 - np.abs((xs - (CXG + HALF * (ys - APEX_Y) / (BASE_Y - APEX_Y))) / 30.0), 0, 1)           # shadow under the right bargeboard
+    col = col * (1 - 0.32 * rb)[..., None]
+    lb = np.exp(-np.maximum(xs - (CXG - HALF * (ys - APEX_Y) / (BASE_Y - APEX_Y)), 0) / 14.0) * (xs >= CXG - HALF * (ys - APEX_Y) / (BASE_Y - APEX_Y))
+    col = col + np.array([0.22, 0.12, 0.02], np.float32) * (lb * 0.45)[..., None]
+    return np.clip(col, 0, 1)
+
+
+def layer_k(K, rx0, ry0, wo, ho, ss=2):
+    """a cairo layer in which house coordinates are drawn K times larger: output pixel (px, py) <-> house point (rx0 + px / K, ry0 + py / K)"""
+    L = Layer(wo, ho, 0, 0, ss)
+    L.ctx.scale(K, K)
+    L.ctx.translate(-rx0, -ry0)
+    return L
+
+
+def render_house_k(K, rx0, ry0, wo, ho, ss=2, wide_x=None):
+    """the plank house seen close up: K times the size over the house-space rectangle [rx0, rx0 + wo / K] x [ry0, ry0 + ho / K]. Every board, window, shutter, leaf and
+    lantern is drawn again at that size (nothing is enlarged), in the same order and with the same random numbers as render_house(), so the same windows are lit and the
+    same flower boxes hang where they hang in the distant view.  The doorway is left OPEN (alpha 0 inside it) for the caller to put the inside there; the woman is not drawn.
+    -> (rgb, alpha, door_mask)"""
+    rng = np.random.default_rng(73)
+    base = facade_k(K, rx0, ry0, wo, ho)
+    Lm = layer_k(K, rx0, ry0, wo, ho, ss)
+    c = Lm.ctx
+    c.new_path(); c.move_to(CXG, APEX_Y); c.line_to(CXG + HALF, BASE_Y); c.line_to(CXG - HALF, BASE_Y); c.close_path(); c.set_source_rgb(1, 1, 1); c.fill()
+    if wide_x is not None:                                                 # to the right of wide_x the wall simply goes on (the corner of the roof is never shown)
+        c.new_path(); c.rectangle(CXG + wide_x, APEX_Y, 4000, BASE_Y - APEX_Y); c.fill()
+    mask = Lm.get()[1]
+    rgb = base * mask[..., None]
+    alpha = mask.copy()
+    L1 = layer_k(K, rx0, ry0, wo, ho, ss)
+    bargeboards(L1.ctx, sides=((-1,) if wide_x is not None else (-1, 1))); windows(L1.ctx, rng); apex_window(L1.ctx, rng)
+    r1, a1 = L1.get()
+    sh1 = np.clip(_shadow(a1, 4.0 * K, 6.0 * K, 3.6 * K) * (1 - a1), 0, 1) * mask
+    rgb = rgb * (1 - 0.34 * sh1[..., None]) + np.array([0.05, 0.03, 0.08], np.float32) * (0.34 * sh1[..., None])
+    rgb = rgb * (1 - a1[..., None]) + r1
+    alpha = np.clip(alpha * (1 - a1) + a1, 0, 1)
+    Ld = layer_k(K, rx0, ry0, wo, ho, ss)
+    cd = Ld.ctx
+    cd.new_path(); cd.move_to(CXG, BASE_Y - DH); cd.line_to(CXG + DW, BASE_Y); cd.line_to(CXG - DW, BASE_Y); cd.close_path(); cd.set_source_rgb(1, 1, 1); cd.fill()
+    door = Ld.get()[1]
+    rgb = rgb * (1 - door[..., None])
+    alpha = alpha * (1 - door)
+    L2 = layer_k(K, rx0, ry0, wo, ho, ss)
+    c = L2.ctx
+    door_leaf(c, -1, True); door_leaf(c, 1, False)
+    steps(c); pots(c, rng); lanterns(c); ivy(c, rng)
+    r2, a2 = L2.get()
+    sh2 = np.clip(_shadow(a2, 5.0 * K, 7.0 * K, 4.2 * K) * (1 - a2), 0, 1) * mask
+    rgb = rgb * (1 - 0.40 * sh2[..., None]) + np.array([0.04, 0.03, 0.07], np.float32) * (0.40 * sh2[..., None])
+    rgb = rgb * (1 - a2[..., None]) + r2
+    alpha = np.clip(alpha * (1 - a2) + a2, 0, 1)
+    return rgb, alpha, door
 
 
 if __name__ == '__main__':

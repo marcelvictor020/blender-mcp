@@ -63,15 +63,23 @@ def build(verbose=True):
     a2 = x0h                                                       # 12000: where the hall image starts
     b2 = 12900 + SHIFT
     G = canvas[:, a2:b2].copy()
+    xc0, close = cache_load('f_close')                             # slide 10 is the house seen close (own stage); its wall goes on across the border and is DRAWN there
+    cf0 = xc0 - 1080                                                # finished x of the close-up's first column
+    d0, d1 = max(a2, cf0 + 2160), min(b2, cf0 + close.shape[1] + 2160)
+    Gc = close[:, d0 - 2160 - cf0:d1 - 2160 - cf0]
+    Gc = np.clip(Gc * 1.16 + 0.035, 0, 1) ** 0.84                    # a drawing is lighter than the lit wall it is drawn from: paper shows through, the shade is a wash, not a hatch
+    G[:, d0 - a2:d1 - a2] = Gc
     sk = SK.sketchify(G, line_gain=2.5)
     ypap = fbm(a2, 0, b2 - a2, H, 3, 2, 421) * 0.04
     sk = np.clip(sk * (1 + ypap[..., None]), 0, 1)
     Lr = Layer(b2 - a2, H, a2, 0, 2)
     c = Lr.ctx
     rng = np.random.default_rng(81)
-    ay, by = TEMPLE['apex_y'], TEMPLE['base_y']
-    for yj in np.arange(ay + 20, by, 21.0):                        # the plank rows of the house run on, ruled, toward the vanishing point
-        x_s = float(xB(yj))
+    import invite2 as I2                                            # the close-up's plank rows (house boards are 18 units high, drawn 2.8 times the size)
+    rows = [(I2.HS.APEX_Y + 18.0 * k - I2.RY0) * I2.K for k in range(0, 80)]
+    rows = [y for y in rows if 6 < y < I2.DOOR_Y - 8]
+    for yj in rows:                                                # the boards of the wall run on, ruled, toward the vanishing point: the planks become the corridor
+        x_s = 12700.0 + rng.uniform(-50, 50)
         wob = rng.uniform(0, 6.28)
         pts = []
         n = 330
@@ -85,7 +93,7 @@ def build(verbose=True):
             if pts[i + 1][0] > float(jamb_l(pts[i + 1][1])) - 5: break
             if pts[i][0] < a2 - 20 or pts[i][0] > b2 + 20 or gaps[i]: continue
             xm = pts[i][0]
-            al = 0.30 * press * float(smoothstep(12100, 12800, xm)) * (1 - 0.6 * float(smoothstep(13200, 14000, xm)))
+            al = 0.34 * press * float(smoothstep(12700, 13050, xm)) * (1 - 0.6 * float(smoothstep(13300, 14000, xm)))
             if al < 0.01: continue
             c.set_source_rgba(0.24, 0.22, 0.22, al); c.set_line_width(0.8 + 0.7 * press)
             c.new_path(); c.move_to(*pts[i]); c.line_to(*pts[i + 1]); c.stroke()
@@ -134,21 +142,29 @@ def build(verbose=True):
     fin = np.zeros((H, Wf, 3), np.float32)
     fin[:, :5100] = canvas[:, :5100]
     fin[:, 5100:5700] = stagger_blend(lowfreq_match(canvas[:, 5100:5700], canvas[:, 6180:6780], 5100, 5120.0, 5400.0), canvas[:, 6180:6780], 5100, 5400.0, 460.0, seed=17, amp=110.0, soft_min=0.30, fine=0.6)
-    fin[:, 5700:10300] = canvas[:, 6780:11380]
-    fin[:, 10300:10800] = stagger_blend(lowfreq_match(canvas[:, 11380:11880], skh[:, 12460 - a2:12960 - a2], 10300, 10340.0, 10600.0, strength=0.7), skh[:, 12460 - a2:12960 - a2], 10300, 10560.0, 440.0, seed=19, amp=70.0, soft_min=0.30, fine=0.6)
-    fin[:, 10800:] = skh[:, 12960 - a2:W - a2]
+    # slide 10 is the house seen close (its own stage, f_close: design x 10380.. = finished 9300..10800). Slide 9's far view melts into it row by row; the bunting that
+    # runs along the far house's roof edge crosses the border into the close-up's wall lantern and goes on across the door; the close-up melts into the hallway.
+    zA0, zA1 = 9420, 9760
+    fin[:, 5700:zA0] = canvas[:, 5700 + 1080:zA0 + 1080]
+    A9 = canvas[:, zA0 + 1080:zA1 + 1080]; B9 = close[:, zA0 - cf0:zA1 - cf0]
+    fin[:, zA0:zA1] = stagger_blend(lowfreq_match(A9, B9, zA0, zA0 + 20, zA0 + 250, sigma=60.0, strength=0.5), B9, zA0, (zA0 + zA1) / 2.0, 170.0, seed=29, amp=70.0, soft_min=0.20, fine=1.0)
+    zC0, zC1 = 10440, 10880                                                       # the house is painted up to here; then the same wall, DRAWN, row by row (the hallway's own frame comes in below)
+    fin[:, zA1:zC0] = close[:, zA1 - cf0:zC0 - cf0]
+    Bc = skh[:, zC0 + 2160 - a2:zC1 + 2160 - a2]
+    fin[:, zC0:zC1] = stagger_blend(close[:, zC0 - cf0:zC1 - cf0], Bc, zC0, (zC0 + zC1) / 2.0, 250.0, seed=19, amp=64.0, soft_min=0.25, fine=1.0)
+    fin[:, zC1:] = skh[:, zC1 + 2160 - a2:W - a2]
     if verbose: print('cut + joined')
     # ---- 4. silk ribbons from the fold to the far house (drawn in finished coordinates, so they are one continuous object)
     import ribbons as RB
     rx0, rw = 4900, 1500
     rr, ra = RB.ribbon_layer(rx0, rw)
     fin[:, rx0:rx0 + rw] = fin[:, rx0:rx0 + rw] * (1 - ra[..., None]) + rr
-    # ---- 4b. one more string of bunting runs from the house's apex across the 9|10 border to the finial of the gate: the garden is one world, and so is its bunting
+    # ---- 4b. bunting from the far house's right roof edge, across the 9|10 border, to the lantern beside the door in the close view (and on over the door)
     import critters as CR
     rb_ = np.random.default_rng(404)
-    sub_ = fin[:, 9060:10460]
-    CR.festoon(sub_, (9192 - 9060, 54), (10262 - 9060, 326), 150, 40, rb_, fw=26)
-    fin[:, 9060:10460] = sub_
+    sub_ = fin[:, 9300:9900]
+    CR.festoon(sub_, (9338 - 9300, 366), (9795 - 9300, 333), 46, 16, rb_, fw=22)
+    fin[:, 9300:9900] = sub_
     # ---- 5. the moon, the sun's twin, melts out of the overhead dance
     import moon_slide as MS
     xm0, moon = cache_load('f_moon')                                # first column = finished x 15700

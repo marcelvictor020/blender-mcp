@@ -247,7 +247,7 @@ def render_garden(x0=GX0, w=GW, paint_it=True, verbose=True):
     img = img * (1 - ma_[..., None]) + mr_
     shadow_col = np.array([0.07, 0.09, 0.24], np.float32)                      # golden-hour shadows are blue-violet (lit by the sky, not the sun)
     img = img * (1 - 0.56 * shadow[..., None]) + shadow_col * (0.56 * shadow[..., None])   # shadows fall on the grass and flowers too
-    img, inv_people, inv_extra = INV.render(x0, w, img)                                          # slide 11: the invitation (gate, path, the two girls)
+    inv_people, inv_extra = np.zeros((H, w), np.float32), {}                                     # slide 10 (the invitation at the door) is its own stage: invite2.py
     wc, wa = walkers_garden(x0, w)
     img = img * (1 - wa[..., None]) + wc * wa[..., None]
     img = img * (1 - ch['alpha_b'][..., None]) + ch['canvas_b'] * ch['alpha_b'][..., None]

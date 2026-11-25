@@ -1,8 +1,24 @@
-# Midsummer carousel v8 - sixteen slides, one world
+# Midsummer carousel v9 - sixteen slides, one world
 
 `panorama_17280x1350.png` is the lossless master (`.jpg` for sharing); `slides/slide_01..16.jpg` are the cuts (1080 x 1350, swipe left to right).
 `python3 slice_panorama.py` re-cuts PNG slides from the master. `contact_sheet.jpg` shows all sixteen; `border_check.jpg` shows every border
 with a red hairline on the cut. Everything is generated in code (numpy + cairo + OpenCV) - no image-generation model, no copied reference.
+
+## What v9 changes (slide 10: it is the house, and we are going in)
+Feedback: slide 10 (the invitation) stood in an empty meadow and looked like another scene - where is the house? - the garland detail is good but should be the *house's*
+entrance, seen closer, going inside; and the "Christmas lights" needed real detail (beads, red lights).
+* **Slide 10 is now the house up close** (`src/invite2.py`, `house.render_house_k`). The same plank house as slide 9, drawn again at 2.8 times the size - every board, joint,
+  nail and knot, every window with its glass and shutters, both blue leaves with the painted folk flower, the lit wall lanterns, the steps - not an enlarged picture; the
+  same windows are lit and the same flower boxes hang where they hang in the distant view. Eye level (row 783) is 70% of the way up the door, the girls' eyes are on it.
+* **The garlanded corridor is the open doorway.** The first of its ten frames IS the door frame: posts wrapped in veined leaves and real flowers (poppy, cornflower, ox-eye,
+  buttercup), a wreath at the apex, garlands of **glass beads** (red, gold, pearl, cornflower) looped along the posts and hanging in three strands with tassels, strings of
+  little **lamps** (warm white, amber, **red**) wound round every post, a lantern deeper in, bunting between the wall lanterns over the door. Inside: oxblood roof planes,
+  a honey floor strewn with petals, lit windows like the hallway's, nine more frames running to the golden light - the corridor of the next slide.
+* **The twins stand on the top step at the threshold**, hands clasped, outer hands waving you in, butterflies on them, fireflies in the long grass.
+* **Joined both ways.** Slide 9's far house melts row by row into the close one (`compose2`, zone 9400-9960) and one string of bunting runs from the far house's roof edge
+  across the border into the close-up's lantern and on over the door. **The wall goes on into slide 11**: it is sketchified (`sketch.sketchify`, graphite + gouache, lifted
+  toward paper) and becomes the outdoor side of the hallway's first frame; its plank rows are ruled on as perspective lines to the corridor's vanishing point, so the boards
+  of the house become the corridor. The close-up has its own ink-and-gouache finish (the same `ink.finish` as slides 7-9). Slides 1-9 and 12-16 are unchanged.
 
 ## What v8 changes (everything must connect - the ending, and the way pictures hand over)
 Feedback after v7: the last picture did not blend into the night; the dance should go from the evening outside the house to the night of the moon, still circling;
@@ -136,8 +152,9 @@ v2 had the right structure but the realistic slides were dark, flat and green. v
 | 5 | the fold: the arch's leaves curl into a vine spiral round a folk flower; five silk ribbons are untied from it |
 | 6 | the sunset with its god-rays; the ribbons run to the far-shore house and its reflection; a few girls standing on the water |
 | 7-8 | the shore: girls walk out of the lake and wind round the maypole; bear and swan clouds, bunting, the empty boat |
-| 9-10 | the plank A-frame with its lantern-post avenue; the invitation: two smiling girls at a garlanded gate whose frames run to a golden light |
-| 11 | the first doorframe: the meadow turns into a drawing and the corridor begins |
+| 9 | the plank A-frame with its lantern-post avenue and bunting; the camera walks up to it (the close view melts in on the right) |
+| 10 | the house up close: its garlanded, beaded, lamp-strung doorway is the corridor's first frame; the twins on the step, hands clasped |
+| 11 | the wall of the house turns into a graphite drawing and the corridor begins |
 | 12-13 | one-point-perspective triangular corridor; the girl who turns back; a ring of young people round nothing; the chair in the last doorway |
 | 14-15 | out of the house on to the lawn in the golden hour: the laid feast, the procession, then the whole spiral dance seen from above at dusk; the camera tilts up past the ring |
 | 16 | the lawn meets the night horizon; the moon, the sun's twin, awake, its light running across the lawn; the ring dance below, one dancer has stepped out of it |

@@ -1,10 +1,9 @@
-"""Slide 11, THE INVITATION.
+"""The twins and the gate-of-frames pieces (poles, lanterns, glow, girls) used by invite2.py.
 
-The house is behind us. In the meadow beside it stands a garlanded A-frame gate - the first of a corridor of nested triangular frames that runs away to a
-golden light on the horizon (the hallway's own shape, still outdoors). Two girls in white stand in front of it, close to us, hands clasped, heads tilted
-together; their outer hands curl in the old gesture for come here. They smile far too evenly and do not blink. Long gold shadows run from their feet.
-
-The camera is at their eye level here (1.55 m, the horizon passes through their faces); the meadow and forest behind are the very same world as slide 10.
+THE INVITATION itself (slide 10) is built in invite2.py: the house seen close, the twins on the step of its garlanded doorway. This module keeps the shared parts:
+draw_pole / draw_lantern (a painted post with a leaf-and-flower garland, a lantern), glow (the golden light at the end of a corridor of frames), frames (the
+meadow version of the corridor, no longer drawn), and girls() - the two girls in white, hands clasped, their outer hands curled in the old gesture for *come here*,
+smiling far too evenly (fig.py: creep), with long shadows along the sun's perspective fan.
 """
 import math
 import numpy as np
@@ -50,7 +49,7 @@ def hz_mix(col, k):
     return tuple(float(v * (1 - k) + HAZE[j] * k) for j, v in enumerate(col))
 
 
-def draw_pole(c, p0, p1, t, side, haze, rng):
+def draw_pole(c, p0, p1, t, side, haze, rng, garland=True):
     """one slanted post of a frame: a painted pole with a lit and a shaded face, cornflower bands, then a living garland wrapped round it"""
     x0, y0 = p0; x1, y1 = p1
     L = math.hypot(x1 - x0, y1 - y0)
@@ -75,6 +74,7 @@ def draw_pole(c, p0, p1, t, side, haze, rng):
         c.line_to(cx_ - nx * t / 2 + ux * w_, cy_ - ny * t / 2 + uy * w_); c.line_to(cx_ - nx * t / 2 - ux * w_, cy_ - ny * t / 2 - uy * w_); c.close_path(); c.fill()
         c.set_source_rgba(*hz_mix((0.97, 0.92, 0.78), haze), 0.95); c.set_line_width(max(0.5, t * 0.06)); c.new_path()
         c.move_to(cx_ + nx * t / 2 + ux * w_ * 1.3, cy_ + ny * t / 2 + uy * w_ * 1.3); c.line_to(cx_ - nx * t / 2 + ux * w_ * 1.3, cy_ - ny * t / 2 + uy * w_ * 1.3); c.stroke()
+    if not garland: return
     # garland: leaves lit like the trees (gold on the sun side), flowers, a vine spiralling round
     ph = rng.uniform(0, TAU)
     for k in range(int(L / max(2.0, t * 0.55))):
