@@ -335,16 +335,14 @@ def ground(x0, w, rng):
 
 
 def wallfoot(x0, w, rng):
-    """tall grass, poppies, cornflowers and daisies standing against the foot of the wall on both sides of the steps, over the lower edge of the door leaves"""
+    """tall grass, poppies, cornflowers and daisies standing against the foot of the wall on the LEFT of the steps (the plants on the right are the cluster sprite)"""
     L = Layer(w, H, x0, 0, 2)
     c = L.ctx
-    for (a, b) in ((CX - 760, CX - 330), (CX + 330, CX + 760)):
-        MD.grass(c, rng, a, b - a, DOOR_Y - 30, DOOR_Y + 70, 190, 40, 120, )
+    MD.grass(c, rng, CX - 760, 430, DOOR_Y - 30, DOOR_Y + 70, 190, 40, 120)
     kinds = [MD.poppy, MD.cornflower, MD.oxeye, MD.buttercup, MD.clover]
     pts = []
-    for q in range(46):
-        side = -1 if rng.random() < 0.5 else 1
-        xx = CX + side * rng.uniform(300, 760)
+    for q in range(26):
+        xx = CX - rng.uniform(300, 760)
         y = rng.uniform(DOOR_Y + 8, DOOR_Y + 150)
         pts.append((y, xx))
     pts.sort()
@@ -355,22 +353,46 @@ def wallfoot(x0, w, rng):
         MD.leafpair(c, xx, y + hgt * 0.55, r * 1.2, rng)
         kinds[int(rng.integers(5))](c, xx, y, r, rng)
     MD.grass(c, rng, CX - 760, 330, DOOR_Y + 40, DOOR_Y + 130, 120, 30, 90)
-    MD.grass(c, rng, CX + 430, 330, DOOR_Y + 40, DOOR_Y + 130, 120, 30, 90)
+    return L.get()
+
+
+def cluster(x0, w, rng):
+    """the plants close to the camera at the lower right of the doorway: poppies, ox-eye daisies, cornflowers and buttercups on tall stems among long grass, low beside the twins
+    and rising to the right, thinning out into the hallway's threshold. It is its own painted layer (never turned into a drawing): the hallway's frame stands behind it."""
+    L = Layer(w, H, x0, 0, 2)
+    c = L.ctx
+    xa = CX + 150
+    for (u0, u1, hlo, hhi, n) in ((xa, xa + 190, 50, 150, 90), (xa + 190, xa + 380, 80, 230, 130), (xa + 380, xa + 560, 90, 270, 110), (xa + 560, xa + 700, 70, 200, 40)):
+        MD.grass(c, rng, u0, u1 - u0, 1262, 1362, n, hlo, hhi)
+    kinds = [MD.poppy, MD.oxeye, MD.cornflower, MD.buttercup, MD.poppy, MD.oxeye]
+    pts = []
+    for q in range(22):
+        xx = rng.uniform(xa + 30, xa + 560)
+        yy = rng.uniform(1210, 1345)
+        pts.append((yy, xx))
+    pts.sort()
+    for (yy, xx) in pts:
+        r = 20 + 20 * (yy - 1210) / 135.0 * rng.uniform(0.8, 1.2)
+        hgt = r * rng.uniform(2.6, 4.6) * (0.7 + 0.5 * (xx - xa) / 560.0)
+        MD.stem(c, xx, yy + hgt, yy, rng.normal(0, r * 0.5), max(1.2, r * 0.10))
+        MD.leafpair(c, xx, yy + hgt * 0.55, r * 1.3, rng)
+        kinds[int(rng.integers(len(kinds)))](c, xx, yy, r, rng)
+    MD.grass(c, rng, xa, 560, 1334, 1368, 90, 60, 170)
     return L.get()
 
 
 def foreground(x0, w, rng):
     L = Layer(w, H, x0, 0, 2)
     c = L.ctx
-    MD.grass(c, rng, CX - 700, 1400, 1312, 1362, 150, 24, 78)
+    MD.grass(c, rng, CX - 700, 1120, 1312, 1362, 120, 24, 78)
     for q in range(16):
-        xx = CX + rng.uniform(-640, 640); y = rng.uniform(1300, 1346)
+        xx = CX + rng.uniform(-640, 400); y = rng.uniform(1300, 1346)
         if abs(xx - CX) < 70 and rng.random() < 0.8: continue
         r = rng.uniform(24, 40)
         hgt = r * rng.uniform(1.8, 2.8)
         MD.stem(c, xx, y + hgt, y, rng.normal(0, r * 0.4), max(1.4, r * 0.10))
         [MD.poppy, MD.cornflower, MD.oxeye, MD.buttercup][int(rng.integers(4))](c, xx, y, r, rng)
-    MD.grass(c, rng, CX - 700, 1400, 1338, 1368, 60, 46, 120)
+    MD.grass(c, rng, CX - 700, 1120, 1338, 1368, 50, 46, 120)
     return L.get()
 
 
@@ -397,7 +419,7 @@ def render_close(with_girls=True, verbose=True):
     rng = np.random.default_rng(1111)
     x0, w = X0C, WC
     img = ground(x0, w, rng)
-    hrgb, ha, door = HS.render_house_k(K, RX0, RY0, w, H, wide_x=150.0)
+    hrgb, ha, door, deco = HS.render_house_k(K, RX0, RY0, w, H, wide_x=150.0)
     inner = interior(x0, w, rng)
     img = img * (1 - door[..., None]) + inner * door[..., None]
     pb, pba = pergola(x0, w, rng, 1, N_FR - 1)                              # the frames inside the corridor
@@ -439,13 +461,14 @@ def render_close(with_girls=True, verbose=True):
         if verbose: print('girls', round(time.time() - t0, 1))
     fg, fga = foreground(x0, w, rng)
     img = img * (1 - fga[..., None]) + fg
+    cl_, cla = cluster(x0, w, rng)
     m_fg = fga
     # golden-hour light on everything: warm from the left, a soft vignette, a little bloom round the lamps
     bright = np.clip(img - 0.78, 0, 1)
     img = 1 - (1 - img) * (1 - 0.30 * cv2.GaussianBlur(bright, (0, 0), 18))
     vig = 1 - 0.22 * (((xs - CX) / 700.0) ** 2 + ((ys - 760) / 900.0) ** 2)
     img = img * vig[..., None]
-    return np.clip(img, 0, 1).astype(np.float32), dict(house=ha, people=people, door=door, pergola=pfa, foot=m_foot, fg=m_fg)
+    return np.clip(img, 0, 1).astype(np.float32), dict(house=ha, people=people, door=door, pergola=pfa, foot=m_foot, fg=m_fg, deco=deco, cluster=(cl_, cla))
 
 
 def living(out, x0, w):
@@ -477,4 +500,8 @@ if __name__ == '__main__':
     print('close', round(time.time() - t, 1), 's')
     if not quick:
         cache_save('f_close', X0C, out)
+        masks = np.stack([m['people'], m['pergola'], m['deco'], np.maximum(m['foot'], m['fg'])], -1)           # who stands in front of what: the compose puts the hallway frame BEHIND these
+        cache_save('f_close_masks', X0C, masks)
+        cl_, cla = m['cluster']
+        cache_save('f_close_cluster', X0C, np.concatenate([cl_, cla[..., None]], -1))                           # the plants at the lower right: a painted layer composited last
     save_png(WORK + '/close_test.png', out[:, int(CX - 540 - X0C):int(CX + 540 - X0C)])

@@ -145,9 +145,13 @@ BOARD_LANTERNS = [(1760, 300, 12), (1980, 250, 10), (2290, 330, 13), (2480, 470,
 BOARD_EXT = 520                                   # columns rendered beyond the hall canvas (finished x 16200 ..): the lawn goes on bending up into the night under the moon slide
 
 
-def board(x0, w):
-    """the overhead ring dance on a plywood board beyond the last doorframe, from the golden hour outside the house to the night of the moon; the camera tilts up
-    at its right end until the lawn meets the horizon of the next slide. returns (rgb, mask, extension) over the hall's canvas rect"""
+def board_pre(use_cache=True):
+    """the painted overhead lawn + dance BEFORE the camera tilt: (H, bw + BOARD_EXT) whose first column is design x 15560 (cached: f_board_pre)"""
+    if use_cache:
+        try:
+            return cache_load('f_board_pre')[1]
+        except Exception:
+            pass
     bx0 = 15560
     bw = HX1 - bx0
     bwx = bw + BOARD_EXT
@@ -155,8 +159,22 @@ def board(x0, w):
                                feast=((1040.0, 500.0), -0.82, 820.0, 132.0), tod=BOARD_TOD)
     from paint import paint as _paint
     paint, _ = _paint(paint, passes=((6.0, 1.0, 0.0), (3.4, 1.0, 0.03), (2.0, 1.1, 0.04)), default_flow=0.0, default_w=0.4, seed=17, struct_keep=0.50, relief=0.30, verbose=False)
-    paint, yh = OV.tilt_to_horizon(paint, BOARD_TOD[0], *BOARD_TILT)
-    paint = OV.night_finish(paint, BOARD_TOD, BOARD_LANTERNS, yh=yh)
+    cache_save('f_board_pre', bx0, paint)
+    return paint
+
+
+def finish_board(pre):
+    """the camera tilts up (lawn -> horizon) and the night's own things come on: (H, bw + BOARD_EXT)"""
+    paint, yh = OV.tilt_to_horizon(pre, BOARD_TOD[0], *BOARD_TILT)
+    return OV.night_finish(paint, BOARD_TOD, BOARD_LANTERNS, yh=yh)
+
+
+def board(x0, w):
+    """the overhead ring dance on a plywood board beyond the last doorframe, from the golden hour outside the house to the night of the moon; the camera tilts up
+    at its right end until the lawn meets the horizon of the next slide. returns (rgb, mask, extension) over the hall's canvas rect"""
+    bx0 = 15560
+    bw = HX1 - bx0
+    paint = finish_board(board_pre())
     ext = paint[:, bw:]
     paint = paint[:, :bw]
     yy, xx = np.mgrid[0:H, 0:bw]

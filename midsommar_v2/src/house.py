@@ -715,7 +715,7 @@ def render_house_k(K, rx0, ry0, wo, ho, ss=2, wide_x=None):
     rgb = rgb * (1 - 0.40 * sh2[..., None]) + np.array([0.04, 0.03, 0.07], np.float32) * (0.40 * sh2[..., None])
     rgb = rgb * (1 - a2[..., None]) + r2
     alpha = np.clip(alpha * (1 - a2) + a2, 0, 1)
-    return rgb, alpha, door
+    return rgb, alpha, door, a2
 
 
 if __name__ == '__main__':

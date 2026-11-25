@@ -75,3 +75,28 @@ def lowfreq_match(A, B, xs0, xa, xb, sigma=70.0, strength=0.9):
     La = cv2.GaussianBlur(np.ascontiguousarray(A, np.float32), (0, 0), sigma)
     Lb = cv2.GaussianBlur(np.ascontiguousarray(B, np.float32), (0, 0), sigma)
     return np.clip(A + (Lb - La) * k, 0, 1)
+
+
+def wave_boundary(h, xc, amp, seed, cells=(260, 90)):
+    """a smooth, gently wandering boundary x(y): no per-row jitter, so nothing tears (rows (h,)"""
+    n = 0.75 * row_noise(h, cells[0], seed) + 0.25 * row_noise(h, cells[1], seed + 7)
+    return (xc + amp * n).astype(np.float32)
+
+
+def mband_blend(A, B, xs0, boundary, sig=(2.0, 4.0, 8.0, 16.0, 32.0, 64.0), kmask=2.0, min_sig=14.0):
+    """Multi-band (Burt-Adelson style) blend of two ALIGNED pictures across a smooth boundary curve: A to the left of it, B to the right.
+    Each frequency band is mixed with its own softened copy of the mask - the fine detail changes hands within a few tens of pixels (nothing ghosts), the colour and the light
+    change over a few hundred (no step of shade anywhere). boundary: (h,) x of the changeover per row, in the same coordinates as xs0 (the x of A's first column)."""
+    h, w = A.shape[:2]
+    X = (np.arange(w, dtype=np.float32) + xs0)[None, :]
+    m = (X >= boundary[:, None]).astype(np.float32)
+    A = np.ascontiguousarray(A, np.float32); B = np.ascontiguousarray(B, np.float32)
+    GA = [A] + [cv2.GaussianBlur(A, (0, 0), s) for s in sig]
+    GB = [B] + [cv2.GaussianBlur(B, (0, 0), s) for s in sig]
+    out = np.zeros_like(A)
+    for i, s in enumerate(sig):
+        ms = cv2.GaussianBlur(m, (0, 0), max(kmask * s, min_sig))[..., None]
+        out += (GA[i] - GA[i + 1]) * (1 - ms) + (GB[i] - GB[i + 1]) * ms
+    ms = cv2.GaussianBlur(m, (0, 0), kmask * sig[-1])[..., None]
+    out += GA[-1] * (1 - ms) + GB[-1] * ms
+    return out

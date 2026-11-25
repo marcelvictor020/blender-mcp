@@ -11,6 +11,6 @@ wait
 python3 invite2.py        # slide 10   the house up close: garlanded doorway, the twins at the threshold (needs nothing)
 python3 flow3.py          # slides 5-8  the fold, the sunset and the far-shore house, the shore (needs pond + garden)
 python3 moon_slide.py     # slide 16    the moon, the sun's night twin
-python3 compose2.py       # row-by-row joins, cuts, ribbons to the far house, invitation -> hallway, overhead -> moon, one grade
+python3 compose2.py       # (also lays the old tree on 9|10 - trunk9.py - and tilts the overhead board up into the night) row-by-row joins, cuts, ribbons to the far house, invitation -> hallway, overhead -> moon, one grade
 python3 export2.py        # panorama + slides, with size / re-assembly / border checks
 python3 make_sheets.py    # contact sheet + border-check sheet

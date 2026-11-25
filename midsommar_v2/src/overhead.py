@@ -740,25 +740,29 @@ def tilt_to_horizon(img, x_off, xa, xm, xb, hz=783, f=900.0, y_h0=-170.0, base=N
     shear = np.abs(np.gradient(y_src, axis=1)).astype(np.float32)
     wb = np.clip((shear - 0.35) / 2.0, 0, 1)[..., None]
     out = out * (1 - wb) + cv2.GaussianBlur(out, (0, 0), sigmaX=2.2, sigmaY=0.0) * wb
-    # ---- atmosphere: the farther the ground, the more it takes the colour of the night horizon (dark teal, a little warm near the line)
+    # ---- atmosphere: the farther the ground, the more it takes the colour of the night horizon (the folk night's own far-meadow teal), softly - never a bright line
     dn = np.where(ground, np.maximum(d - db, 0.0), 0.0)
     y_h = cy - f * (cp_ / np.maximum(sp_, 1e-4))                              # horizon row of each column (far above the frame while looking down)
-    hz_amt = np.clip(1.0 - np.exp(-dn / 1900.0), 0, 1) * u * 0.72
-    hcol = np.array([0.10, 0.17, 0.22], np.float32)
-    near_h = np.exp(-np.clip(yy - y_h, 0, None) / 60.0) * u
-    hcol_w = hcol[None, None, :] + near_h[..., None] * np.array([0.20, 0.10, 0.03], np.float32)
+    lvl = smoothstep(560.0, hz - 6.0, y_h)                                   # 0 while the horizon is still high above the frame ... 1 once it is level on row hz
+    hz_amt = np.clip(1.0 - np.exp(-dn / 1250.0), 0, 1) * u * 0.84
+    hcol = np.array([0.12, 0.19, 0.25], np.float32)
+    near_h = np.exp(-np.clip(yy - y_h, 0, None) / 46.0) * u * lvl
+    hcol_w = hcol[None, None, :] + near_h[..., None] * np.array([0.14, 0.07, 0.02], np.float32)
     out = out * (1 - hz_amt[..., None]) + hcol_w * hz_amt[..., None]
-    # ---- the sky above the horizon: the moon slide's own night gradient, lowered so that its glow sits on THIS horizon
+    # ---- the sky above the horizon: the moon slide's own night gradient lowered onto THIS horizon; its grain and streaks are read at the pixel itself (so they stay horizontal)
+    from moon_slide import base_night, NIGHT
     if base is None:
-        from moon_slide import base_night
         base, _ = base_night(int(x_off), w)
+    cols_ = np.array(NIGHT, np.float32)
+    ys_ = np.arange(h, dtype=np.float32)
+    Gy = np.stack([np.interp(ys_, [0, 220, 470, 700, hz], cols_[:, k]) for k in range(3)], -1)     # (h, 3): the gradient
+    Tx = base / np.maximum(Gy[:, None, :], 1e-3)                                                   # (h, w, 3): the grain / streak / mottle field
     r_eq = np.clip(hz - (y_h - yy), 0, hz - 1).astype(np.int32)
-    sky = base[r_eq, np.arange(w)[None, :]]
+    sky = Gy[r_eq] * Tx
     skym = (~ground).astype(np.float32)
     skym = cv2.GaussianBlur(skym, (0, 0), sigmaX=15.0, sigmaY=1.3)[..., None]  # a hazy horizon: soft where it is steep, still a line where it is level
     out = out * (1 - skym) + sky * skym
-    # the thin line of the last light along the horizon, strongest when level
-    lvl = smoothstep(480.0, hz - 10.0, y_h)
+    # the thin line of the last light along the horizon, only once the horizon is level
     edge = np.exp(-((yy - y_h) / 2.2) ** 2) * lvl
     glowb = np.exp(-((yy - y_h) / 38.0) ** 2) * lvl
     out = out + glowb[..., None] * np.array([0.30, 0.13, 0.04], np.float32) * 0.8

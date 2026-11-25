@@ -67,7 +67,9 @@ def build(verbose=True):
     cf0 = xc0 - 1080                                                # finished x of the close-up's first column
     d0, d1 = max(a2, cf0 + 2160), min(b2, cf0 + close.shape[1] + 2160)
     Gc = close[:, d0 - 2160 - cf0:d1 - 2160 - cf0]
-    Gc = np.clip(Gc * 1.16 + 0.035, 0, 1) ** 0.84                    # a drawing is lighter than the lit wall it is drawn from: paper shows through, the shade is a wash, not a hatch
+    Lm_ = cv2.GaussianBlur(np.ascontiguousarray(Gc.mean(-1)), (0, 0), 80)                  # a drawing is evenly lit: the lamp-light, the vignette and the dapple of the painted wall are divided out ...
+    Gc = np.clip(Gc * np.clip(0.62 / np.maximum(Lm_, 0.12), 0.9, 1.9)[..., None], 0, 1)
+    Gc = np.clip(Gc * 1.06 + 0.03, 0, 1) ** 0.88                                              # ... and it is lifted toward paper: the shade is a wash, not a hatch
     G[:, d0 - a2:d1 - a2] = Gc
     sk = SK.sketchify(G, line_gain=2.5)
     ypap = fbm(a2, 0, b2 - a2, H, 3, 2, 421) * 0.04
@@ -75,28 +77,6 @@ def build(verbose=True):
     Lr = Layer(b2 - a2, H, a2, 0, 2)
     c = Lr.ctx
     rng = np.random.default_rng(81)
-    import invite2 as I2                                            # the close-up's plank rows (house boards are 18 units high, drawn 2.8 times the size)
-    rows = [(I2.HS.APEX_Y + 18.0 * k - I2.RY0) * I2.K for k in range(0, 80)]
-    rows = [y for y in rows if 6 < y < I2.DOOR_Y - 8]
-    for yj in rows:                                                # the boards of the wall run on, ruled, toward the vanishing point: the planks become the corridor
-        x_s = 12700.0 + rng.uniform(-50, 50)
-        wob = rng.uniform(0, 6.28)
-        pts = []
-        n = 330
-        for i in range(n + 1):
-            xx = x_s + i * 16.0
-            g = ((xx - x_s) / (VPX - x_s)) * float(smoothstep(0, 900, xx - x_s))
-            pts.append((xx, yj + (HZ - yj) * g + 0.9 * math.sin(i * 0.37 + wob) * min(1.0, i / 40.0)))
-        press = rng.uniform(0.55, 1.0)
-        gaps = rng.uniform(0, 1, n) < 0.035
-        for i in range(n):
-            if pts[i + 1][0] > float(jamb_l(pts[i + 1][1])) - 5: break
-            if pts[i][0] < a2 - 20 or pts[i][0] > b2 + 20 or gaps[i]: continue
-            xm = pts[i][0]
-            al = 0.34 * press * float(smoothstep(12700, 13050, xm)) * (1 - 0.6 * float(smoothstep(13300, 14000, xm)))
-            if al < 0.01: continue
-            c.set_source_rgba(0.24, 0.22, 0.22, al); c.set_line_width(0.8 + 0.7 * press)
-            c.new_path(); c.move_to(*pts[i]); c.line_to(*pts[i + 1]); c.stroke()
     for k_ in range(70):                                           # construction rays radiate from the vanishing point
         ang = rng.uniform(math.pi - 0.95, math.pi + 0.95)
         L_ = rng.uniform(1700, 3700)
@@ -136,23 +116,55 @@ def build(verbose=True):
     jl = jamb_l(yy)
     Mb = smoothstep(-1.5, 2.5, xs_h - jl + 3.0)
     skh = skh * (1 - Mb[..., None]) + hall * Mb[..., None]
-    if verbose: print('drawing + hallway')
+    # the overhead lawn: tilt the camera up, finish the night (hall2.finish_board), and lay it in beyond the last doorframe (the part past the canvas is the extension under the moon slide)
+    import hall2 as H2
+    xb0, pre = cache_load('f_board_pre')                           # first column = design x 15560
+    bw = H2.HX1 - xb0
+    brd_full = H2.finish_board(pre)
+    brd = brd_full[:, :bw]; ext = brd_full[:, bw:]
+    yy2, xx2 = np.mgrid[0:H, 0:bw]
+    jb = H2.jamb_x(yy2) - 3.0
+    mjb = smoothstep(-1.5, 2.5, (xx2 + xb0) - jb)
+    brd = brd * (0.55 + 0.45 * np.clip(((xx2 + xb0) - jb) / 70.0, 0, 1))[..., None]
+    sl_ = slice(xb0 - a2, xb0 - a2 + bw)
+    skh[:, sl_] = skh[:, sl_] * (1 - mjb[..., None]) + brd * mjb[..., None]
+    del brd_full, pre, brd, yy2, xx2, jb, mjb
+    if verbose: print('drawing + hallway + board')
     # ---- 3. the finished carousel
     Wf = W - 2 * SL
     fin = np.zeros((H, Wf, 3), np.float32)
     fin[:, :5100] = canvas[:, :5100]
     fin[:, 5100:5700] = stagger_blend(lowfreq_match(canvas[:, 5100:5700], canvas[:, 6180:6780], 5100, 5120.0, 5400.0), canvas[:, 6180:6780], 5100, 5400.0, 460.0, seed=17, amp=110.0, soft_min=0.30, fine=0.6)
-    # slide 10 is the house seen close (its own stage, f_close: design x 10380.. = finished 9300..10800). Slide 9's far view melts into it row by row; the bunting that
-    # runs along the far house's roof edge crosses the border into the close-up's wall lantern and goes on across the door; the close-up melts into the hallway.
-    zA0, zA1 = 9420, 9760
-    fin[:, 5700:zA0] = canvas[:, 5700 + 1080:zA0 + 1080]
-    A9 = canvas[:, zA0 + 1080:zA1 + 1080]; B9 = close[:, zA0 - cf0:zA1 - cf0]
-    fin[:, zA0:zA1] = stagger_blend(lowfreq_match(A9, B9, zA0, zA0 + 20, zA0 + 250, sigma=60.0, strength=0.5), B9, zA0, (zA0 + zA1) / 2.0, 170.0, seed=29, amp=70.0, soft_min=0.20, fine=1.0)
-    zC0, zC1 = 10440, 10880                                                       # the house is painted up to here; then the same wall, DRAWN, row by row (the hallway's own frame comes in below)
-    fin[:, zA1:zC0] = close[:, zA1 - cf0:zC0 - cf0]
-    Bc = skh[:, zC0 + 2160 - a2:zC1 + 2160 - a2]
-    fin[:, zC0:zC1] = stagger_blend(close[:, zC0 - cf0:zC1 - cf0], Bc, zC0, (zC0 + zC1) / 2.0, 250.0, seed=19, amp=64.0, soft_min=0.25, fine=1.0)
+    # slide 10 is the house seen close (its own stage, f_close: design x 10380.. = finished 9300..). Three joins, none of them a smear:
+    #  9|10   the old tree (trunk9) stands ON the border: behind its trunk the far view simply ends and the close view begins - a cut hidden by an object, like the lake tree on 3|4;
+    #  10|11  the wall goes on into slide 11 as a drawing of itself: painted -> drawn is a multi-band blend of two ALIGNED pictures (no ghosts, no step of shade);
+    #         the hallway's frame is a crisp object that stands BEHIND the things in front of it (the door leaf, the garland, the tall meadow plants).
+    zS = 9700
+    fin[:, 5700:zS] = canvas[:, 5700 + 1080:zS + 1080]
+    zC0, zC1 = 10400, 10960
+    fin[:, zS:zC0] = close[:, zS - cf0:zC0 - cf0]
+    import blend as BL
+    xm_, cmasks = cache_load('f_close_masks')
+    Mw = 240
+    xa_, xb_ = zC0 - Mw, zC1 + Mw
+    P_ = close[:, xa_ - cf0:xb_ - cf0]
+    D_ = sk[:, xa_ + 2160 - a2:xb_ + 2160 - a2]
+    W_ = BL.mband_blend(P_, D_, xa_, BL.wave_boundary(H, 10690.0, 24.0, seed=31))
+    Mh_ = Mb[:, xa_ + 2160 - x0h:xb_ + 2160 - x0h]
+    Hh_ = hall[:, xa_ + 2160 - x0h:xb_ + 2160 - x0h]
+    Xw_ = (np.arange(xa_, xb_, dtype=np.float32))[None, :]
+    occ_ = cmasks[:, xa_ - cf0:xb_ - cf0, 0:3].max(-1) * smoothstep(10880, 10790, Xw_)
+    keep_ = (Mh_ * (1 - occ_))[..., None]
+    Z_ = W_ * (1 - keep_) + Hh_ * keep_
+    fin[:, zC0:zC1] = Z_[:, Mw:Mw + (zC1 - zC0)]
     fin[:, zC1:] = skh[:, zC1 + 2160 - a2:W - a2]
+    # the meadow plants at the lower right of the doorway are a PAINTED layer in front of everything (a plant is never turned into a drawing): the hallway's frame stands behind them
+    xs_, cluster = cache_load('f_close_cluster')
+    cx_a, cx_b = 10400, 11010
+    cl_rgb = cluster[:, cx_a - cf0:cx_b - cf0, :3]; cl_a = cluster[:, cx_a - cf0:cx_b - cf0, 3]
+    from ink import paper as _paper
+    pap_ = _paper(H, cx_b - cx_a, 17)
+    fin[:, cx_a:cx_b] = fin[:, cx_a:cx_b] * (1 - cl_a[..., None]) + cl_rgb * pap_[..., None]
     if verbose: print('cut + joined')
     # ---- 4. silk ribbons from the fold to the far house (drawn in finished coordinates, so they are one continuous object)
     import ribbons as RB
@@ -165,26 +177,29 @@ def build(verbose=True):
     sub_ = fin[:, 9300:9900]
     CR.festoon(sub_, (9338 - 9300, 366), (9795 - 9300, 333), 46, 16, rb_, fw=22)
     fin[:, 9300:9900] = sub_
+    import trunk9 as TK
+    fin = TK.apply_trunk(fin, verbose=verbose)
     # ---- 5. the moon, the sun's twin, melts out of the overhead dance
     import moon_slide as MS
     xm0, moon = cache_load('f_moon')                                # first column = finished x 15700
     out = np.zeros((H, W_FINAL, 3), np.float32)
-    xe0, ext = cache_load('f_board_ext')                            # the lawn keeps bending up past the end of the hallway canvas (finished x 16200 ..)
-    fin_ext = np.concatenate([fin[:, :xe0], ext], 1)
-    # the camera has levelled on the horizon by 16320. The SKY is one gradient in both pictures, so it simply changes hands at 16340 (a short feather): the moon's petals are never
-    # cut; the GROUND (the dark lawn / the painted folk hills) melts row by row, sideways, over the next 280 px
-    zb, zw = 16340, 280
-    x1_ = zb + zw
-    out[:, :zb - 30] = fin_ext[:, :zb - 30]
-    A_ = fin_ext[:, zb - 30:x1_ + 10]; B_ = moon[:, zb - 30 - xm0:x1_ + 10 - xm0]
-    Xr = (np.arange(A_.shape[1], dtype=np.float32) + zb - 30)[None, :]
+    fin_ext = np.concatenate([fin, ext], 1)                          # the lawn keeps bending up past the end of the hallway canvas (finished x 16200 ..)
+    # the camera has levelled on the horizon by 16320. The SKY is one gradient in both pictures, so it simply changes hands at 16340 (a short feather): the moon's petals are never cut.
+    # The GROUND (the dark lawn in haze / the painted folk meadow) is one aligned multi-band blend across a smooth wandering line: the colours first (low frequencies), then the detail.
+    zb = 16340
+    gx0, gx1 = 16120, 16700
+    out[:, :gx0] = fin_ext[:, :gx0]
+    A_ = fin_ext[:, gx0:gx1]; B_ = moon[:, gx0 - xm0:gx1 - xm0]
+    import blend as BL
+    Ag_ = lowfreq_match(A_, B_, gx0, 16150, 16430, sigma=60.0, strength=0.92)           # ground only: the lawn's haze takes the meadow's night colours first ...
+    gr_ = BL.mband_blend(Ag_, B_, gx0, BL.wave_boundary(H, 16380.0, 22.0, seed=23))    # ... then its detail changes hands across a smooth wandering line
+    Xr = (np.arange(gx0, gx1, dtype=np.float32))[None, :]
     yy_ = np.arange(H, dtype=np.float32)[:, None]
     ms = smoothstep(zb - 18, zb + 18, Xr)
     sky_ = A_ * (1 - ms[..., None]) + B_ * ms[..., None]
-    gr_ = stagger_blend(A_, B_, zb - 30, zb + zw / 2.0, 96.0, seed=23, amp=58.0, soft_min=0.3, fine=1.0)
     wsky = 1.0 - smoothstep(HZ - 5, HZ + 9, yy_)
-    out[:, zb - 30:x1_ + 10] = sky_ * wsky[..., None] + gr_ * (1 - wsky[..., None])
-    out[:, x1_ + 10:] = moon[:, x1_ + 10 - xm0:]
+    out[:, gx0:gx1] = sky_ * wsky[..., None] + gr_ * (1 - wsky[..., None])
+    out[:, gx1:] = moon[:, gx1 - xm0:]
     out = moonbeams(out)
     # the lanterns the dance sent up (seen from above on the lawn) drift on into the moon's sky, now seen from the side: the same drifting lanterns as the whole journey
     import critters as CR

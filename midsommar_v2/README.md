@@ -1,8 +1,25 @@
-# Midsummer carousel v9 - sixteen slides, one world
+# Midsummer carousel v10 - sixteen slides, one world
 
 `panorama_17280x1350.png` is the lossless master (`.jpg` for sharing); `slides/slide_01..16.jpg` are the cuts (1080 x 1350, swipe left to right).
 `python3 slice_panorama.py` re-cuts PNG slides from the master. `contact_sheet.jpg` shows all sixteen; `border_check.jpg` shows every border
 with a red hairline on the cut. Everything is generated in code (numpy + cairo + OpenCV) - no image-generation model, no copied reference.
+
+## What v10 changes (no tears at the sides: every join is now an object, an aligned blend, or a fog)
+Feedback: slide 10's sides still showed ragged streaks and bad shades ("paint glitches") where it met slides 9 and 11; every slide must blend with its neighbours with no blur or glitch at the sides.
+Cause: the row-by-row `stagger_blend` is right when the two pictures are the SAME scene in two styles (folk -> real lake, painted -> drawn), but between two pictures that do not line up
+(the far house vs. the close view) it makes a torn comb. So:
+* **9|10 is carried by an object** (`src/trunk9.py`): an old tree stands exactly on the border - roots in the meadow, bark shaded per pixel by the same normals/relief/moss/lichen as the
+  lake tree (lit by the low sun from the left), two boughs hung with laburnum, wisteria, ivy and blossom, one reaching over slide 9's sky, one over slide 10's wall. Behind its trunk the far
+  view simply ends and the close view begins (a cut hidden by a thing, like the lake tree on 3|4); its crown throws a soft dapple on the wall; it has the same ink-and-gouache finish.
+* **10|11 is an aligned multi-band blend** (`blend.mband_blend`, `wave_boundary`): the painted wall and the drawn wall are the same picture, so each frequency band is mixed with its own
+  softened mask across a smooth wandering line - detail changes hands within a few tens of pixels, colour and light over a few hundred; no ghosts, no step of shade. The drawn wall is
+  evenly lit and lifted toward paper (no lamp-light hatching), the corridor's first frame stands behind the door leaf, the garland and the people, and the meadow plants in the lower right
+  are a PAINTED layer in front of it (a plant is never turned into a drawing).
+* **15|16** (`overhead.tilt_to_horizon`, `compose2`): the lens now tilts up with no bright rim (the last-light line appears only once the horizon is level), the night sky's grain stays
+  horizontal (it was sheared into contour lines), the lawn goes to haze in the meadow's own night teal, and the ground changes hands as one multi-band blend instead of a torn comb.
+  The tilt/finish now runs in the compose step from a cached pre-tilt board (`f_board_pre`), so this join can be retuned in seconds.
+* Audit: all 15 borders were re-checked 1:1 (red hairline on the cut) - 1|2, 2|3, 3|4, 4|5, 5|6, 6|7, 7|8, 8|9, 11|12, 12|13, 13|14, 14|15 are continuous (the lake trees, ribbons, sunset and
+  garden are single objects crossing their borders; colour was measured across 5|6 and has no step).
 
 ## What v9 changes (slide 10: it is the house, and we are going in)
 Feedback: slide 10 (the invitation) stood in an empty meadow and looked like another scene - where is the house? - the garland detail is good but should be the *house's*
