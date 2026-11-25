@@ -16,12 +16,12 @@ from trees import leaf
 import sculpt as SC
 
 TAU = 2 * math.pi
-GX0, GX1 = 7000, 12900
+GX0, GX1 = 7000, 12900 + SHIFT
 GW = GX1 - GX0
 CXG = TEMPLE['cx']
 BASE_Y, APEX_Y, HALF = TEMPLE['base_y'], TEMPLE['apex_y'], TEMPLE['half']
 FG, HCAM = 1000.0, 4.2
-SUN_G = (7330.0, 766.0)
+SUN_G = (7330.0, 668.0)
 
 LAKE = [(6900, 1190), (7400, 1135), (7900, 1065), (8300, 990), (8650, 925), (8950, 868), (9250, 826), (9600, 798), (9950, 786), (10200, 783)]
 

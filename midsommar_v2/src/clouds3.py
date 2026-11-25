@@ -96,7 +96,22 @@ def _tw(tw, xs):
     return np.zeros(xs.shape, np.float32) if tw is None else np.asarray(tw(xs), np.float32)
 
 
-def sky(x0, w, sun=(7330.0, 766.0), seed=3, cov_x=None, extra=None, extra_h=None, rays=1.0, strength=1.0, sun_vis=1.0, h=HZ, tw=None):
+def sun_overlay(img, x0, sun, h=HZ):
+    """re-draw the sun disc over a finished image (after mist and trees, so haze never dulls it); modifies rows [0,h) of img in place"""
+    sx, sy = sun
+    ys = np.arange(h, dtype=np.float32)[:, None]; xs = np.arange(x0, x0 + img.shape[1], dtype=np.float32)[None, :]
+    sd = np.hypot(xs - sx, ys - sy)
+    disc = smoothstep(52.0, 46.0, sd)
+    limb = 1.0 - 0.07 * smoothstep(0.0, 52.0, sd)
+    t_ = smoothstep(0.0, 52.0, sd)[..., None]
+    core = (np.array([1.0, 0.99, 0.90], np.float32) * (1 - t_) + np.array([1.0, 0.84, 0.46], np.float32) * t_) * limb[..., None]
+    bloom = np.exp(-(np.clip(sd - 46.0, 0, None) / 30.0) ** 1.4) * 0.40 * (sd >= 46.0)
+    img[:h] = img[:h] + bloom[..., None] * np.array([1.0, 0.88, 0.62], np.float32) * (1 - disc[..., None])
+    img[:h] = img[:h] * (1 - disc[..., None]) + core * disc[..., None]
+    return img
+
+
+def sky(x0, w, sun=(7330.0, 766.0), seed=3, cov_x=None, extra=None, extra_h=None, rays=1.0, strength=1.0, sun_vis=1.0, h=HZ, tw=None, disc_on=True):
     """full sky rows [0,h) for global columns [x0,x0+w). The light is a point-source at the sun: clouds left of it are lit from the right and
     vice-versa. `tw(xs)` in [0,1] mixes toward a dusk palette (rose / lilac lit sides, indigo shadows) for the pond's evening."""
     cov_x = cov_x or (lambda xs: np.full(xs.shape, 0.8, np.float32))
@@ -169,10 +184,20 @@ def sky(x0, w, sun=(7330.0, 766.0), seed=3, cov_x=None, extra=None, extra_h=None
         ray = cv2.GaussianBlur(np.clip((rr - 0.42) * 3.2, 0, 1) ** 1.4, (0, 0), 1.6) * np.exp(-d / 2800.0)
         ray = ray * (1 - 0.88 * A) * smoothstep(40, 180, d) * rays
         img = img + ray[..., None] * np.array([1.0, 0.80, 0.50], np.float32) * 0.22 * strength
-    # the sun itself
+    # the sun itself: a whole disc with a soft limb, a pale halo and a faint ring (as seen through high haze). disc_on=False leaves the disc to be
+    # drawn last (sun_overlay) so that nothing which moves the sky around - the sideways drag, haze - can bend it.
     sd = np.hypot(xs - sx, ys - sy)
-    disc = np.exp(-(sd / 34.0) ** 4) * sun_vis
-    img = img * (1 - disc[..., None] * 0.96) + np.array([1.0, 0.97, 0.84], np.float32) * disc[..., None] * 0.96
+    if disc_on:
+        disc = smoothstep(52.0, 46.0, sd) * sun_vis
+        halo = np.exp(-(np.clip(sd - 46.0, 0, None) / 38.0) ** 1.4) * 0.55 * sun_vis * (sd >= 46.0)
+        ring = np.exp(-((sd - 118.0) / 7.0) ** 2) * 0.11 * sun_vis
+        limb = 1.0 - 0.10 * smoothstep(0.0, 52.0, sd)
+        img = img + (halo + ring)[..., None] * np.array([1.0, 0.86, 0.60], np.float32) * (1 - disc[..., None])
+        img = img * (1 - disc[..., None] * 0.97) + (np.array([1.0, 0.96, 0.80], np.float32) * limb[..., None]) * disc[..., None] * 0.97
+    else:
+        halo = np.exp(-(np.clip(sd - 46.0, 0, None) / 38.0) ** 1.4) * 0.55 * sun_vis
+        ring = np.exp(-((sd - 118.0) / 7.0) ** 2) * 0.11 * sun_vis
+        img = img + (halo + ring)[..., None] * np.array([1.0, 0.86, 0.60], np.float32)
     return np.clip(img, 0, 1).astype(np.float32), D
 
 

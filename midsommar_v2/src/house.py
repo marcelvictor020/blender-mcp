@@ -31,37 +31,66 @@ def _over(canvas, alpha, rgb, a, x0, y0):
 
 
 def facade():
-    """weathered clapboard, lit by the low sun from the left; (HL,WL,3) in local coordinates"""
+    """weathered clapboard lit by the low sun from the left; (HL,WL,3) in local coordinates.
+    Boards have their own tone, horizontal grain (growth-ring streaks), a bevel (lit top edge, shadowed lower edge, dark gap), staggered butt joints with
+    nail pairs and rust runs, a few knots; silvering at the top, damp and algae at the foot; wide soft rain streaks (not hair-lines)."""
     ys = (np.arange(HL, dtype=np.float32) + BY0)[:, None]
     xs = (np.arange(WL, dtype=np.float32) + BX0)[None, :]
     ph = 18.0
     kk = np.floor((ys - APEX_Y) / ph); fr = (ys - APEX_Y) / ph - kk
     h1 = lambda a: np.sin(a * 12.9898 + 4.1) * 43758.5453 % 1.0
-    r1, r2, r3 = h1(kk), h1(kk + 17.3), h1(kk + 91.7)
-    ochre = np.array([0.80, 0.60, 0.17], np.float32); gold = np.array([0.98, 0.82, 0.30], np.float32); grey = np.array([0.66, 0.58, 0.40], np.float32)
-    base = ochre * (1 - r1)[..., None] + gold * r1[..., None]
-    wth = (r2 > 0.82).astype(np.float32)[..., None] * 0.42
-    base = base * (1 - wth) + grey * wth
-    gr = 0.5 * fbm(BX0, BY0, WL, HL, 7, 4, 301, aniso=55.0) + 0.5 * fbm(BX0, BY0, WL, HL, 3, 3, 302, aniso=70.0)
-    col = base * (1 + 0.17 * gr)[..., None]
-    hi = smoothstep(0.0, 0.07, fr) * (1 - smoothstep(0.07, 0.22, fr))
-    sh = smoothstep(0.72, 1.0, fr)
-    seam = smoothstep(0.95, 1.0, fr)
-    col = col * (1 + 0.22 * hi - 0.36 * sh - 0.34 * seam)[..., None]
-    Lj = 250 + 120 * r3
+    r1, r2, r3, r4 = h1(kk), h1(kk + 17.3), h1(kk + 91.7), h1(kk + 5.9)
+    ochre = np.array([0.82, 0.60, 0.16], np.float32); gold = np.array([0.99, 0.82, 0.30], np.float32); grey = np.array([0.70, 0.62, 0.44], np.float32)
+    tone = np.broadcast_to(r1, (HL, WL))
+    # each board is cut into lengths; every length gets its own tone (boards come from different trees)
+    Lj = (230 + 150 * r3)
     off = 400 * r2
-    jx = (xs - off) % Lj
+    seg = np.floor((xs - off) / Lj)
+    jx = (xs - off) - seg * Lj
     dj = np.minimum(jx, Lj - jx)
-    joint = np.exp(-(dj / 1.2) ** 2) * (fr < 0.95)
-    col = col * (1 - 0.50 * joint)[..., None]
+    ts = h1(seg * 3.7 + kk * 1.9)
+    tone = np.clip(0.45 * r1 + 0.55 * ts, 0, 1)
+    tone = tone ** 0.85
+    base = ochre[None, None, :] * (1 - tone)[..., None] + gold[None, None, :] * tone[..., None]
+    sil = np.clip((ts - 0.74) * 3.0, 0, 1) * 0.55 + (r2 > 0.86) * 0.35                       # a few silvered, weathered boards
+    base = base * (1 - sil[..., None]) + grey[None, None, :] * sil[..., None]
+    # growth-ring grain: long wavy lines along the board
+    gz = fbm(BX0, BY0, WL, HL, 5, 3, 311, aniso=70.0)
+    ring = 0.5 + 0.5 * np.sin((fr * ph) * 1.55 + gz * 9.0 + r4 * 6.0)
+    fine = fbm(BX0, BY0, WL, HL, 2, 2, 312, aniso=110.0)
+    col = base * (1 + 0.085 * (ring - 0.5) * 2 + 0.055 * fine)[..., None]
+    # bevel: lit top edge, shadowed lower edge, dark gap
+    hi = smoothstep(0.0, 0.10, fr) * (1 - smoothstep(0.10, 0.26, fr))
+    sh = smoothstep(0.66, 1.0, fr)
+    gap = smoothstep(0.93, 1.0, fr)
+    col = col * (1 + 0.30 * hi - 0.34 * sh - 0.56 * gap)[..., None]
+    # butt joints + nail pairs (with a rust run below each nail)
+    joint = np.exp(-(dj / 1.1) ** 2) * (fr < 0.94)
+    col = col * (1 - 0.55 * joint)[..., None]
     for sgn in (-1, 1):
-        nail = np.exp(-(((dj - 9.0) ** 2 + ((fr - 0.46) * ph) ** 2) / 1.6)) * (jx < Lj / 2 if sgn < 0 else jx >= Lj / 2)
-        col = col * (1 - 0.55 * nail)[..., None]
-    st = fbm(BX0, BY0, WL, HL, 50, 3, 303, aniso=0.035)
-    col = col * (1 - 0.16 * np.clip(st * 2.0, 0, 1))[..., None]
+        dxn = dj - 9.0
+        nail = np.exp(-((dxn ** 2 + ((fr - 0.46) * ph) ** 2) / 1.5)) * (jx < Lj / 2 if sgn < 0 else jx >= Lj / 2)
+        col = col * (1 - 0.60 * nail)[..., None] + 0.20 * np.exp(-((dxn ** 2 + ((fr - 0.46) * ph - 1.0) ** 2) / 0.8))[..., None] * 0.0
+        run = np.exp(-(dxn / 1.6) ** 2) * np.clip(1 - np.abs((fr - 0.46) * ph - 8.0) / 8.0, 0, 1) * (jx < Lj / 2 if sgn < 0 else jx >= Lj / 2)
+        col = col * (1 - 0.16 * run)[..., None] + np.array([0.30, 0.16, 0.06], np.float32) * (0.10 * run)[..., None]
+    # knots: rare dark whorls
+    kn_cell = 130.0
+    kx = np.floor(xs / kn_cell); ky = kk
+    krand = h1(kx * 7.3 + ky * 3.1)
+    kcx = (kx + 0.2 + 0.6 * h1(kx * 1.7 + ky)) * kn_cell
+    kdx = xs - kcx; kdy = (fr - 0.5) * ph
+    kd2 = (kdx / 5.5) ** 2 + (kdy / 3.4) ** 2
+    knot = (krand > 0.86) * (np.exp(-kd2) * 0.55 + np.exp(-((np.sqrt(kd2) - 1.6) ** 2) / 0.30) * 0.30)
+    col = col * (1 - 0.55 * np.clip(knot, 0, 1))[..., None]
+    # large-scale: silvered at the top, damp/dark + algae at the foot, wide soft rain streaks
+    ty0 = np.clip((ys - APEX_Y) / (BASE_Y - APEX_Y), 0, 1)
+    col = col * (1 - 0.10 * (1 - ty0))[..., None] + np.array([0.20, 0.17, 0.12], np.float32) * (0.06 * (1 - ty0))[..., None]
+    st = fbm(BX0, BY0, WL, HL, 90, 3, 303, aniso=0.16)
+    col = col * (1 - 0.07 * np.clip(st * 2.2, 0, 1))[..., None]
     gy = smoothstep(BASE_Y - 170, BASE_Y, ys)
     grime = gy * (0.40 + 0.60 * fbm01(BX0, BY0, WL, HL, 60, 3, 305, aniso=2.5))
     col = col * (1 - 0.40 * grime)[..., None] + np.array([0.26, 0.36, 0.13], np.float32) * (0.26 * grime)[..., None]
+    # sunlight raking from the left
     u = np.clip((xs - (CXG - HALF)) / (2 * HALF), 0, 1)
     ty = np.clip((ys - APEX_Y) / (BASE_Y - APEX_Y), 0, 1)
     sun = np.array([1.0, 0.86, 0.62], np.float32); amb = np.array([0.20, 0.19, 0.32], np.float32)
@@ -108,58 +137,187 @@ def bargeboards(c):
     c.set_source(g); c.new_path(); c.arc(CXG, APEX_Y - 38, 7.5, 0, TAU); c.fill()
 
 
-def window(c, cx, cy, wv, hv, kind, rng, box=False, shut=False):
-    """a casement window on the facade at centre (cx,cy)"""
-    for k in range(4):                                                                  # soft cast shadow to the right/down
-        c.set_source_rgba(0.04, 0.02, 0.01, 0.10 - 0.02 * k); c.new_path()
-        c.rectangle(cx - wv / 2 - 6 + 2 + k * 1.5, cy - hv / 2 - 6 + 3 + k * 1.5, wv + 12, hv + 12); c.fill()
-    # casing
-    c.set_source_rgb(0.94, 0.90, 0.80); c.new_path(); c.rectangle(cx - wv / 2 - 6, cy - hv / 2 - 6, wv + 12, hv + 12); c.fill()
-    c.set_source_rgba(0.35, 0.28, 0.18, 0.5); c.set_line_width(1.2); c.new_path(); c.rectangle(cx - wv / 2 - 6, cy - hv / 2 - 6, wv + 12, hv + 12); c.stroke()
-    c.set_source_rgba(0.30, 0.24, 0.14, 0.35); c.new_path(); c.rectangle(cx - wv / 2 - 6, cy + hv / 2 + 2, wv + 12, 4); c.fill()
-    # glass
-    c.save(); c.new_path(); c.rectangle(cx - wv / 2, cy - hv / 2, wv, hv); c.clip()
+def _rect(c, x, y, w, h):
+    c.new_path(); c.rectangle(x, y, w, h)
+
+
+def glass(c, gx0, gy0, gw, gh, kind, rng, sun=0.6, figure=False, panes=(2, 3), reflect=None):
+    """real glass: a room behind it (warm lamp, beam, shelf, curtains, sometimes a pale figure standing very still), the sky and the dark tree-line of the
+    meadow mirrored in it (more where the room is dark), sun glare in diagonal bands that move from pane to pane, muntins with a lit and a shaded side"""
+    c.save(); _rect(c, gx0, gy0, gw, gh); c.clip()
+    # ---- the room
     if kind == 'lit':
-        g = cairo.RadialGradient(cx, cy + hv * 0.1, 1, cx, cy, hv * 0.75); g.add_color_stop_rgb(0, 1.0, 0.90, 0.58); g.add_color_stop_rgb(0.55, 1.0, 0.72, 0.28); g.add_color_stop_rgb(1, 0.78, 0.40, 0.12)
+        lx, ly = gx0 + gw * rng.uniform(0.38, 0.62), gy0 + gh * 0.40
+        g = cairo.RadialGradient(lx, ly, 1, lx, ly, gh * 0.95)
+        g.add_color_stop_rgb(0, 1.0, 0.97, 0.78); g.add_color_stop_rgb(0.20, 1.0, 0.86, 0.46); g.add_color_stop_rgb(0.60, 0.92, 0.58, 0.20); g.add_color_stop_rgb(1, 0.52, 0.26, 0.09)
         c.set_source(g); c.paint()
-        for sx in (-1, 1):                                                              # curtains
-            c.set_source_rgba(0.96, 0.92, 0.84, 0.92); c.new_path(); c.move_to(cx + sx * wv / 2, cy - hv / 2); c.curve_to(cx + sx * wv * 0.18, cy - hv * 0.2, cx + sx * wv * 0.42, cy + hv * 0.2, cx + sx * wv * 0.12, cy + hv / 2); c.line_to(cx + sx * wv / 2, cy + hv / 2); c.close_path(); c.fill()
-            c.set_source_rgba(0.7, 0.55, 0.40, 0.4); c.set_line_width(0.9); c.new_path(); c.move_to(cx + sx * wv * 0.28, cy - hv * 0.4); c.curve_to(cx + sx * wv * 0.30, cy, cx + sx * wv * 0.30, cy + hv * 0.2, cx + sx * wv * 0.20, cy + hv * 0.45); c.stroke()
+        c.set_source_rgba(0.26, 0.13, 0.05, 0.95); _rect(c, gx0, gy0, gw, gh * 0.13); c.fill()                      # ceiling beam
+        c.set_source_rgba(0.40, 0.21, 0.08, 0.60); _rect(c, gx0, gy0 + gh * 0.13, gw, gh * 0.025); c.fill()
+        c.set_source_rgba(0.30, 0.15, 0.06, 0.82); _rect(c, gx0, gy0 + gh * 0.80, gw, gh * 0.20); c.fill()           # shelf / table edge
+        for k in range(3):                                                                                           # things on it
+            bx = gx0 + gw * (0.12 + 0.30 * k + 0.05 * rng.random())
+            c.set_source_rgba(0.22, 0.11, 0.05, 0.9); _rect(c, bx, gy0 + gh * (0.70 - 0.05 * rng.random()), gw * 0.14, gh * 0.12); c.fill()
+        if figure:
+            fx = gx0 + gw * 0.52
+            c.set_source_rgba(0.95, 0.93, 0.88, 0.96)                                                                # a girl in white, facing out, motionless
+            c.new_path(); c.move_to(fx - gw * 0.16, gy0 + gh); c.line_to(fx - gw * 0.10, gy0 + gh * 0.50); c.line_to(fx + gw * 0.10, gy0 + gh * 0.50); c.line_to(fx + gw * 0.16, gy0 + gh); c.close_path(); c.fill()
+            c.new_path(); c.arc(fx, gy0 + gh * 0.39, gw * 0.100, 0, TAU); c.set_source_rgba(0.96, 0.84, 0.76, 1); c.fill()
+            c.set_source_rgba(0.28, 0.20, 0.12, 0.92); c.new_path(); c.arc(fx, gy0 + gh * 0.35, gw * 0.108, math.pi, TAU); c.fill()
+            c.set_source_rgba(0.10, 0.06, 0.05, 0.95)
+            for sx in (-1, 1):
+                c.new_path(); c.arc(fx + sx * gw * 0.040, gy0 + gh * 0.395, max(0.35, gw * 0.014), 0, TAU); c.fill()
+            c.set_source_rgba(0.70, 0.22, 0.24, 0.9); c.set_line_width(max(0.35, gw * 0.012)); c.new_path()
+            c.move_to(fx - gw * 0.048, gy0 + gh * 0.435); c.curve_to(fx - gw * 0.02, gy0 + gh * 0.455, fx + gw * 0.02, gy0 + gh * 0.455, fx + gw * 0.048, gy0 + gh * 0.435); c.stroke()
+        for sx in (-1, 1):                                                                                           # curtains, lit from behind
+            xe = gx0 + (gw if sx > 0 else 0)
+            c.set_source_rgba(0.98, 0.93, 0.84, 0.90); c.new_path(); c.move_to(xe, gy0); c.curve_to(xe - sx * gw * 0.30, gy0 + gh * 0.25, xe - sx * gw * 0.46, gy0 + gh * 0.55, xe - sx * gw * 0.20, gy0 + gh * 0.80)
+            c.line_to(xe - sx * gw * 0.08, gy0 + gh); c.line_to(xe, gy0 + gh); c.close_path(); c.fill()
+            c.set_source_rgba(0.62, 0.46, 0.30, 0.38); c.set_line_width(max(0.5, gw * 0.03))
+            for q in range(2):
+                c.new_path(); c.move_to(xe - sx * gw * (0.07 + 0.10 * q), gy0 + gh * 0.04); c.curve_to(xe - sx * gw * (0.14 + 0.10 * q), gy0 + gh * 0.40, xe - sx * gw * (0.18 + 0.09 * q), gy0 + gh * 0.60, xe - sx * gw * (0.08 + 0.07 * q), gy0 + gh * 0.95); c.stroke()
+    elif kind == 'dim':
+        g = cairo.LinearGradient(0, gy0, 0, gy0 + gh); g.add_color_stop_rgb(0, 0.10, 0.12, 0.20); g.add_color_stop_rgb(1, 0.05, 0.05, 0.08)
+        c.set_source(g); c.paint()
+        c.set_source_rgba(0.34, 0.20, 0.10, 0.5); _rect(c, gx0, gy0 + gh * 0.55, gw, gh * 0.04); c.fill()                # a shelf
+        cx_, cy_ = gx0 + gw * rng.uniform(0.2, 0.8), gy0 + gh * 0.50
+        gcan = cairo.RadialGradient(cx_, cy_, 0.5, cx_, cy_, gw * 0.5); gcan.add_color_stop_rgba(0, 1.0, 0.80, 0.40, 0.55); gcan.add_color_stop_rgba(1, 1.0, 0.6, 0.2, 0)   # a far candle
+        c.set_source(gcan); c.paint()
     else:
-        g = cairo.LinearGradient(0, cy - hv / 2, 0, cy + hv / 2)
-        if kind == 'sky': g.add_color_stop_rgb(0, 0.46, 0.55, 0.80); g.add_color_stop_rgb(0.55, 0.92, 0.66, 0.60); g.add_color_stop_rgb(1, 1.0, 0.70, 0.40)
-        else: g.add_color_stop_rgb(0, 0.20, 0.26, 0.44); g.add_color_stop_rgb(0.6, 0.30, 0.26, 0.34); g.add_color_stop_rgb(1, 0.10, 0.08, 0.10)
+        g = cairo.LinearGradient(0, gy0, 0, gy0 + gh); g.add_color_stop_rgb(0, 0.16, 0.22, 0.34); g.add_color_stop_rgb(1, 0.07, 0.07, 0.10)
         c.set_source(g); c.paint()
-        c.set_source_rgba(1, 1, 1, 0.26 if kind == 'sky' else 0.16); c.new_path()                         # diagonal glare
-        c.move_to(cx - wv * 0.55, cy + hv * 0.1); c.line_to(cx - wv * 0.05, cy - hv * 0.55); c.line_to(cx + wv * 0.20, cy - hv * 0.55); c.line_to(cx - wv * 0.30, cy + hv * 0.1 + hv * 0.0); c.close_path(); c.fill()
-        c.set_source_rgba(0.05, 0.04, 0.04, 0.35); c.new_path(); c.rectangle(cx - wv / 2, cy + hv * 0.18, wv, hv * 0.34); c.fill()    # room interior below the sill line
+    # ---- reflections: the sky, a few clouds, the tree-line, the glowing ground
+    ra = {'lit': 0.20, 'dim': 0.52, 'sky': 0.66}[kind]
+    if reflect is not None: ra = reflect
+    g = cairo.LinearGradient(0, gy0, 0, gy0 + gh)
+    g.add_color_stop_rgba(0.00, 0.30, 0.40, 0.72, ra); g.add_color_stop_rgba(0.34, 0.66, 0.54, 0.74, ra * 0.95); g.add_color_stop_rgba(0.52, 0.98, 0.70, 0.58, ra)
+    g.add_color_stop_rgba(0.60, 1.0, 0.80, 0.50, ra); g.add_color_stop_rgba(0.62, 0.20, 0.26, 0.12, ra * 0.95); g.add_color_stop_rgba(1.0, 0.36, 0.40, 0.16, ra * 0.70)
+    c.set_source(g); c.paint()
+    c.set_source_rgba(0.08, 0.15, 0.10, 0.80 * ra / 0.66)                                                            # tree-line
+    c.new_path(); c.move_to(gx0, gy0 + gh * 0.64)
+    for k in range(0, 13):
+        px = gx0 + gw * k / 12.0
+        c.line_to(px, gy0 + gh * (0.50 + 0.07 * math.sin(k * 2.1 + gx0) + (0.05 if k % 3 == 0 else 0.0)))
+    c.line_to(gx0 + gw, gy0 + gh * 0.64); c.close_path(); c.fill()
+    for k in range(2):                                                                                                # clouds in the reflection
+        cxp, cyp = gx0 + gw * rng.uniform(0.2, 0.8), gy0 + gh * rng.uniform(0.10, 0.34)
+        gcl = cairo.RadialGradient(cxp, cyp, 0.5, cxp, cyp, gw * 0.40); gcl.add_color_stop_rgba(0, 1.0, 0.84, 0.80, 0.50 * ra / 0.66); gcl.add_color_stop_rgba(1, 1.0, 0.84, 0.80, 0)
+        c.set_source(gcl); c.new_path(); c.save(); c.translate(cxp, cyp); c.scale(1.0, 0.45); c.translate(-cxp, -cyp); c.arc(cxp, cyp, gw * 0.40, 0, TAU); c.restore(); c.fill()
+    # ---- sun glare: two diagonal bands, stronger for windows nearer the sun
+    s_ = max(0.0, min(1.0, sun))
+    for (a0, bw, al) in ((0.04, 0.34, 0.68), (0.54, 0.12, 0.48)):
+        gl = cairo.LinearGradient(gx0 + gw * a0, 0, gx0 + gw * (a0 + bw), 0)
+        gl.add_color_stop_rgba(0.0, 1.0, 0.96, 0.78, 0.0); gl.add_color_stop_rgba(0.45, 1.0, 0.95, 0.74, al * s_); gl.add_color_stop_rgba(1.0, 1.0, 0.90, 0.62, 0.0)
+        c.set_source(gl); c.new_path()
+        c.move_to(gx0 + gw * (a0 - 0.30), gy0 + gh); c.line_to(gx0 + gw * (a0 + bw - 0.30), gy0 + gh); c.line_to(gx0 + gw * (a0 + bw + 0.60), gy0); c.line_to(gx0 + gw * (a0 + 0.60), gy0); c.close_path(); c.fill()
+    if s_ > 0.40:                                                                                                      # the sun catches the glass: a hot spot, a flare and a streak
+        fxp, fyp = gx0 + gw * 0.24, gy0 + gh * 0.20
+        gfl = cairo.RadialGradient(fxp, fyp, 0.3, fxp, fyp, gw * 0.95); gfl.add_color_stop_rgba(0, 1.0, 0.99, 0.90, 1.0 * s_); gfl.add_color_stop_rgba(0.25, 1.0, 0.90, 0.58, 0.62 * s_); gfl.add_color_stop_rgba(1, 1.0, 0.7, 0.3, 0)
+        c.set_source(gfl); c.new_path(); c.arc(fxp, fyp, gw * 0.95, 0, TAU); c.fill()
+        c.set_source_rgba(1.0, 0.98, 0.88, 0.85 * s_); c.set_line_width(max(0.5, gw * 0.026))
+        c.new_path(); c.move_to(fxp - gw * 0.50, fyp); c.line_to(fxp + gw * 0.50, fyp); c.move_to(fxp, fyp - gw * 0.50); c.line_to(fxp, fyp + gw * 0.50); c.stroke()
+        c.set_source_rgba(1.0, 0.96, 0.80, 0.50 * s_); c.set_line_width(max(0.6, gw * 0.10))
+        c.new_path(); c.move_to(gx0 + gw * 0.05, gy0 + gh * 0.95); c.line_to(gx0 + gw * 0.62, gy0 + gh * 0.05); c.stroke()
+    for k in range(3):                                                                                                 # a little dirt run on old glass
+        sx_ = gx0 + gw * rng.uniform(0.1, 0.9)
+        c.set_source_rgba(0.30, 0.26, 0.20, 0.07); c.set_line_width(max(0.5, gw * 0.04)); c.new_path(); c.move_to(sx_, gy0); c.line_to(sx_ + rng.normal(0, 0.8), gy0 + gh * rng.uniform(0.5, 1.0)); c.stroke()
     c.restore()
-    # muntins
-    c.set_source_rgb(0.92, 0.88, 0.78); c.set_line_width(2.0)
-    c.new_path(); c.move_to(cx, cy - hv / 2); c.line_to(cx, cy + hv / 2); c.stroke()
-    for fy in (-1 / 6, 1 / 6):
-        c.new_path(); c.move_to(cx - wv / 2, cy + hv * fy); c.line_to(cx + wv / 2, cy + hv * fy); c.stroke()
-    c.set_source_rgba(0.25, 0.20, 0.12, 0.7); c.set_line_width(1.0); c.new_path(); c.rectangle(cx - wv / 2, cy - hv / 2, wv, hv); c.stroke()
-    # sill
-    c.set_source_rgb(0.90, 0.85, 0.74); c.new_path(); c.rectangle(cx - wv / 2 - 9, cy + hv / 2 + 6, wv + 18, 5); c.fill()
-    c.set_source_rgba(0.1, 0.06, 0.03, 0.5); c.new_path(); c.rectangle(cx - wv / 2 - 9, cy + hv / 2 + 11, wv + 18, 3); c.fill()
+    # ---- muntins: lit on the sun side, shaded on the other, a bright glass edge at the top-left of every pane
+    nx_, ny_ = panes
+    xs_ = [gx0 + gw * k / nx_ for k in range(1, nx_)]
+    ys_ = [gy0 + gh * k / ny_ for k in range(1, ny_)]
+    mw = max(1.1, gw * 0.075)
+    for xm in xs_:
+        c.set_source_rgb(0.90, 0.86, 0.76); _rect(c, xm - mw / 2, gy0, mw, gh); c.fill()
+        c.set_source_rgba(1, 1, 1, 0.55); _rect(c, xm - mw / 2, gy0, mw * 0.35, gh); c.fill()
+        c.set_source_rgba(0.20, 0.15, 0.08, 0.45); _rect(c, xm + mw * 0.2, gy0, mw * 0.3, gh); c.fill()
+    for ym in ys_:
+        c.set_source_rgb(0.90, 0.86, 0.76); _rect(c, gx0, ym - mw / 2, gw, mw); c.fill()
+        c.set_source_rgba(1, 1, 1, 0.55); _rect(c, gx0, ym - mw / 2, gw, mw * 0.35); c.fill()
+        c.set_source_rgba(0.20, 0.15, 0.08, 0.45); _rect(c, gx0, ym + mw * 0.2, gw, mw * 0.3); c.fill()
+    xe_ = [gx0] + xs_ + [gx0 + gw]; ye_ = [gy0] + ys_ + [gy0 + gh]
+    for a_ in range(len(xe_) - 1):
+        for b_ in range(len(ye_) - 1):
+            c.set_source_rgba(1, 1, 1, 0.38); c.set_line_width(0.6)
+            c.new_path(); c.move_to(xe_[a_] + mw * 0.5, ye_[b_ + 1] - mw * 0.5); c.line_to(xe_[a_] + mw * 0.5, ye_[b_] + mw * 0.5); c.line_to(xe_[a_ + 1] - mw * 0.5, ye_[b_] + mw * 0.5); c.stroke()
+    c.set_source_rgba(0.10, 0.07, 0.04, 0.85); c.set_line_width(1.0); _rect(c, gx0, gy0, gw, gh); c.stroke()
+
+
+def shutter(c, x, y, w, h, lit, rng):
+    """an open louvred shutter painted cornflower blue, with a heart cut out of it"""
+    base = (0.40, 0.58, 0.86) if lit else (0.24, 0.40, 0.66)
+    g = cairo.LinearGradient(x, 0, x + w, 0); g.add_color_stop_rgb(0, *[min(1, v * (1.12 if lit else 0.96)) for v in base]); g.add_color_stop_rgb(1, *[v * (0.88 if lit else 0.74) for v in base])
+    c.set_source(g); _rect(c, x, y, w, h); c.fill()
+    n = int(h / 3.0)
+    for k in range(n):
+        yy = y + 2 + k * (h - 4) / n
+        c.set_source_rgba(1, 1, 1, 0.20 if lit else 0.10); c.set_line_width(0.5); c.new_path(); c.move_to(x + 1.2, yy); c.line_to(x + w - 1.2, yy); c.stroke()
+        c.set_source_rgba(0.04, 0.10, 0.22, 0.45); c.new_path(); c.move_to(x + 1.2, yy + 1.1); c.line_to(x + w - 1.2, yy + 1.1); c.stroke()
+    hx_, hy_ = x + w / 2, y + h * 0.20
+    c.set_source_rgb(0.07, 0.07, 0.10); c.new_path(); c.move_to(hx_, hy_ + w * 0.22); c.curve_to(hx_ - w * 0.40, hy_ - w * 0.05, hx_ - w * 0.12, hy_ - w * 0.30, hx_, hy_ - w * 0.06)
+    c.curve_to(hx_ + w * 0.12, hy_ - w * 0.30, hx_ + w * 0.40, hy_ - w * 0.05, hx_, hy_ + w * 0.22); c.fill()
+    c.set_source_rgba(0.04, 0.10, 0.22, 0.85); c.set_line_width(0.8); _rect(c, x, y, w, h); c.stroke()
+    c.set_source_rgba(1, 1, 1, 0.30 if lit else 0.14); c.set_line_width(0.7); c.new_path(); c.move_to(x + 0.6, y + h); c.line_to(x + 0.6, y + 0.6); c.line_to(x + w, y + 0.6); c.stroke()
+
+
+def window(c, cx, cy, wv, hv, kind, rng, box=False, shut=False, sun=0.6, figure=False):
+    """a casement window set INTO the planks: spill of lamp-light on the wall, drop shadow, bevelled casing with a drip cap, dark left/top reveal and a sunlit right
+    reveal, real glass (see glass()), a sloping sill, a flower box with geraniums, and louvred shutters on some"""
+    cw = 5.5
+    x0_, y0_ = cx - wv / 2, cy - hv / 2
+    if kind == 'lit':                                                                                             # lamp-light spilling on the boards round the window
+        g = cairo.RadialGradient(cx, cy + hv * 0.05, hv * 0.30, cx, cy + hv * 0.05, hv * 1.55)
+        g.add_color_stop_rgba(0, 1.0, 0.78, 0.34, 0.34); g.add_color_stop_rgba(1, 1.0, 0.7, 0.3, 0)
+        c.set_source(g); c.new_path(); c.arc(cx, cy + hv * 0.05, hv * 1.55, 0, TAU); c.fill()
+    for k in range(5):                                                                                            # soft cast shadow to the right / down
+        c.set_source_rgba(0.04, 0.02, 0.01, 0.11 - 0.018 * k); _rect(c, x0_ - cw + 2 + k * 1.4, y0_ - cw + 3 + k * 1.7, wv + 2 * cw + k * 0.8, hv + 2 * cw + k * 0.8); c.fill()
+    if shut:                                                                                                      # shutters stand open against the wall
+        sw = wv * 0.50
+        shutter(c, x0_ - cw - sw - 1.5, y0_ - 2, sw, hv + 4 + cw, True, rng)
+        shutter(c, x0_ + wv + cw + 1.5, y0_ - 2, sw, hv + 4 + cw, False, rng)
+    # casing (painted cream, bevelled)
+    g = cairo.LinearGradient(x0_ - cw, 0, x0_ + wv + cw, 0); g.add_color_stop_rgb(0, 0.99, 0.96, 0.88); g.add_color_stop_rgb(1, 0.80, 0.76, 0.66)
+    c.set_source(g); _rect(c, x0_ - cw, y0_ - cw, wv + 2 * cw, hv + 2 * cw); c.fill()
+    c.set_source_rgba(1, 1, 1, 0.60); c.set_line_width(0.8); c.new_path(); c.move_to(x0_ - cw + 0.4, y0_ + hv + cw); c.line_to(x0_ - cw + 0.4, y0_ - cw + 0.4); c.line_to(x0_ + wv + cw, y0_ - cw + 0.4); c.stroke()
+    c.set_source_rgba(0.28, 0.22, 0.14, 0.60); c.set_line_width(0.9); c.new_path(); c.move_to(x0_ + wv + cw - 0.4, y0_ - cw); c.line_to(x0_ + wv + cw - 0.4, y0_ + hv + cw - 0.4); c.line_to(x0_ - cw, y0_ + hv + cw - 0.4); c.stroke()
+    c.set_source_rgb(0.92, 0.88, 0.78); _rect(c, x0_ - cw - 2, y0_ - cw - 3.2, wv + 2 * cw + 4, 3.2); c.fill()                       # drip cap
+    c.set_source_rgba(0.10, 0.06, 0.03, 0.40); _rect(c, x0_ - cw - 2, y0_ - cw, wv + 2 * cw + 4, 1.6); c.fill()
+    # the glass is recessed: left and top reveal dark, right reveal catches the sun
+    rv = 2.6
+    c.set_source_rgba(0.08, 0.06, 0.04, 0.88); _rect(c, x0_, y0_, rv, hv); c.fill(); _rect(c, x0_, y0_, wv, rv * 1.2); c.fill()
+    c.set_source_rgba(1.0, 0.84, 0.52, 0.78); _rect(c, x0_ + wv - rv * 0.8, y0_ + rv, rv * 0.8, hv - rv); c.fill()
+    gx0, gy0, gw, gh = x0_ + rv, y0_ + rv * 1.2, wv - rv - rv * 0.8, hv - rv * 1.2
+    glass(c, gx0, gy0, gw, gh, kind, rng, sun=sun, figure=figure)
+    # sill: top face lit, front face shaded, a dark line where it meets the wall
+    c.set_source_rgb(0.96, 0.92, 0.82); c.new_path(); c.move_to(x0_ - cw - 3, y0_ + hv + cw + 1.0); c.line_to(x0_ + wv + cw + 3, y0_ + hv + cw + 1.0)
+    c.line_to(x0_ + wv + cw + 5, y0_ + hv + cw + 4.2); c.line_to(x0_ - cw - 5, y0_ + hv + cw + 4.2); c.close_path(); c.fill()
+    c.set_source_rgb(0.74, 0.70, 0.60); _rect(c, x0_ - cw - 5, y0_ + hv + cw + 4.2, wv + 2 * cw + 10, 2.4); c.fill()
+    c.set_source_rgba(0.06, 0.03, 0.01, 0.55); _rect(c, x0_ - cw - 5, y0_ + hv + cw + 6.6, wv + 2 * cw + 10, 2.4); c.fill()
     if box:
-        c.set_source_rgb(0.40, 0.25, 0.13); c.new_path(); c.rectangle(cx - wv / 2 - 8, cy + hv / 2 + 11, wv + 16, 11); c.fill()
-        c.set_source_rgba(0.1, 0.05, 0.02, 0.5); c.new_path(); c.rectangle(cx - wv / 2 - 8, cy + hv / 2 + 20, wv + 16, 2); c.fill()
-        for k in range(9):
-            fx = cx - wv / 2 - 4 + k * (wv + 8) / 8
-            c.set_source_rgb(0.16, 0.34, 0.12); c.new_path(); c.arc(fx, cy + hv / 2 + 9, 5.0, 0, TAU); c.fill()
-            col = [(0.86, 0.14, 0.18), (0.96, 0.42, 0.50), (0.97, 0.94, 0.90)][k % 3]
-            c.set_source_rgb(*col); c.new_path(); c.arc(fx + rng.normal(0, 1), cy + hv / 2 + 4 + rng.normal(0, 1.5), 3.8, 0, TAU); c.fill()
-    if shut:
-        for sx in (-1, 1):
-            x0s = cx + sx * (wv / 2 + 7) - (0 if sx > 0 else 14)
-            c.set_source_rgb(0.50, 0.74, 0.88); c.new_path(); c.rectangle(x0s, cy - hv / 2 - 4, 14, hv + 8); c.fill()
-            c.set_source_rgba(0.10, 0.22, 0.34, 0.8); c.set_line_width(1.0); c.new_path(); c.rectangle(x0s, cy - hv / 2 - 4, 14, hv + 8); c.stroke()
+        by_ = y0_ + hv + cw + 7
+        g = cairo.LinearGradient(0, by_, 0, by_ + 11); g.add_color_stop_rgb(0, 0.40, 0.58, 0.88); g.add_color_stop_rgb(1, 0.22, 0.34, 0.60)
+        c.set_source(g); _rect(c, x0_ - cw - 3, by_, wv + 2 * cw + 6, 11); c.fill()
+        c.set_source_rgba(1, 1, 1, 0.30); _rect(c, x0_ - cw - 3, by_, wv + 2 * cw + 6, 1.3); c.fill()
+        c.set_source_rgba(0.05, 0.04, 0.03, 0.55); _rect(c, x0_ - cw - 3, by_ + 11, wv + 2 * cw + 6, 2.0); c.fill()
+        c.set_source_rgba(0.04, 0.03, 0.02, 0.28); _rect(c, x0_ - cw - 1, by_ + 13, wv + 2 * cw + 4, 4.5); c.fill()
+        for k in range(10):                                                                                    # leaves, then geraniums (sphere-shaded blobs), trailing ivy
+            fx = x0_ - cw - 1 + k * (wv + 2 * cw + 2) / 9
+            c.set_source_rgb(0.12 + 0.06 * rng.random(), 0.32 + 0.12 * rng.random(), 0.10); c.new_path(); c.save(); c.translate(fx, by_ - 2); c.rotate(rng.uniform(-0.8, 0.8)); c.scale(5.0, 2.8); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
+        for k in range(8):
+            fx = x0_ - cw + 1 + k * (wv + 2 * cw - 2) / 7; fy = by_ - 4.5 + rng.normal(0, 1.2)
+            col = [(0.88, 0.12, 0.16), (0.96, 0.40, 0.48), (0.98, 0.94, 0.90), (0.88, 0.12, 0.16)][k % 4]
+            gg = cairo.RadialGradient(fx - 1.2, fy - 1.4, 0.3, fx, fy, 4.2); gg.add_color_stop_rgb(0, *[min(1, v * 1.35 + 0.1) for v in col]); gg.add_color_stop_rgb(1, *[v * 0.62 for v in col])
+            c.set_source(gg); c.new_path(); c.arc(fx, fy, 3.9, 0, TAU); c.fill()
+        c.set_source_rgba(0.14, 0.34, 0.10, 0.9); c.set_line_width(1.1)
+        for k in range(4):
+            fx = x0_ - cw + 2 + k * (wv + 2 * cw - 4) / 3
+            c.new_path(); c.move_to(fx, by_ + 9); c.curve_to(fx + rng.normal(0, 2), by_ + 14, fx + rng.normal(0, 2), by_ + 18, fx + rng.normal(0, 2), by_ + rng.uniform(19, 26)); c.stroke()
 
 
 def windows(c, rng):
     lit = {(-1, 0, 2), (-1, 0, 4), (1, 0, 1), (1, 0, 3), (-1, 1, 2), (1, 1, 1), (1, 1, 3), (-1, 0, 0)}
+    figure_at = {(1, 0, 3), (-1, 1, 2)}
+    placed = []
+    lant = [(CXG - 168.0, BASE_Y - 284.0), (CXG + 168.0, BASE_Y - 284.0)]
     for side in (-1, 1):
         d = np.array([side * HALF, BASE_Y - APEX_Y], np.float32); L_ = float(np.linalg.norm(d)); d = d / L_
         nrm = np.array([-d[1], d[0]], np.float32) * (1 if side > 0 else -1)
@@ -172,27 +330,32 @@ def windows(c, rng):
                 xx, yy = P0 + nrm * off
                 if abs(xx - CXG) < 175 and yy > BASE_Y - 270: continue
                 if abs(xx - CXG) < 56 and yy < 380: continue
-                kind = 'lit' if (side, row, i) in lit else ('sky' if rng.random() < 0.62 else 'dark')
-                window(c, float(xx), float(yy), 29, 39, kind, rng, box=(yy > BASE_Y - 330 and rng.random() < 0.55))
+                if any(abs(xx - px) < 52 and abs(yy - py) < 62 for (px, py) in placed): continue
+                if any(abs(xx - px) < 50 and abs(yy - py) < 46 for (px, py) in lant): continue            # no two windows may overlap (the old double window near the apex)
+                placed.append((float(xx), float(yy)))
+                kind = 'lit' if (side, row, i) in lit else ('sky' if rng.random() < 0.62 else 'dim')
+                u = float(np.clip((xx - (CXG - HALF)) / (2 * HALF), 0, 1))
+                window(c, float(xx), float(yy), 31, 42, kind, rng, box=(yy > BASE_Y - 330 and rng.random() < 0.55), shut=(rng.random() < 0.42),
+                       sun=float(np.clip(1.10 - 1.0 * u, 0.12, 1.0)), figure=((side, row, i) in figure_at))
+    return placed
 
 
 def apex_window(c, rng):
     cx, cy = CXG, 306
     for k in range(5):
         c.set_source_rgba(0.04, 0.02, 0.01, 0.10 - 0.015 * k); c.new_path(); c.rectangle(cx - 44 + 3 + k, cy - 44 + 5 + k, 88, 88); c.fill()
-    c.set_source_rgb(0.40, 0.27, 0.13); c.new_path(); c.rectangle(cx - 44, cy - 44, 88, 88); c.fill()
-    c.set_source_rgb(0.04, 0.035, 0.05); c.new_path(); c.rectangle(cx - 34, cy - 34, 68, 68); c.fill()
-    g = cairo.RadialGradient(cx + 6, cy + 12, 1, cx, cy + 8, 40); g.add_color_stop_rgba(0, 1.0, 0.72, 0.30, 0.55); g.add_color_stop_rgba(1, 1.0, 0.6, 0.2, 0)
-    c.set_source(g); c.new_path(); c.rectangle(cx - 34, cy - 34, 68, 68); c.fill()
-    c.set_source_rgba(0.95, 0.90, 0.82, 0.45); c.new_path(); c.move_to(cx - 34, cy - 34); c.curve_to(cx - 20, cy - 8, cx - 28, cy + 10, cx - 34, cy + 34); c.line_to(cx - 34, cy - 34); c.fill()
-    c.set_source_rgba(1, 1, 1, 0.12); c.new_path(); c.move_to(cx - 30, cy + 8); c.line_to(cx + 4, cy - 34); c.line_to(cx + 16, cy - 34); c.line_to(cx - 14, cy + 8); c.close_path(); c.fill()
-    c.set_source_rgb(0.90, 0.85, 0.74); c.set_line_width(3); c.new_path(); c.move_to(cx, cy - 34); c.line_to(cx, cy + 34); c.move_to(cx - 34, cy); c.line_to(cx + 34, cy); c.stroke()
+    g = cairo.LinearGradient(cx - 44, 0, cx + 44, 0); g.add_color_stop_rgb(0, 0.62, 0.42, 0.22); g.add_color_stop_rgb(1, 0.32, 0.20, 0.10)
+    c.set_source(g); c.new_path(); c.rectangle(cx - 44, cy - 44, 88, 88); c.fill()
+    c.set_source_rgba(1, 0.9, 0.6, 0.35); c.set_line_width(1.0); c.new_path(); c.move_to(cx - 43.5, cy + 44); c.line_to(cx - 43.5, cy - 43.5); c.line_to(cx + 44, cy - 43.5); c.stroke()
+    c.set_source_rgba(0.04, 0.02, 0.01, 0.8); c.rectangle(cx - 34, cy - 34, 7, 68); c.fill(); c.rectangle(cx - 34, cy - 34, 68, 7); c.fill()      # dark reveal
+    c.set_source_rgba(1.0, 0.82, 0.50, 0.55); c.rectangle(cx + 28, cy - 27, 6, 61); c.fill()
+    glass(c, cx - 27, cy - 27, 55, 61, 'dim', rng, sun=0.92, panes=(2, 2), reflect=0.55)
+    g = cairo.RadialGradient(cx + 6, cy + 14, 1, cx, cy + 10, 36); g.add_color_stop_rgba(0, 1.0, 0.72, 0.30, 0.55); g.add_color_stop_rgba(1, 1.0, 0.6, 0.2, 0)           # a candle deep in the attic
+    c.save(); c.new_path(); c.rectangle(cx - 27, cy - 27, 55, 61); c.clip(); c.set_source(g); c.paint(); c.restore()
     c.set_source_rgba(0.12, 0.08, 0.04, 0.8); c.set_line_width(1.3); c.new_path(); c.rectangle(cx - 34, cy - 34, 68, 68); c.stroke()
     for sx in (-1, 1):
         x0s = cx + sx * 52 - (0 if sx > 0 else 18)
-        c.set_source_rgb(0.50, 0.74, 0.88); c.new_path(); c.rectangle(x0s, cy - 40, 18, 80); c.fill()
-        c.set_source_rgba(0.88, 0.40, 0.40, 0.9); c.new_path(); c.move_to(x0s + 9, cy + 6); c.curve_to(x0s + 2, cy - 4, x0s + 6, cy - 12, x0s + 9, cy - 6); c.curve_to(x0s + 12, cy - 12, x0s + 16, cy - 4, x0s + 9, cy + 6); c.fill()
-        c.set_source_rgba(0.10, 0.22, 0.34, 0.8); c.set_line_width(1.0); c.new_path(); c.rectangle(x0s, cy - 40, 18, 80); c.stroke()
+        shutter(c, x0s, cy - 40, 18, 80, sx < 0, rng)
 
 
 def doorway(c):
@@ -268,6 +431,21 @@ def door_leaf(c, side, lit):
     for cu2, cv2 in ((59, 40), (30, 40), (88, 40)):
         qell(c, q, cu2, cv2, 9, 5.5, 0.3, (0.97, 0.90, 0.72, 1.0), (0.3, 0.2, 0.1, 0.5), 0.8)
         qell(c, q, cu2, cv2, 3.4, 3.4, 0, (0.84, 0.22, 0.20, 1.0), None, n=10)
+    # paint over wood: faint grain through the paint, a few brush streaks, a gloss band where the sun hits, chipped edge
+    rr_ = np.random.default_rng(5 + side)
+    for k in range(14):
+        u = 8 + k * 7.4 + rr_.normal(0, 1.2)
+        x1, y1 = q.P(u, 6); x2, y2 = q.P(u + rr_.normal(0, 1.5), 192)
+        c.set_source_rgba(0.04, 0.12, 0.24, 0.10); c.set_line_width(0.8); c.new_path(); c.move_to(x1, y1); c.line_to(x2, y2); c.stroke()
+    for k in range(5):
+        v = 20 + k * 36 + rr_.uniform(-4, 4)
+        x1, y1 = q.P(4, v); x2, y2 = q.P(114, v + rr_.normal(0, 3))
+        c.set_source_rgba(1, 1, 1, 0.07); c.set_line_width(2.2); c.new_path(); c.move_to(x1, y1); c.line_to(x2, y2); c.stroke()
+    gl_ = cairo.LinearGradient(*q.P(0, 0), *q.P(60, 0)); gl_.add_color_stop_rgba(0, 1, 1, 1, 0.0); gl_.add_color_stop_rgba(0.5, 1, 1, 1, 0.20 if lit else 0.08); gl_.add_color_stop_rgba(1, 1, 1, 1, 0.0)
+    c.set_source(gl_); c.new_path(); c.move_to(*A); c.line_to(*B); c.line_to(*C); c.line_to(*D); c.close_path(); c.fill()
+    for k in range(5):
+        x1, y1 = q.P(rr_.uniform(2, 116), rr_.uniform(2, 196))
+        c.set_source_rgba(0.80, 0.70, 0.52, 0.55); c.new_path(); c.arc(x1, y1, rr_.uniform(0.6, 1.4), 0, TAU); c.fill()
     # edge thickness (the free edge of the open leaf) + hinges + pull
     c.set_source_rgba(0.06, 0.12, 0.20, 0.85); c.set_line_width(3.0); c.new_path(); c.move_to(*B); c.line_to(*C); c.stroke()
     for v in (30, 100, 170):
@@ -371,6 +549,12 @@ def woman():
                                  crown=True, smile=0.0, feet=False, hem_y=0.0, bow=True), interior, seed=17)
 
 
+def _shadow(a, dx, dy, sigma):
+    M = np.float32([[1, 0, dx], [0, 1, dy]])
+    s = cv2.warpAffine(a.astype(np.float32), M, (a.shape[1], a.shape[0]), flags=cv2.INTER_LINEAR, borderValue=0)
+    return cv2.GaussianBlur(s, (0, 0), sigma)
+
+
 def render_house(x0, w):
     """-> (rgb, alpha) full-size (H,w) layers of the whole house"""
     rng = np.random.default_rng(73)
@@ -381,6 +565,8 @@ def render_house(x0, w):
     L1 = Layer(WL, HL, BX0, BY0, 2)
     bargeboards(L1.ctx); windows(L1.ctx, rng); apex_window(L1.ctx, rng); doorway(L1.ctx)
     r1, a1 = L1.get()
+    sh1 = np.clip(_shadow(a1, 4.0, 6.0, 3.6) * (1 - a1), 0, 1) * mask                                             # everything that stands out from the wall casts a soft shadow on it
+    rgb = rgb * (1 - 0.34 * sh1[..., None]) + np.array([0.05, 0.03, 0.08], np.float32) * (0.34 * sh1[..., None])
     rgb = rgb * (1 - a1[..., None]) + r1
     alpha = np.clip(alpha * (1 - a1) + a1, 0, 1)
     sp = woman()
@@ -392,7 +578,13 @@ def render_house(x0, w):
     door_leaf(c, -1, True); door_leaf(c, 1, False)
     steps(c); pots(c, rng); lanterns(c); ivy(c, rng)
     r2, a2 = L2.get()
+    spill = np.zeros((HL, WL), np.float32)
+    yy_, xx_ = np.mgrid[0:HL, 0:WL]
+    spill = np.exp(-(((xx_ + BX0 - CXG) / 120.0) ** 2 + ((yy_ + BY0 - (BASE_Y + 14)) / 30.0) ** 2)) * (yy_ + BY0 > BASE_Y)
+    sh2 = np.clip(_shadow(a2, 5.0, 7.0, 4.2) * (1 - a2), 0, 1) * mask
+    rgb = rgb * (1 - 0.40 * sh2[..., None]) + np.array([0.04, 0.03, 0.07], np.float32) * (0.40 * sh2[..., None])
     rgb = rgb * (1 - a2[..., None]) + r2
+    rgb = 1 - (1 - rgb) * (1 - 0.50 * spill[..., None] * np.array([1.0, 0.72, 0.34], np.float32))                    # the doorway's light pools on the steps
     alpha = np.clip(alpha * (1 - a2) + a2, 0, 1)
     full_rgb = np.zeros((H, w, 3), np.float32); full_a = np.zeros((H, w), np.float32)
     xa = BX0 - x0

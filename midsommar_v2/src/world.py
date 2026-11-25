@@ -14,7 +14,7 @@ from shared import RIBBON, ribbon_thick, FACE
 from folk import ribbon_puffs
 from garden import SUN_G, mist, glitter, lake_y
 
-WX0, WX1 = 2000, 12900
+WX0, WX1 = 2000, 12900 + SHIFT
 WW = WX1 - WX0
 
 
@@ -54,7 +54,7 @@ def hills_(img, x0, w):
     td = dusk(xs)
     for (amp, sc, seed, haze, ridge_c) in ((95.0, 520, 61, 0.55, 1.0), (55.0, 300, 62, 0.34, 0.8)):
         prof = fbm01(x0, 0, w, 1, sc, 4, seed, aniso=3.0)[0]
-        A = amp * (0.35 + 0.65 * smoothstep(3300, 6200, xs)) * (0.55 + 0.9 * prof) * (0.35 + 0.65 * (1 - 0.9 * smoothstep(8700, 9500, xs)))
+        A = amp * (0.35 + 0.65 * smoothstep(3300, 6200, xs)) * (0.55 + 0.9 * prof) * (0.35 + 0.65 * (1 - 0.9 * smoothstep(8700, 9500, xs))) * (1 - 0.85 * np.exp(-((xs - 7330.0) / 760.0) ** 2))   # the low hills part for the sun
         top = HZ - A
         m = smoothstep(top - 3, top + 3, ys)
         dusk_c = np.array([0.34, 0.27, 0.52], np.float32) * ridge_c; gold_c = np.array([0.52, 0.46, 0.46], np.float32) * ridge_c
@@ -75,17 +75,16 @@ def lake_mist(x0, w, h):
     return np.clip(base + high, 0, 0.92)
 
 
-def build(verbose=True):
+def build_chunk(x0, w, forest_seed=81, verbose=True, skip=None):
     import time
     from water import mirror_water, star_field
     t0 = time.time()
-    x0, w = WX0, WW
     Hm = np.maximum(SC.animal_height('bear', x0, w, HZ, 8900.0, 232.0, 470.0, seed=3), SC.animal_height('swan', x0, w, HZ, 10900.0, 300.0, 400.0, seed=5))
     inside = (Hm > 0).astype(np.float32)
     Hm = np.clip(Hm * (1 + 0.06 * fbm(x0, 0, w, HZ, 26, 3, 31)) + 0.9 * fbm(x0, 0, w, HZ, 11, 3, 32) * inside, 0, None)
     Hm = cv2.GaussianBlur(Hm, (0, 0), 2.0)
     ext_a = np.clip(Hm / 11.0, 0, 1) * 0.9
-    sky, Dsky = CL.sky(x0, w, sun=SUN_G, seed=3, cov_x=cover, extra=ext_a, extra_h=Hm / 9.0, tw=dusk)
+    sky, Dsky = CL.sky(x0, w, sun=SUN_G, seed=3, cov_x=cover, extra=ext_a, extra_h=Hm / 9.0, tw=dusk, disc_on=False)
     if verbose: print('world sky', round(time.time() - t0, 1))
     ys_ = np.arange(HZ, dtype=np.float32)[:, None]; xs_ = np.arange(x0, x0 + w, dtype=np.float32)[None, :]
     mx, my, mr = 7080.0, 250.0, 84.0                                                  # the day-moon of slide 2, still up, pale in the blue
@@ -105,7 +104,7 @@ def build(verbose=True):
     img = np.zeros((H, w, 3), np.float32)
     img[:HZ] = sky
     hills_(img, x0, w)
-    layers = T2.world_forest(x0, w, seed=81)
+    layers = T2.world_forest(x0, w, seed=forest_seed, skip=skip)
     if verbose: print('world forest', round(time.time() - t0, 1))
     mst = lake_mist(x0, w, HZ + 60)
     xs = np.arange(x0, x0 + w, dtype=np.float32)[None, :]
@@ -131,6 +130,18 @@ def build(verbose=True):
     lake[:HZ] = img[:HZ]
     if verbose: print('world done', round(time.time() - t0, 1))
     return np.clip(lake, 0, 1).astype(np.float32)
+
+
+def build(verbose=True):
+    """chunk A is the 16-slide world (2000..12900) with a clearing cut into its forest from 12560; chunk B (12500..13980) is a new forest that starts
+    after 12700; the join is a hard cut at 12620, inside the clearing - sky, mist and water are global fields, so nothing shows"""
+    CUT = 12620
+    A = build_chunk(2000, 10900, 81, verbose, skip=(12420, 1e9))
+    B = build_chunk(12500, WX1 - 12500, 83, verbose, skip=(-1e9, 12830))
+    out = np.zeros((H, WW, 3), np.float32)
+    out[:, :CUT - 2000] = A[:, :CUT - 2000]
+    out[:, CUT - 2000:] = B[:, CUT - 12500:]
+    return out
 
 
 if __name__ == '__main__':

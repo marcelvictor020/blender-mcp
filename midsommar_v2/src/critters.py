@@ -344,3 +344,106 @@ def lantern_flock(seed=2024):
         if y < 60 or y > 740: continue
         out.append((float(x), float(y), float(rng.uniform(7.0, 15.0))))
     return out
+
+
+def lone_boat(img, x, y_wl, scale, lantern=True, water_fn=None):
+    """the rowboat of slide 4 with nobody in it, its lantern still burning: she has walked off to join the dance. Drawn from the very same hull code."""
+    import boat as BT
+    L = Layer(BT.BW, BT.BH, BT.BX0, BT.BY0, 3)
+    cx = L.ctx
+    BT.draw_hull_back(cx)
+    if lantern:
+        BT.draw_lantern(cx, 3978.0, 905.0)                                   # hung on the stern post
+    BT.draw_hull_front(cx)
+    rgb, a = L.get()
+    h, w = a.shape
+    nw, nh = max(2, int(w * scale)), max(2, int(h * scale))
+    rgb = cv2.resize(rgb, (nw, nh), interpolation=cv2.INTER_AREA); a = cv2.resize(a, (nw, nh), interpolation=cv2.INTER_AREA)
+    # the sprite's own waterline row is BT.WATERLINE - BT.BY0; its hull centre column is 3806 - BT.BX0
+    wl = (BT.WATERLINE - BT.BY0) * scale
+    px, py = x - (3806.0 - BT.BX0) * scale, y_wl - wl
+    spr = (rgb, a)
+    # hull is darker in the shade of the shore, so lift it a little toward the gold of the sky
+    spr = (np.clip(rgb * 1.55 + a[..., None] * np.array([0.04, 0.03, 0.01], np.float32), 0, 1), a)
+    rr, ra = reflect((np.clip(rgb * 1.2, 0, 1), a), amp=1.0, k=0.62, seed=5)
+    if water_fn is not None:                                                    # the reflection exists only where there is water
+        gy, gx = np.mgrid[0:ra.shape[0], 0:ra.shape[1]].astype(np.float32)
+        wm = water_fn(gx + px, gy + py + wl)
+        ra = ra * wm; rr = rr * wm[..., None]
+    paste(img, (rr, ra), px, py + wl + 0.0 * nh)
+    paste(img, spr, px, py)
+    if lantern:
+        lx, ly = px + (3978.0 - BT.BX0) * scale, py + (905.0 - BT.BY0) * scale
+        H_, W_ = img.shape[:2]
+        for (rad, gain) in ((22.0 * scale * 3.0, 0.85), (60.0 * scale * 3.0, 0.34), (150.0 * scale * 3.0, 0.12)):
+            r = int(rad * 3) + 2
+            xa_, xb_, ya_, yb_ = int(lx) - r, int(lx) + r + 1, int(ly) - r, int(ly) + r + 1
+            if xa_ < 0 or ya_ < 0 or xb_ > W_ or yb_ > H_: continue
+            X, Y = np.meshgrid(np.arange(xa_, xb_) - lx, np.arange(ya_, yb_) - ly)
+            g = np.exp(-(X * X + Y * Y) / (2 * rad * rad)) * gain
+            img[ya_:yb_, xa_:xb_] = 1 - (1 - img[ya_:yb_, xa_:xb_]) * (1 - np.clip(g[..., None] * np.array([1.0, 0.72, 0.36], np.float32), 0, 1))
+        # its streak on the water
+        for k in range(12):
+            yy = int(y_wl + 6 + k * 5 * scale * 4)
+            wd = int(max(2, (26 - k) * scale * 3))
+            xx = int(lx)
+            if 0 <= yy < H_ and wd < xx < W_ - wd:
+                img[yy, xx - wd:xx + wd] = 1 - (1 - img[yy, xx - wd:xx + wd]) * (1 - 0.55 * (1 - k / 12.0) * np.array([1.0, 0.72, 0.36], np.float32))
+
+
+def moon_open_eyed(img, cx, cy, R, lit_from=-1.0):
+    """a waxing gibbous moon with real shading (limb darkening, maria, craters, a soft terminator) and - drawn on it in graphite, very lightly - a calm face with its
+    eyes OPEN: the sleeping moon of slide 2 has woken up. lit_from=-1: the lit side is on the left (the sunset side)."""
+    H_, W_ = img.shape[:2]
+    r = int(R * 2.6)
+    xa, xb, ya, yb = int(cx) - r, int(cx) + r + 1, int(cy) - r, int(cy) + r + 1
+    if xa < 0 or ya < 0 or xb > W_ or yb > H_: return
+    X, Y = np.meshgrid(np.arange(xa, xb, dtype=np.float32) - cx, np.arange(ya, yb, dtype=np.float32) - cy)
+    d = np.hypot(X, Y) / R
+    disc = smoothstep(1.02, 0.985, d)
+    nz = np.sqrt(np.clip(1 - np.minimum(d, 1) ** 2, 0, 1))
+    nx_, ny_ = X / R, Y / R
+    Lv = np.array([-lit_from * -0.80, -0.18, 0.57], np.float32) * np.array([-1.0 if lit_from < 0 else 1.0, 1, 1], np.float32) * np.array([-1.0 if lit_from < 0 else 1.0, 1, 1], np.float32)
+    Lv = np.array([(-0.80 if lit_from < 0 else 0.80), -0.18, 0.57], np.float32); Lv /= np.linalg.norm(Lv)
+    lam = np.clip(nx_ * Lv[0] + ny_ * Lv[1] + nz * Lv[2], 0, 1)
+    term = smoothstep(0.02, 0.30, lam)                                                # the terminator: soft, a little ragged
+    rng = np.random.default_rng(12)
+    maria = np.zeros_like(d)
+    for (mx, my, mr, a) in ((-0.28, -0.20, 0.34, 0.34), (0.10, -0.34, 0.26, 0.30), (0.26, 0.02, 0.30, 0.34), (-0.12, 0.26, 0.38, 0.26), (-0.42, 0.14, 0.20, 0.24), (0.04, 0.48, 0.20, 0.20)):
+        maria += a * np.exp(-(((nx_ - mx) ** 2 + (ny_ - my) ** 2) / (mr * mr)) ** 1.4)
+    crat = np.zeros_like(d)
+    for k in range(34):
+        a = rng.uniform(0, 6.28); rr_ = math.sqrt(rng.random()) * 0.86
+        px, py, cr_ = rr_ * math.cos(a), rr_ * math.sin(a), rng.uniform(0.025, 0.075)
+        dd = np.hypot(nx_ - px, ny_ - py) / cr_
+        crat += 0.20 * np.exp(-((dd - 1.0) / 0.30) ** 2) * (1 if (nx_ * 0 + 1) is not None else 0) - 0.08 * np.exp(-(dd / 0.7) ** 2)
+    alb = 0.97 - 0.30 * maria - 0.10 * np.clip(crat, -0.5, 0.5)
+    shade = 0.10 + 0.95 * term * (0.70 + 0.30 * lam)
+    limb = 1.0 - 0.18 * np.clip(d, 0, 1) ** 3
+    col = np.stack([alb * shade * limb * 1.04, alb * shade * limb * 1.00, alb * shade * limb * 0.93], -1)
+    earth = (1 - term)[..., None] * np.array([0.10, 0.11, 0.17], np.float32)                  # earthshine on the dark limb
+    col = np.clip(col + earth * disc[..., None], 0, 1)
+    glow = np.exp(-(np.clip(d - 1.0, 0, None) / 0.42) ** 1.2) * 0.30 * (d >= 1.0) + np.exp(-(np.clip(d - 1.0, 0, None) / 1.6)) * 0.10 * (d >= 1.0)
+    sub = img[ya:yb, xa:xb]
+    sub = sub + glow[..., None] * np.array([0.90, 0.88, 1.0], np.float32) * (1 - disc[..., None])
+    sub = sub * (1 - disc[..., None]) + col * disc[..., None]
+    img[ya:yb, xa:xb] = np.clip(sub, 0, 1)
+    # the face: graphite on the lit part of the disc, thin and sure
+    L = Layer(xb - xa, yb - ya, xa, ya, 3)
+    k = L.ctx
+    k.set_line_cap(cairo.LINE_CAP_ROUND); k.set_line_join(cairo.LINE_JOIN_ROUND)
+    fx0, fy0 = cx - 0.10 * R * (1 if lit_from < 0 else -1) * 0, cy + 0.02 * R
+    ink = (0.22, 0.20, 0.30)
+    for sx in (-1, 1):
+        ex, ey = fx0 + sx * 0.30 * R, fy0 - 0.10 * R
+        k.set_source_rgba(*ink, 0.55); k.set_line_width(max(0.9, 0.022 * R))
+        k.new_path(); k.move_to(ex - 0.15 * R, ey); k.curve_to(ex - 0.06 * R, ey - 0.15 * R, ex + 0.06 * R, ey - 0.15 * R, ex + 0.15 * R, ey); k.curve_to(ex + 0.06 * R, ey + 0.10 * R, ex - 0.06 * R, ey + 0.10 * R, ex - 0.15 * R, ey); k.stroke()
+        k.set_source_rgba(*ink, 0.68); k.new_path(); k.arc(ex + 0.01 * R * sx, ey - 0.005 * R, 0.062 * R, 0, TAU); k.fill()
+        k.set_source_rgba(1, 1, 1, 0.8); k.new_path(); k.arc(ex + 0.025 * R, ey - 0.03 * R, 0.014 * R, 0, TAU); k.fill()
+        k.set_source_rgba(*ink, 0.42); k.set_line_width(max(0.8, 0.018 * R)); k.new_path()
+        k.move_to(ex - 0.17 * R, ey - 0.20 * R); k.curve_to(ex - 0.06 * R, ey - 0.28 * R, ex + 0.08 * R, ey - 0.27 * R, ex + 0.18 * R, ey - 0.19 * R); k.stroke()
+    k.set_source_rgba(*ink, 0.40); k.set_line_width(max(0.8, 0.018 * R)); k.new_path(); k.move_to(fx0, fy0 - 0.02 * R); k.curve_to(fx0 + 0.04 * R, fy0 + 0.12 * R, fx0 + 0.02 * R, fy0 + 0.20 * R, fx0 - 0.04 * R, fy0 + 0.22 * R); k.stroke()
+    k.set_source_rgba(*ink, 0.55); k.set_line_width(max(0.9, 0.022 * R)); k.new_path(); k.move_to(fx0 - 0.20 * R, fy0 + 0.40 * R); k.curve_to(fx0 - 0.08 * R, fy0 + 0.47 * R, fx0 + 0.08 * R, fy0 + 0.47 * R, fx0 + 0.20 * R, fy0 + 0.40 * R); k.stroke()
+    rgb, a = L.get()
+    a = a * disc * np.clip(0.55 + 0.45 * term, 0, 1)
+    img[ya:yb, xa:xb] = img[ya:yb, xa:xb] * (1 - a[..., None]) + rgb * disc[..., None]

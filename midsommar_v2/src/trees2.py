@@ -219,7 +219,7 @@ def bank(c, xa, xb, yb, haze, hazecol, rng, hmax=7.0):
         c.set_line_width(max(0.6, hmax * 0.14)); c.new_path(); c.move_to(x, top[k] + 1.5); c.line_to(x + rng.normal(0, 0.8), top[k] - rng.uniform(1, hmax * 0.8)); c.stroke()
 
 
-def world_forest(x0, w, seed=81, rows=580, ytop=HZ - 520, F0=8700.0, F1=9400.0, dusk=(7000.0, 5200.0)):
+def world_forest(x0, w, seed=81, rows=580, ytop=HZ - 520, F0=8700.0, F1=9400.0, dusk=(7000.0, 5200.0), skip=None):
     """the far shore of the whole lake as one continuous painted treeline: a thin hazy strip in the dusk pond, islands of firs and birches, then
     the big gold-lit forest of the garden. Same trees wherever it is sliced."""
     rng = np.random.default_rng(seed)
@@ -259,6 +259,7 @@ def world_forest(x0, w, seed=81, rows=580, ytop=HZ - 520, F0=8700.0, F1=9400.0, 
             if f > 0.5 and any(a_ <= x <= b_ for a_, b_ in gaps): continue
             hh = (hlo + (hhi - hlo) * rng.beta(2.0, 2.4)) * sc * wave * float(np.clip(rng.lognormal(0, 0.22), 0.6, 1.6))
             yb = HZ + rng.uniform(-5, 14) * (0.4 + 0.6 * f) + li * 12 * rng.random() * (0.2 + 0.8 * f)
+            if skip is not None and skip[0] < x < skip[1]: continue                          # (drawn after the random numbers, so every other tree stays exactly where it was)
             pts.append((yb, x, hh))
         if li == 1:
             for (xa, xb, side) in ((3150, 3640, 0), (3950, 4560, 1)):

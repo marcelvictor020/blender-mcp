@@ -428,10 +428,20 @@ def light_shafts(Ls, Lp):
         # volumetric shaft (translucent gradient)
         hull = cv2.convexHull(np.array(pw + pp, np.float32)).reshape(-1, 2)
         g = cairo.LinearGradient(pw[0][0], pw[0][1], pp[0][0], pp[0][1])
-        g.add_color_stop_rgba(0, 1.0, .88, .55, a_ * .8); g.add_color_stop_rgba(1, 1.0, .80, .45, a_ * .12)
+        g.add_color_stop_rgba(0, 1.0, .88, .55, a_ * .62); g.add_color_stop_rgba(0.6, 1.0, .82, .48, a_ * .22); g.add_color_stop_rgba(1, 1.0, .80, .45, a_ * .05)
         Ls.set_source(g); Ls.new_path(); Ls.move_to(*hull[0]); [Ls.line_to(*p) for p in hull[1:]]; Ls.close_path(); Ls.fill()
-        # sunlit patch on the right wall
-        Lp.set_source_rgba(1.0, .84, .48, a_ * 1.5); Lp.new_path(); Lp.move_to(*pp[0]); [Lp.line_to(*p) for p in pp[1:]]; Lp.close_path(); Lp.fill()
+        # sunlit patch on the right wall: it shows the window's own panes - the dark cross of the muntins - and fades with distance
+        def lerp2(A, B, t): return (A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t)
+        pa_, pb_, pc_, pd_ = pp[0], pp[1], pp[2], pp[3]
+        for rr in range(3):
+            for cc in range(2):
+                u0, u1 = cc / 2 + 0.035, (cc + 1) / 2 - 0.035
+                v0, v1 = rr / 3 + 0.030, (rr + 1) / 3 - 0.030
+                def P_(u, v):
+                    b = lerp2(pa_, pb_, u); t = lerp2(pd_, pc_, u)
+                    return lerp2(b, t, v)
+                quad = [P_(u0, v0), P_(u1, v0), P_(u1, v1), P_(u0, v1)]
+                Lp.set_source_rgba(1.0, .84, .48, a_ * 1.55); Lp.new_path(); Lp.move_to(*quad[0]); [Lp.line_to(*p) for p in quad[1:]]; Lp.close_path(); Lp.fill()
 
 
 def graphite(ink_ctx):

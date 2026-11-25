@@ -175,7 +175,7 @@ def two_bone(S, Wt, L1, L2, outward):
 DEFAULT = dict(view='front', facing=1, yaw=0.0, lean=0.0, male=False, arm_l=(-0.128, 0.486), arm_r=(0.128, 0.486),
                lantern=None, crown=True, hair=(0.46, 0.30, 0.16), dress=(0.94, 0.91, 0.83), skin=(0.91, 0.73, 0.63),
                hair_style='long', eyes_closed=False, smile=0.35, feet=True, hem_y=0.045, blush=0.35, plights=None,
-               curl_l=0.40, curl_r=0.40, belt=(0.60, 0.68, 0.90), bow=True, elbow_l=None, elbow_r=None, wilt=0.0)
+               curl_l=0.40, curl_r=0.40, belt=(0.60, 0.68, 0.90), bow=True, elbow_l=None, elbow_r=None, wilt=0.0, creep=0.0, soft=0.0)
 
 
 def _rot(d, a):
@@ -388,8 +388,10 @@ def render(T, pose=None, light=None, seed=0, ss=2):
     if male:
         add(m['legs'], shade(m['legs'], dress_col * 0.97, L, T, cap=0.03, plights=pl))
     add(m['feet'], shade(m['feet'], skin_c * 0.86, L, T, cap=0.02, skin=True, plights=pl) * 0.82)
-    ncol = shade(m['neck'], skin_c, L, T, cap=0.025, skin=True, plights=pl) * (1 - 0.50 * np.clip(ao_head, 0, 1))[..., None]
+    sft = float(p.get('soft', 0.0))
+    ncol = shade(m['neck'], skin_c, L, T, cap=0.025, skin=True, plights=pl) * (1 - (0.50 - 0.30 * sft) * np.clip(ao_head, 0, 1))[..., None]
     ncol = ncol * (1 - 0.30 * np.clip(ao_hair, 0, 1))[..., None]
+    ncol = np.clip(ncol * (1 + 0.30 * sft), 0, 1.3)
     add(m['neck'], ncol)
     dcol = shade(m['dress'], dress_col, L, T, cap=0.06, bump=bump, bump_amp=0.026, wrap=0.30, plights=pl)
     dcol = dcol * (1 - 0.40 * np.clip(ao_arm, 0, 1))[..., None]
@@ -399,7 +401,7 @@ def render(T, pose=None, light=None, seed=0, ss=2):
     add(m['dress'], dcol)
     for k, vis in (('l', arm_vis_l), ('r', arm_vis_r)):
         add(vis, shade(np.clip(m['arm_' + k], 0, 1), skin_c, L, T, cap=0.022, skin=True, plights=pl))
-    add(m['head'], shade(m['head'], skin_c, L, T, cap=0.058, skin=True, wrap=0.20, relief=1.25, plights=pl))
+    add(m['head'], shade(m['head'], skin_c, L, T, cap=0.058, skin=True, wrap=0.20 + 0.28 * sft, relief=1.25 - 0.45 * sft, plights=pl))
     if m['hair_f'].max() > 0:
         add(m['hair_f'], shade(m['hair_f'], hair_c, L, T, cap=0.030, relief=0.9, plights=pl) * 1.05)
 
@@ -625,19 +627,26 @@ def _face(c, fx, hh, p, L, rnd, male):
         x, y = fx(sx * 0.060, -0.145)
         c.new_path(); c.save(); c.translate(x, y); c.scale(0.030 * hh, 0.020 * hh); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
     # eyes
+    cr = float(p.get('creep', 0.0))
     for sx in (-1, 1):
         ex, ey = fx(sx * 0.215, 0.028)
-        w_, h_ = 0.150 * hh, 0.060 * hh
+        w_, h_ = (0.150 + 0.020 * cr) * hh, (0.060 + 0.026 * cr) * hh
         shape = lambda: _almond(c, ex, ey, w_, h_, sx)
         if not p['eyes_closed']:
             shape(); c.set_source_rgba(0.97, 0.93, 0.90, 1); c.fill_preserve()
             c.save(); c.clip()
             ix = ex - sx * 0.006 * hh + yaw * 0.014 * hh
-            g = cairo.RadialGradient(ix, ey, 0, ix, ey, 0.060 * hh)
-            g.add_color_stop_rgba(0, 0.18, 0.12, 0.08, 1); g.add_color_stop_rgba(0.55, 0.30, 0.22, 0.12, 1); g.add_color_stop_rgba(1, 0.12, 0.10, 0.08, 1)
-            c.set_source(g); c.new_path(); c.arc(ix, ey, 0.056 * hh, 0, TAU); c.fill()
-            c.set_source_rgba(0.04, 0.03, 0.03, 1); c.new_path(); c.arc(ix, ey, 0.024 * hh, 0, TAU); c.fill()
+            ir = (0.056 - 0.008 * cr) * hh
+            g = cairo.RadialGradient(ix, ey, 0, ix, ey, ir + 0.004 * hh)
+            if cr > 0:                                                                  # a pale, glassy iris that does not blink: grey-green with a dark limbal ring
+                g.add_color_stop_rgba(0, 0.12, 0.13, 0.10, 1); g.add_color_stop_rgba(0.35, 0.50, 0.58, 0.46, 1); g.add_color_stop_rgba(0.82, 0.34, 0.42, 0.34, 1); g.add_color_stop_rgba(1, 0.10, 0.12, 0.10, 1)
+            else:
+                g.add_color_stop_rgba(0, 0.18, 0.12, 0.08, 1); g.add_color_stop_rgba(0.55, 0.30, 0.22, 0.12, 1); g.add_color_stop_rgba(1, 0.12, 0.10, 0.08, 1)
+            c.set_source(g); c.new_path(); c.arc(ix, ey, ir, 0, TAU); c.fill()
+            c.set_source_rgba(0.04, 0.03, 0.03, 1); c.new_path(); c.arc(ix, ey, (0.024 - 0.010 * cr) * hh, 0, TAU); c.fill()
             c.set_source_rgba(1, 1, 1, 0.95); c.new_path(); c.arc(ix + 0.020 * hh, ey - 0.020 * hh, 0.012 * hh, 0, TAU); c.fill()
+            if cr > 0:
+                c.set_source_rgba(1, 1, 1, 0.55); c.new_path(); c.arc(ix - 0.018 * hh, ey + 0.016 * hh, 0.006 * hh, 0, TAU); c.fill()
             c.restore()
             c.set_source_rgba(0.42, 0.26, 0.24, 0.45)                           # upper-lid shadow
             c.save(); shape(); c.clip()
@@ -655,20 +664,62 @@ def _face(c, fx, hh, p, L, rnd, male):
         c.set_line_width(0.014 * hh)                                           # outer lashes
         for k in range(3):
             c.new_path(); c.move_to(ex + sx * w_ * (0.40 + 0.06 * k), ey - h_ * (0.70 - 0.12 * k)); c.line_to(ex + sx * w_ * (0.56 + 0.07 * k), ey - h_ * (1.05 - 0.10 * k)); c.stroke()
-        c.set_source_rgba(0.45, 0.28, 0.26, 0.35)                              # lower lid
+        c.set_source_rgba(0.45, 0.28, 0.26, 0.35 + 0.25 * cr)                  # lower lid (a visible rim of white beneath the iris when she stares)
         c.set_line_width(0.012 * hh)
         c.new_path(); c.move_to(ex - w_ * 0.4, ey + h_ * 0.55); c.curve_to(ex - w_ * 0.1, ey + h_ * 0.9, ex + w_ * 0.1, ey + h_ * 0.9, ex + w_ * 0.4, ey + h_ * 0.55); c.stroke()
-        # brow
-        bx, by = fx(sx * 0.225, 0.150)
+        # brow (raised, one a hair higher than the other when she is not quite right)
+        bx, by = fx(sx * 0.225, 0.150 + (0.030 + (0.012 if sx > 0 else 0.0)) * cr)
         bc = hair_c * 0.55
         c.set_source_rgba(float(bc[0]), float(bc[1]), float(bc[2]), 0.85 if male else 0.62)
         c.set_line_width((0.050 if male else 0.032) * hh)
         c.new_path(); c.move_to(bx - sx * 0.12 * hh * -1, by + 0.02 * hh)
         c.move_to(bx + sx * -0.115 * hh * -1 * -1, by + 0.02 * hh)
-        c.curve_to(bx - sx * 0.06 * hh, by - 0.035 * hh, bx + sx * 0.06 * hh, by - 0.050 * hh, bx + sx * 0.130 * hh, by + 0.012 * hh); c.stroke()
+        c.curve_to(bx - sx * 0.06 * hh, by - (0.035 + 0.020 * cr) * hh, bx + sx * 0.06 * hh, by - (0.050 + 0.025 * cr) * hh, bx + sx * 0.130 * hh, by + 0.012 * hh); c.stroke()
     # mouth
     mx, my = fx(0.0, -0.285)
     sm = p['smile']
+    if cr > 0.01:
+        # the grin: far too wide, perfectly even, corners pulled up into the cheeks, a bar of identical teeth, nothing moving - the eyes do not join in
+        mw = (0.17 + 0.145 * cr) * hh
+        lift = (0.060 + 0.045 * cr) * hh
+        for sx in (-1, 1):                                                                  # creases from nose to the corners, apples of the cheeks
+            c.set_source_rgba(0.42, 0.22, 0.20, 0.34 * cr); c.set_line_width(0.016 * hh)
+            c.new_path(); c.move_to(*fx(sx * 0.105, -0.165)); c.curve_to(*fx(sx * 0.215, -0.200), *fx(sx * 0.300, -0.240), *fx(sx * 0.335, -0.292 + 0.05 * cr)); c.stroke()
+            gx_, gy_ = fx(sx * 0.255, -0.045)
+            g = cairo.RadialGradient(gx_, gy_, 0, gx_, gy_, 0.13 * hh); g.add_color_stop_rgba(0, 1.0, 0.90, 0.80, 0.30 * cr); g.add_color_stop_rgba(1, 1.0, 0.90, 0.80, 0)
+            c.set_source(g); c.new_path(); c.arc(gx_, gy_, 0.13 * hh, 0, TAU); c.fill()
+        up = lambda t: (mx + (t * 2 - 1) * mw, my - lift * (1 - (2 * t - 1) ** 2) * -1 - lift * (2 * t - 1) ** 2 * 0.0)
+        # upper lip curve (smile: ends up, centre down) and lower lip curve
+        c.new_path(); c.move_to(mx - mw, my - lift)
+        c.curve_to(mx - mw * 0.55, my + 0.040 * hh, mx + mw * 0.55, my + 0.040 * hh, mx + mw, my - lift)
+        c.curve_to(mx + mw * 0.55, my + 0.115 * hh * (0.6 + 0.4 * cr), mx - mw * 0.55, my + 0.115 * hh * (0.6 + 0.4 * cr), mx - mw, my - lift)
+        c.close_path()
+        c.save(); c.clip_preserve()
+        c.set_source_rgba(0.20, 0.06, 0.07, 1); c.paint()                                   # the dark of the mouth
+        c.set_source_rgba(0.97, 0.95, 0.90, 1)                                              # teeth: one white bar
+        c.new_path(); c.move_to(mx - mw * 0.93, my - lift * 0.82)
+        c.curve_to(mx - mw * 0.55, my + 0.044 * hh, mx + mw * 0.55, my + 0.044 * hh, mx + mw * 0.93, my - lift * 0.82)
+        c.line_to(mx + mw * 0.90, my - lift * 0.82 + 0.052 * hh)
+        c.curve_to(mx + mw * 0.55, my + 0.092 * hh, mx - mw * 0.55, my + 0.092 * hh, mx - mw * 0.90, my - lift * 0.82 + 0.052 * hh)
+        c.close_path(); c.fill()
+        c.set_source_rgba(0.55, 0.50, 0.46, 0.50); c.set_line_width(0.006 * hh)
+        for k in range(-5, 6):
+            tx_ = mx + k * mw * 0.165
+            c.new_path(); c.move_to(tx_, my + 0.040 * hh - lift * 0.3 * (abs(k) / 5.0) ** 2 * 0 + 0.0); c.line_to(tx_, my + 0.092 * hh); c.stroke()
+        c.restore()
+        c.set_source_rgba(0.62, 0.22, 0.24, 1); c.set_line_width(0.020 * hh)                    # thin lips
+        c.new_path(); c.move_to(mx - mw, my - lift); c.curve_to(mx - mw * 0.55, my + 0.040 * hh, mx + mw * 0.55, my + 0.040 * hh, mx + mw, my - lift); c.stroke()
+        c.set_source_rgba(0.72, 0.30, 0.30, 0.95); c.set_line_width(0.024 * hh)
+        c.new_path(); c.move_to(mx - mw * 0.97, my - lift + 0.004 * hh); c.curve_to(mx - mw * 0.55, my + 0.115 * hh * (0.6 + 0.4 * cr), mx + mw * 0.55, my + 0.115 * hh * (0.6 + 0.4 * cr), mx + mw * 0.97, my - lift + 0.004 * hh); c.stroke()
+        c.set_source_rgba(1, 0.92, 0.88, 0.35); c.set_line_width(0.010 * hh)
+        c.new_path(); c.move_to(mx - mw * 0.30, my + 0.122 * hh * (0.6 + 0.4 * cr)); c.line_to(mx + mw * 0.30, my + 0.122 * hh * (0.6 + 0.4 * cr)); c.stroke()
+        for sx in (-1, 1):                                                                  # dimples at the corners
+            c.set_source_rgba(0.38, 0.18, 0.16, 0.5); c.set_line_width(0.014 * hh)
+            c.new_path(); c.move_to(mx + sx * (mw + 0.030 * hh), my - lift - 0.030 * hh); c.curve_to(mx + sx * (mw + 0.050 * hh), my - lift, mx + sx * (mw + 0.045 * hh), my - lift + 0.035 * hh, mx + sx * (mw + 0.020 * hh), my - lift + 0.050 * hh); c.stroke()
+        c.set_source_rgba(0.46, 0.26, 0.24, 0.25)
+        c.set_line_width(0.030 * hh)
+        c.new_path(); c.move_to(mx, my - 0.07 * hh); c.line_to(mx, my - 0.015 * hh); c.stroke()
+        return
     mw = 0.17 * hh
     c.set_source_rgba(0.55, 0.20, 0.20, 1)
     c.set_line_width(0.026 * hh)

@@ -18,7 +18,7 @@ from fig import Light
 import overhead as OV
 
 TAU = 2 * math.pi
-HX0, HX1 = 11800, 17280
+HX0, HX1 = 11800 + SHIFT, W
 HW = HX1 - HX0
 
 
@@ -111,9 +111,9 @@ def hall_items():
 
 def board(x0, w):
     """the overhead ring dance on a plywood board beyond the last doorframe; returns (rgb, mask) over the hall's canvas rect"""
-    bx0 = 15080
+    bx0 = 15080 + SHIFT
     bw = HX1 - bx0
-    paint = OV.render_overhead(bw, H, seed=7, cx_frac=(16640 - bx0) / bw, cy_frac=0.56)
+    paint = OV.render_overhead(bw, H, seed=7, cx_frac=(16640 + SHIFT - bx0) / bw, cy_frac=0.56)
     from paint import paint as _paint
     paint, _ = _paint(paint, passes=((6.0, 1.0, 0.0), (3.4, 1.0, 0.03), (2.0, 1.1, 0.04)), default_flow=0.0, default_w=0.4, seed=17, struct_keep=0.50, relief=0.30, verbose=False)
     yy, xx = np.mgrid[0:H, 0:bw]
@@ -190,6 +190,8 @@ def render_hall(x0=HX0, w=HW, verbose=True, paint_base=True):
     Ls = Layer(w, H, x0, 0, ss=1); Lp = Layer(w, H, x0, 0, ss=1)
     light_shafts(Ls.ctx, Lp.ctx)
     sr_, sa_ = Ls.get(); pr_, pa_ = Lp.get()
+    sr_ = cv2.GaussianBlur(sr_, (0, 0), 5.0)                                   # a shaft of light through dusty air has no hard edge
+    pr_ = cv2.GaussianBlur(pr_, (0, 0), 1.7)
     dust = 0.5 + 0.25 * fbm(x0, 0, w, H, 14, 2, 95, aniso=3.0)
     img = 1 - (1 - img) * (1 - np.clip(sr_ * (0.85 + 0.30 * dust[..., None]), 0, 1))
     img = 1 - (1 - img) * (1 - np.clip(pr_ * 0.9, 0, 1))
@@ -207,4 +209,4 @@ if __name__ == '__main__':
     cache_save('f_hall', HX0, img)
     preview(img, WORK + '/f_hall_preview.png', 2400)
     for k in range(5):
-        save_png(WORK + f'/f_hall_s{12 + k}.png', img[:, 11880 + 1080 * k - HX0: 11880 + 1080 * (k + 1) - HX0])
+        save_png(WORK + f'/f_hall_s{13 + k}.png', img[:, 11880 + SHIFT + 1080 * k - HX0: 11880 + SHIFT + 1080 * (k + 1) - HX0])

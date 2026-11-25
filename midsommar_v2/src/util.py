@@ -10,11 +10,13 @@ import cv2
 import cairo
 
 import os as _os
-N_SLIDES = int(_os.environ.get('N_SLIDES', 16))
+N_SLIDES = int(_os.environ.get('N_SLIDES', 17))
 SL = 1080                              # slide width
 W, H = N_SLIDES * SL, 1350             # canvas
+NW = 17280                             # width the value noise tiles over (kept at the 16-slide size so no texture re-seeds when slides are added)
+SHIFT = W - NW                         # slides inserted after the house ('the invitation', slide 11) push the drawing + hallway right by this much
 HZ = 783                              # shared horizon (58 % of 1350)
-VPX = 14040                           # vanishing point x  (cut 13|14 of 16)
+VPX = 14040 + SHIFT                   # vanishing point x  (the 14|15 cut of 17)
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORK = os.path.join(ROOT, 'work')
 os.makedirs(WORK, exist_ok=True)
@@ -67,7 +69,7 @@ _LAT = {}
 def noise_cell(x0, y0, w, h, cx, cy, seed):
     """Smooth value-noise octave, cell size (cx,cy) px, global coordinates, periodic in x
     whenever cx divides 10800."""
-    gw = -(-W // cx)
+    gw = -(-NW // cx)
     gh = -(-H // cy) + 8
     key = (seed, cx, cy)
     if key not in _LAT:
@@ -83,7 +85,7 @@ def noise_cell(x0, y0, w, h, cx, cy, seed):
     return big[oy:oy + h, ox:ox + w]
 
 
-_DIVS = np.array([d for d in range(1, W + 1) if W % d == 0])
+_DIVS = np.array([d for d in range(1, NW + 1) if NW % d == 0])
 
 
 def snapx(c):

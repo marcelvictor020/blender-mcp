@@ -135,51 +135,97 @@ def shadow_layer(w, h, items, S):
     return cv2.GaussianBlur(a, (0, 0), 0.045 * S + 1.0)
 
 
-def pole_painting(c, p0, p1, w0, w1, rng, S):
-    """a long pole wrapped in leaves and flowers (leaf shapes, blossoms, hanging sprigs), from p0 (base) to p1 (top); streamers at the top"""
+def pole_painting(c, p0, p1, w0, w1, rng, S, hands=None):
+    """the maypole seen from directly above, so that it leans away from us toward p1 (its top, nearer the camera): a tapered painted pole with a lit and a
+    shaded flank, a spiral garland of leaves and flowers wound round it, a crossbar with its two hoops, and ten silk ribbons that run from its top down
+    to the dancers' clasped hands (hands = [(x, y), ...])"""
     dx, dy = p1[0] - p0[0], p1[1] - p0[1]
     L = math.hypot(dx, dy)
     ux, uy = dx / L, dy / L
     nx, ny = -uy, ux
-    # bare pole core in shade
-    c.set_source_rgb(0.20, 0.30, 0.12); c.set_line_width(w0 * 0.55)
-    c.new_path(); c.move_to(*p0); c.line_to(*p1); c.stroke()
-    n = int(L / 5)
-    for pass_ in range(2):
-        for i in range(n + 1):
-            t = i / n
-            x, y = p0[0] + dx * t, p0[1] + dy * t
-            wd = (w0 * (1 - t) + w1 * t) * 0.5
-            for k in range(2 if pass_ == 0 else 1):
-                off = rng.uniform(-wd, wd)
-                ang = math.atan2(uy, ux) + rng.uniform(-1.3, 1.3)
-                lx, ly = x + nx * off, y + ny * off
-                size = rng.uniform(0.8, 1.5) * wd * 0.95
-                lit = 0.5 - 0.5 * (off / wd)                                    # left side catches the low sun
-                g = (0.10 + 0.20 * rng.random() + 0.22 * lit, 0.24 + 0.22 * rng.random() + 0.20 * lit, 0.08 + 0.05 * rng.random())
-                c.save(); c.translate(lx, ly); c.rotate(ang); c.scale(size, size * 0.38); c.new_path(); c.arc(0, 0, 1, 0, TAU); c.restore()
-                c.set_source_rgb(*[min(1, v) for v in g]); c.fill()
-            if pass_ == 1 and i % 2 == 0:
-                off = rng.uniform(-wd * 0.85, wd * 0.85)
-                col = [(0.97, 0.95, 0.88), (0.95, 0.78, 0.30), (0.92, 0.52, 0.58), (0.74, 0.80, 0.96), (0.70, 0.18, 0.22), (0.97, 0.95, 0.88)][int(rng.integers(6))]
-                fx, fy = x + nx * off, y + ny * off
-                for p in range(5):
-                    b_ = TAU * p / 5 + t * 9
-                    c.set_source_rgb(*col); c.new_path(); c.arc(fx + math.cos(b_) * wd * 0.14, fy + math.sin(b_) * wd * 0.14, wd * 0.15, 0, TAU); c.fill()
-                c.set_source_rgb(0.96, 0.70, 0.16); c.new_path(); c.arc(fx, fy, wd * 0.07, 0, TAU); c.fill()
-    for i in range(14):                                                         # hanging sprigs
-        t = rng.uniform(0.15, 0.95)
-        x, y = p0[0] + dx * t, p0[1] + dy * t
-        c.set_source_rgba(0.18, 0.34, 0.12, 0.95); c.set_line_width(max(2.0, w1 * 0.07))
-        c.new_path(); c.move_to(x, y); c.curve_to(x + nx * 18 + 6, y + ny * 18 + 28, x + nx * 22 + 4, y + ny * 22 + 55, x + nx * 16, y + ny * 16 + 80 * rng.random()); c.stroke()
-    cols = [(0.97, 0.94, 0.80), (0.95, 0.84, 0.36), (0.80, 0.82, 0.96), (0.97, 0.94, 0.84), (0.92, 0.70, 0.72)]
-    for k in range(10):
-        col = cols[k % len(cols)]
-        a = rng.uniform(-0.6, 0.9)
-        sx0, sy0 = p1[0] - ux * rng.uniform(10, 60), p1[1] - uy * rng.uniform(10, 60)
-        c.set_source_rgba(*col, 0.90); c.set_line_width(rng.uniform(3, 7))
-        c.new_path(); c.move_to(sx0, sy0)
-        c.curve_to(sx0 + nx * 40 * a - ux * 40, sy0 + ny * 40 * a - uy * 40, sx0 + nx * 90 * a + ux * 30, sy0 + ny * 90 * a + uy * 30, sx0 + nx * 120 * a + ux * 90, sy0 + ny * 120 * a + uy * 90); c.stroke()
+    # ---- the ribbons first (they hang from the top and fall away from it, so they lie *under* the pole's head but over the grass and shoulders)
+    rib_cols = [((0.70, 0.12, 0.16), (0.44, 0.07, 0.10)), ((0.98, 0.80, 0.26), (0.78, 0.56, 0.12)), ((0.30, 0.48, 0.86), (0.18, 0.30, 0.58)),
+                ((0.97, 0.94, 0.86), (0.78, 0.74, 0.64)), ((0.32, 0.58, 0.30), (0.20, 0.38, 0.19)), ((0.88, 0.40, 0.46), (0.62, 0.22, 0.30))]
+    if hands:
+        picks = [hands[int(k * len(hands) / 10.0) % len(hands)] for k in range(10)]
+        for k, (hx_, hy_) in enumerate(picks):
+            fcol, bcol = rib_cols[k % len(rib_cols)]
+            sx0, sy0 = p1[0] - ux * 6 + nx * (k - 4.5) * 2.0, p1[1] - uy * 6 + ny * (k - 4.5) * 2.0
+            mx_, my_ = (sx0 + hx_) / 2 + (hy_ - sy0) * 0.06, (sy0 + hy_) / 2 - (hx_ - sx0) * 0.06 + 18
+            n = 60
+            pts = []
+            for q in range(n + 1):
+                t = q / n
+                x = (1 - t) ** 2 * sx0 + 2 * (1 - t) * t * mx_ + t * t * hx_
+                y = (1 - t) ** 2 * sy0 + 2 * (1 - t) * t * my_ + t * t * hy_
+                pts.append((x, y))
+            hw = 8.6
+            for q in range(n):
+                tq = q / n
+                twist = math.cos(tq * 9.0 + k * 1.3)
+                w_ = hw * (0.30 + 0.70 * abs(twist)) * (0.7 + 0.3 * tq)
+                a_, b_ = pts[q], pts[q + 1]
+                tx, ty = b_[0] - a_[0], b_[1] - a_[1]
+                tl = math.hypot(tx, ty) + 1e-6
+                tnx, tny = -ty / tl * w_, tx / tl * w_
+                col = fcol if twist > 0 else bcol
+                c.set_source_rgba(*col, 0.96); c.new_path(); c.move_to(a_[0] + tnx, a_[1] + tny); c.line_to(b_[0] + tnx, b_[1] + tny); c.line_to(b_[0] - tnx, b_[1] - tny); c.line_to(a_[0] - tnx, a_[1] - tny); c.close_path(); c.fill()
+            c.set_source_rgba(0.12, 0.08, 0.06, 0.55); c.set_line_width(0.8); c.new_path(); c.move_to(*pts[0]); [c.line_to(*p) for p in pts[1:]]; c.stroke()
+    # ---- the pole: tapered bark with a lit flank (left) and a shaded flank
+    q0 = (p0[0] + nx * w0 * 0.30, p0[1] + ny * w0 * 0.30); q1 = (p0[0] - nx * w0 * 0.30, p0[1] - ny * w0 * 0.30)
+    q2 = (p1[0] - nx * w1 * 0.34, p1[1] - ny * w1 * 0.34); q3 = (p1[0] + nx * w1 * 0.34, p1[1] + ny * w1 * 0.34)
+    g = cairo.LinearGradient(p0[0] + nx * w0 * 0.3, p0[1] + ny * w0 * 0.3, p0[0] - nx * w0 * 0.3, p0[1] - ny * w0 * 0.3)
+    g.add_color_stop_rgb(0, 0.80, 0.62, 0.36); g.add_color_stop_rgb(0.45, 0.52, 0.36, 0.20); g.add_color_stop_rgb(1, 0.20, 0.13, 0.07)
+    c.set_source(g); c.new_path(); c.move_to(*q0); c.line_to(*q3); c.line_to(*q2); c.line_to(*q1); c.close_path(); c.fill()
+    c.set_source_rgba(0.10, 0.06, 0.03, 0.7); c.set_line_width(1.2); c.new_path(); c.move_to(*q0); c.line_to(*q3); c.line_to(*q2); c.line_to(*q1); c.close_path(); c.stroke()
+    # ---- spiral garland: leaves lit like the trees (gold on the sun side), flowers, a vine
+    turns = 7.0
+    n = int(L / 2.6)
+    prev = None
+    for i in range(n + 1):
+        t = i / n
+        ph = t * turns * TAU
+        wd = (w0 * (1 - t) + w1 * t) * 0.5
+        off = math.sin(ph) * wd * 0.92
+        x, y = p0[0] + dx * t + nx * off, p0[1] + dy * t + ny * off
+        front = math.cos(ph) > -0.1                                              # the garland passes behind the pole half the time
+        if prev is not None and front:
+            c.set_source_rgba(0.12, 0.20, 0.07, 1); c.set_line_width(max(1.6, wd * 0.10)); c.new_path(); c.move_to(*prev); c.line_to(x, y); c.stroke()
+        prev = (x, y) if front else None
+        if not front: continue
+        lit = 0.5 - 0.5 * math.sin(ph)
+        for kk in range(2):
+            a = math.atan2(uy, ux) + math.sin(ph) * 1.2 + (kk * 2 - 1) * rng.uniform(0.6, 1.4)
+            size = rng.uniform(0.55, 1.05) * wd * 0.85
+            col = (0.10 + 0.20 * rng.random() + 0.26 * lit, 0.26 + 0.20 * rng.random() + 0.22 * lit, 0.08 + 0.05 * rng.random())
+            c.save(); c.translate(x, y); c.rotate(a); c.scale(size, size * 0.40); c.new_path(); c.arc(0.5, 0, 1, 0, TAU); c.restore()
+            c.set_source_rgb(*[min(1, v) for v in col]); c.fill_preserve(); c.set_source_rgba(0.05, 0.10, 0.03, 0.5); c.set_line_width(0.6); c.stroke()
+        if i % 5 == 0:
+            col = [(0.97, 0.95, 0.88), (0.95, 0.78, 0.30), (0.92, 0.52, 0.58), (0.74, 0.80, 0.96), (0.70, 0.18, 0.22)][int(rng.integers(5))]
+            r_ = wd * 0.17
+            for p in range(5):
+                b_ = TAU * p / 5 + t * 9
+                c.set_source_rgb(*col); c.new_path(); c.arc(x + math.cos(b_) * r_, y + math.sin(b_) * r_, r_ * 0.95, 0, TAU); c.fill()
+            c.set_source_rgb(0.96, 0.70, 0.16); c.new_path(); c.arc(x, y, r_ * 0.55, 0, TAU); c.fill()
+    # ---- the crossbar near the top with two hanging hoops (a floral wreath each), seen from above
+    bt = 0.80
+    bx, by = p0[0] + dx * bt, p0[1] + dy * bt
+    bw = 0.16 * L
+    c.set_source_rgb(0.40, 0.28, 0.15); c.set_line_width(w1 * 0.20); c.new_path(); c.move_to(bx - nx * bw, by - ny * bw); c.line_to(bx + nx * bw, by + ny * bw); c.stroke()
+    for sgn in (-1, 1):
+        hx0, hy0 = bx + sgn * nx * bw, by + sgn * ny * bw
+        rr = 0.060 * L
+        c.set_source_rgb(0.14, 0.26, 0.10); c.set_line_width(rr * 0.34); c.new_path(); c.arc(hx0, hy0, rr, 0, TAU); c.stroke()
+        for q in range(18):
+            a_ = TAU * q / 18
+            col = [(0.97, 0.95, 0.88), (0.95, 0.78, 0.30), (0.92, 0.52, 0.58)][q % 3]
+            c.set_source_rgb(*col); c.new_path(); c.arc(hx0 + math.cos(a_) * rr, hy0 + math.sin(a_) * rr, rr * 0.20, 0, TAU); c.fill()
+    # ---- the crown on the head of the pole
+    c.set_source_rgb(0.14, 0.26, 0.10); c.new_path(); c.arc(p1[0], p1[1], w1 * 0.55, 0, TAU); c.fill()
+    for q in range(14):
+        a_ = TAU * q / 14
+        c.set_source_rgb(*[(0.97, 0.95, 0.88), (0.95, 0.78, 0.30), (0.92, 0.52, 0.58), (0.70, 0.18, 0.22)][q % 4]); c.new_path(); c.arc(p1[0] + math.cos(a_) * w1 * 0.50, p1[1] + math.sin(a_) * w1 * 0.50, w1 * 0.13, 0, TAU); c.fill()
+    c.set_source_rgb(0.98, 0.84, 0.36); c.new_path(); c.arc(p1[0], p1[1], w1 * 0.22, 0, TAU); c.fill()
 
 
 def spiral_path(cx, cy, r_out, r_in, turns, th0, squash=0.92):
@@ -243,7 +289,12 @@ def render_overhead(w, h, seed=7, cx_frac=0.50, cy_frac=0.56, r_out_frac=0.40, r
         dress = tuple(np.clip(np.array(LIN) + rng.normal(0, 0.012, 3), 0, 1))
         hair = [(0.80, 0.62, 0.34), (0.55, 0.37, 0.19), (0.34, 0.22, 0.12), (0.88, 0.74, 0.44), (0.20, 0.13, 0.09), (0.64, 0.34, 0.16)][int(rng.integers(6))]
         top_girl(c, p['x'], p['y'], p['fa'], S, dress, hair, rng, 2)
-    pole_painting(c, (cx + 6, cy + 10), (cx - 0.20 * w, cy - 0.58 * h), 0.060 * w, 0.040 * w, rng, S)
+    hands_pts = []
+    for k in range(len(people) - 1):
+        p, q = people[k], people[k + 1]
+        if k % 2 == 0: hands_pts.append(((p['x'] + q['x']) / 2, (p['y'] + q['y']) / 2))
+    hands_pts = [h_ for h_ in hands_pts if math.hypot(h_[0] - cx, h_[1] - cy) < 0.33 * w]
+    pole_painting(c, (cx + 6, cy + 10), (cx - 0.20 * w, cy - 0.58 * h), 0.060 * w, 0.040 * w, rng, S, hands=hands_pts)
     rgb, a = L.get()
     img = img * (1 - a[..., None]) + rgb
     xx = np.arange(w, dtype=np.float32)[None, :]; yy = np.arange(h, dtype=np.float32)[:, None]

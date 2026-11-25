@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild the whole 16-slide carousel from scratch (~6 minutes on 4 cores). Every stage caches its section in work/.
+# Rebuild the whole 17-slide carousel from scratch (~6 minutes on 4 cores). Every stage caches its section in work/.
 set -euo pipefail
 cd "$(dirname "$0")/src"
 python3 folk2.py          # slides 1-3  flat folk world: whole sun, cloud-face asleep, moon, spiral-linked dancers (needs nothing)

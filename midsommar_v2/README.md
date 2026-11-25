@@ -1,6 +1,6 @@
-# Midsummer carousel v4 - sixteen slides, one world
+# Midsummer carousel v6 - seventeen slides, one world
 
-`panorama_17280x1350.png` is the lossless master; `slides/slide_01..16.jpg` are the cuts (1080 x 1350, swipe left to right).
+`panorama_18360x1350.png` is the lossless master; `slides/slide_01..17.jpg` are the cuts (1080 x 1350, swipe left to right).
 `python3 slice_panorama.py` re-cuts PNG slides from the master. `contact_sheet.jpg` shows all sixteen; `border_check.jpg` shows every border
 with a red hairline on the cut. Everything is generated in code (numpy + cairo + OpenCV) - no image-generation model, no copied reference.
 
@@ -20,6 +20,26 @@ warm rims - and applied it:
 * **Sea of cloud** (`flow2.cloud_sea`): large billows with ridged crests, cool creases, warm rim light and haze toward the horizon.
 * **Girls** are rendered at 3x supersampling with an unsharp pass where solid, are paler and bluer with distance, and outlined only on their shadow side;
   birds always show their wings (no more dark beans).
+
+## What v6 changes (a new slide, a house that is not paper, one unique thing per slide)
+* **Slide 11, THE INVITATION (new).** The house is behind us. In the same meadow, under the same sky and forest, two girls in white stand hands clasped in front of
+  a garlanded A-frame gate - the first of ten nested triangular frames (the hallway's own shape, still outdoors, lit by painted posts, bunting and flowers) that
+  run away to a golden light on the horizon, where the yellow house waits very small with its blue doors open. Their smiles are far too wide and even, their pale
+  eyes do not blink, one brow a hair higher (`fig.py: creep`); their outer hands curl in the old gesture for *come here*; long blue-violet shadows run from their
+  feet along the sun's perspective fan. `src/invitation.py`. The garden grew by one slide, so the drawing and the hallway moved right by 1080 px (`util.SHIFT`).
+* **The house looks like wood and glass** (`src/house.py`): every board has its own tone, grain, bevel, butt joints, nail pairs with rust runs and the odd knot;
+  every window is set *into* the wall - drip cap, bevelled casing, dark left reveal and sunlit right reveal, sloping sill, flower box with geraniums, louvred
+  blue shutters with a heart - and the glass shows a room (lamp, beam, shelf, curtains lit from behind, in two windows a pale girl standing very still), the sky,
+  clouds and the dark tree-line mirrored in it, diagonal sun glare, a hot spot and flare on the sunward windows, and a spill of lamp-light on the boards. Every
+  overlay casts a soft shadow on the planks; the doors have brush streaks, a gloss band and chipped paint; the doorway's light pools on the steps. No two windows overlap.
+* **One unique thing per slide:** 1 the whole sun with a face; 2 the sleeping moon and star rings; 3 the sleeping woman in the cloud, blossom petals on the lake;
+  4 the cathedral of two trees with wisteria and fireflies; 5 the fold - leaves curl into a spiral round a folk flower, five silk ribbons are untied from it;
+  6 the lake becomes a sea of cloud and the girls condense out of the mist; 7 the whole setting sun, its glitter path, the girls walking on the cloud;
+  8 the lantern girl's own boat, empty, moored where the water ends, and flowers where each girl stepped ashore; 9 the maypole, the ribbons arriving, bunting,
+  the bear cloud; 10 the house; 11 the invitation; 12 an open-eyed moon being drawn with compass and ruler as the world turns into a drawing; 13 the half-drawn meadow
+  and the first doorframe; 14-16 the hallway (its light patches now show the window's panes and soften with distance); 17 the maypole from above, its ten
+  ribbons running to the dancers' hands.
+* The sun is drawn last (`clouds3.sun_overlay`, `compose2`) so no blend or drag can bend it: one round disc.
 
 ## What v4 changes (after the feedback "creative, beautiful, well drawn - not a weird paint")
 * **Ink and gouache, not an oil-paint filter** (`src/ink.py`). Studying John Bauer's *Princess Tuvstarr* (big simple shapes, flat washes, one thin confident dark
@@ -68,11 +88,12 @@ v2 had the right structure but the realistic slides were dark, flat and green. v
 | 3 | the cloud-face asleep over the dusk lake (folk -> real, row by row); swans, a candle boat, lily pads, walkers on the far shore |
 | 4 | the cathedral of two trees standing in the lake; lantern girl in a rowboat; laburnum, wisteria, fireflies |
 | 5-8 | the fold (leaf spiral round a folk flower) -> sea of cloud, girls condensing out of mist -> gold lake -> shore; five silk ribbons run from the fold to the maypole |
-| 9-11 | the same lake at golden hour: spiral dance round the maypole, bear and swan clouds, the plank A-frame, bunting, wildflower meadow, deer |
-| 11-12 | the garden is redrawn in graphite + gouache; the house's planks run on as ruled pencil toward the vanishing point |
-| 12-16 | one-point-perspective triangular corridor; vanishing point exactly on the 13|14 cut with a Droste doorway; the girl who turns back; a ring of young people round nothing; the overhead spiral dance |
+| 9-10 | the same lake at golden hour: spiral dance round the maypole, bear and swan clouds, bunting, wildflower meadow; the plank A-frame with its lantern-post avenue |
+| 11 | the invitation: two smiling girls at a garlanded gate whose frames run to a golden light (the same background as the house) |
+| 12-13 | the meadow is redrawn in graphite + gouache (open-eyed moon, ruled transversals and orthogonals to the vanishing point), then the first doorframe |
+| 13-17 | one-point-perspective triangular corridor; vanishing point exactly on the 14|15 cut with a Droste doorway; the girl who turns back; a ring of young people round nothing; the overhead spiral dance |
 
-Horizon row 783 (58 %) throughout. Verified by `src/export2.py`: exact sizes, slides re-assemble into the panorama bit-for-bit, and every border is
+Horizon row 783 (58 %) throughout. Verified by `src/export2.py`: exact sizes, slides re-assemble into the panorama bit-for-bit, and every one of the 16 borders is
 within 1.7x of the picture's own column-to-column texture.
 
 ## Known limits

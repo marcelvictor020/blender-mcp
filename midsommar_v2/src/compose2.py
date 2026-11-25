@@ -47,15 +47,15 @@ def build(verbose=True):
     # ---- 3. pond, then the flow stage (pond -> garden), then the garden
     canvas[:, 3200:4300] = seg(pond, x0p, 3200, 4300)
     canvas[:, 4300:8700] = seg(flow, x0w, 4300, 8700)
-    canvas[:, 8700:12900] = seg(garden, x0g, 8700, 12900)
+    canvas[:, 8700:12900 + SHIFT] = seg(garden, x0g, 8700, 12900 + SHIFT)
     if verbose: print('pond / flow / garden placed')
     # ---- 4. garden -> drawing (row-by-row), then the hallway behind its left doorframe
-    a, b = 10300, 12900
+    a, b = 11200, 12900 + SHIFT
     G = canvas[:, a:b].copy()
     sk = SK.sketchify(G, line_gain=2.5)
     ypap = fbm(a, 0, b - a, H, 3, 2, 421) * 0.04
     sk = np.clip(sk * (1 + ypap[..., None]), 0, 1)
-    mixed = stagger_blend(G, sk, a, 11450.0, 760.0, seed=3, amp=300.0)
+    mixed = stagger_blend(G, sk, a, 12640.0, 700.0, seed=3, amp=250.0)
     # pencil fan: the temple's plank rows run on, ruled, toward the vanishing point; construction rays radiate from it
     Lr = Layer(b - a, H, a, 0, 2)
     c = Lr.ctx
@@ -64,15 +64,21 @@ def build(verbose=True):
     for yj in np.arange(ay + 20, by, 21.0):
         x_s = float(xB(yj))
         pts = []
-        n = 110
+        n = 330
+        wob = rng.uniform(0, 6.28)
         for i in range(n + 1):
             xx = x_s + i * 16.0
             g = ((xx - x_s) / (VPX - x_s)) * float(smoothstep(0, 900, xx - x_s))
-            pts.append((xx, yj + (HZ - yj) * g))
+            pts.append((xx, yj + (HZ - yj) * g + 0.9 * math.sin(i * 0.37 + wob) * min(1.0, i / 40.0)))
+        press = rng.uniform(0.55, 1.0)                                                   # how hard this stroke was pressed
+        gaps = rng.uniform(0, 1, n) < 0.035                                              # the ruler is lifted now and then
         for i in range(n):
             if pts[i + 1][0] > float(jamb_l(pts[i + 1][1])) - 5: break
-            al = 0.30 * (1 - i / n) ** 1.0
-            c.set_source_rgba(0.24, 0.22, 0.22, al); c.set_line_width(1.2)
+            if pts[i][0] < a - 20 or pts[i][0] > b + 20 or gaps[i]: continue
+            xm = pts[i][0]
+            al = 0.30 * press * float(smoothstep(11900, 12700, xm)) * (1 - 0.6 * float(smoothstep(13200, 14000, xm)))     # the lines surface out of the sky after the girls' slide
+            if al < 0.01: continue
+            c.set_source_rgba(0.24, 0.22, 0.22, al); c.set_line_width(0.8 + 0.7 * press)
             c.new_path(); c.move_to(*pts[i]); c.line_to(*pts[i + 1]); c.stroke()
     for k in range(70):
         ang = rng.uniform(math.pi - 0.95, math.pi + 0.95)
@@ -83,10 +89,39 @@ def build(verbose=True):
             t0, t1 = s_ / steps, (s_ + 1) / steps
             xa, ya = VPX + (x1 - VPX) * t0, HZ + (y1 - HZ) * t0
             xb, yb = VPX + (x1 - VPX) * t1, HZ + (y1 - HZ) * t1
-            if xb < 10800: continue
-            al = 0.20 * float(smoothstep(10800, 12600, xa)) * (0.55 + 0.45 * rng.random())
+            if xb < 11880: continue
+            al = 0.20 * float(smoothstep(11880, 13680, xa)) * (0.55 + 0.45 * rng.random())
             c.set_source_rgba(0.25, 0.26, 0.30, al); c.set_line_width(1.0)
             c.new_path(); c.move_to(xa, ya); c.line_to(xb, yb); c.stroke()
+    # the ground plane is drawn too: transversals (horizontals at geometrically spaced depths) cross the orthogonals that run to the vanishing point
+    for kk in range(1, 46):
+        y = HZ + 9.0 * 1.19 ** kk
+        if y > H - 4: break
+        xr = float(jamb_l(y)) - 6
+        x_a = 11960 + 34 * kk
+        if xr <= x_a: continue
+        press = rng.uniform(0.5, 1.0)
+        xx = x_a
+        while xx < xr:
+            seg_l = rng.uniform(60, 320)
+            if rng.random() < 0.10: xx += rng.uniform(8, 26); continue                  # the ruler slips: a gap
+            xe = min(xr, xx + seg_l)
+            al = 0.24 * press * float(smoothstep(12000, 12700, xx)) * (1 - 0.7 * float(smoothstep(13300, 13700, xx)))
+            if al > 0.01:
+                c.set_source_rgba(0.24, 0.23, 0.25, al); c.set_line_width(0.9 + 0.5 * press)
+                c.new_path(); c.move_to(xx, y + rng.normal(0, 0.35)); c.line_to(xe, y + rng.normal(0, 0.35)); c.stroke()
+            xx = xe
+    # a compass circle round the moon, with its centre mark and a pair of axes (the first thing in the picture that is being drawn)
+    from garden import SUN_G as _S
+    mcx, mcy, mr = 12560.0, 300.0, 96.0 * 1.34
+    c.set_source_rgba(0.24, 0.23, 0.28, 0.34); c.set_line_width(1.0)
+    for q in range(0, 360, 6):
+        if (q // 6) % 5 == 4: continue                                                      # dashes with the odd gap
+        a0, a1 = math.radians(q), math.radians(q + 5)
+        c.new_path(); c.arc(mcx, mcy, mr, a0, a1); c.stroke()
+    c.set_source_rgba(0.24, 0.23, 0.28, 0.26)
+    c.new_path(); c.move_to(mcx - mr * 1.25, mcy); c.line_to(mcx + mr * 1.25, mcy); c.move_to(mcx, mcy - mr * 1.25); c.line_to(mcx, mcy + mr * 1.25); c.stroke()
+    c.new_path(); c.arc(mcx, mcy, mr * 1.07, math.radians(206), math.radians(262)); c.stroke()                  # an overshoot, as a hand would leave
     lr, la = Lr.get()
     mixed = mixed * (1 - la[..., None]) + lr
     canvas[:, a:b] = mixed
@@ -98,6 +133,10 @@ def build(verbose=True):
     reg = slice(x0h, x0h + hall.shape[1])
     canvas[:, reg] = canvas[:, reg] * (1 - Mb[..., None]) + hall * Mb[..., None]
     if verbose: print('garden -> drawing -> hall')
+    import clouds3 as CL3
+    from garden import SUN_G
+    xa, xb = int(SUN_G[0]) - 320, int(SUN_G[0]) + 320
+    CL3.sun_overlay(canvas[:, xa:xb], xa, SUN_G)                                   # the sun is drawn last: one round disc, never bent by a blend or a drag
     return canvas
 
 
@@ -127,12 +166,13 @@ def grade(img, seed=1):
 
 def cut_sheet(img, path):
     tiles = []
-    for k in range(1, 16):
+    for k in range(1, N_SLIDES):
         x = k * SL
         t = img[:, x - 220: x + 220].copy()
         t[:, 218:222] = t[:, 218:222] * 0.5 + np.array([1, 0, 0], np.float32) * 0.5
         tiles.append(cv2.resize(t, (220, 675), interpolation=cv2.INTER_AREA))
-    rows = [np.concatenate(tiles[i:i + 5], 1) for i in (0, 5, 10)]
+    while len(tiles) % 4: tiles.append(np.zeros_like(tiles[0]))
+    rows = [np.concatenate(tiles[i:i + 4], 1) for i in range(0, len(tiles), 4)]
     save_png(path, np.concatenate(rows, 0))
 
 

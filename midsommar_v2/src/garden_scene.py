@@ -19,6 +19,7 @@ import meadow as MD
 import critters as CR
 import ribbons as RB
 import reflect as RF
+import invitation as INV
 
 TAU = 2 * math.pi
 DRESSES, BELTS, HAIRS, SKINS = CH.DRESSES, CH.BELTS, CH.HAIRS, CH.SKINS
@@ -41,11 +42,14 @@ def maypole(w, x0, base, s, height_m=7.4):
     bar_y = top + 0.55 * s
     bar = 1.30 * s
     c.set_source(g); c.new_path(); c.rectangle(bx - bar, bar_y - 0.07 * s, 2 * bar, 0.14 * s); c.fill()
-    cols = [(0.97, 0.94, 0.84), (0.95, 0.80, 0.42), (0.74, 0.82, 0.95), (0.92, 0.66, 0.66), (0.97, 0.94, 0.84), (0.55, 0.72, 0.52)]
+    cols = [(0.70, 0.12, 0.16), (0.98, 0.80, 0.26), (0.30, 0.48, 0.86), (0.97, 0.94, 0.86), (0.32, 0.58, 0.30), (0.88, 0.40, 0.46)]
     for k, col in enumerate(cols * 2):
         a = TAU * k / 12 + 0.3
         ex, ey = bx + math.cos(a) * 2.2 * s, by - 0.25 * s + math.sin(a) * 0.55 * s
-        c.set_source_rgba(col[0], col[1], col[2], 0.88); c.set_line_width(0.045 * s)
+        c.set_source_rgba(0.12, 0.08, 0.06, 0.9); c.set_line_width(0.080 * s)
+        c.new_path(); c.move_to(bx, top + 0.45 * s)
+        c.curve_to(bx + math.cos(a) * 0.5 * s, top + 2.4 * s, ex - math.cos(a) * 0.3 * s, ey - 2.2 * s, ex, ey); c.stroke()
+        c.set_source_rgba(col[0], col[1], col[2], 1.0); c.set_line_width(0.062 * s)
         c.new_path(); c.move_to(bx, top + 0.45 * s)
         c.curve_to(bx + math.cos(a) * 0.5 * s, top + 2.4 * s, ex - math.cos(a) * 0.3 * s, ey - 2.2 * s, ex, ey); c.stroke()
     for sx in (-1, 1):
@@ -188,13 +192,14 @@ def festive(out, x0, w, s_pole):
     CR.festoon(out, sh((cx, top + 1.5 * s_pole)), sh((CXG - HALF + 24, BASE_Y - 26)), 70, 22, rng, fw=26, pal=gold[1:] + gold[:1])
     CR.festoon(out, sh((CXG, APEX_Y + 6)), sh((CXG - HALF * 0.97, BASE_Y - 24)), 8, 30, rng, fw=22, pal=gold)
     CR.festoon(out, sh((CXG, APEX_Y + 6)), sh((CXG + HALF * 0.97, BASE_Y - 24)), 8, 30, rng, fw=22, pal=gold[2:] + gold[:2])
-    CR.deer_pair(out, 11560 - x0, HZ + 196, 118)
-    CR.deer_pair(out, 12460 - x0, HZ + 150, 84)
+    CR.deer_pair(out, 12180 - x0, HZ + 176, 104)
+    CR.deer_pair(out, 12760 - x0, HZ + 130, 70)
     before_sky = out.copy()
     for (lx, ly, S) in CR.lantern_flock():
         if x0 + 40 < lx < x0 + w - 40 and lx >= 8750:
             CR.sky_lantern(out, lx - x0, ly, S, day=0.55, warm=0.8)
     out = lantern_posts(out, x0, w, rng)
+    CR.moon_open_eyed(out, 12560 - x0, 300, 96)                                                   # the moon that is about to be drawn: its eyes are open
     kinds = ['monarch', 'blue', 'yellow', 'white', 'admiral']
     items = []
     for i in range(18):
@@ -246,6 +251,7 @@ def render_garden(x0=GX0, w=GW, paint_it=True, verbose=True):
     img = img * (1 - ma_[..., None]) + mr_
     shadow_col = np.array([0.07, 0.09, 0.24], np.float32)                      # golden-hour shadows are blue-violet (lit by the sky, not the sun)
     img = img * (1 - 0.56 * shadow[..., None]) + shadow_col * (0.56 * shadow[..., None])   # shadows fall on the grass and flowers too
+    img, inv_people, inv_extra = INV.render(x0, w, img)                                          # slide 11: the invitation (gate, path, the two girls)
     wc, wa = walkers_garden(x0, w)
     img = img * (1 - wa[..., None]) + wc * wa[..., None]
     img = img * (1 - ch['alpha_b'][..., None]) + ch['canvas_b'] * ch['alpha_b'][..., None]
@@ -264,13 +270,13 @@ def render_garden(x0=GX0, w=GW, paint_it=True, verbose=True):
     cache_save('f_garden_raw', x0, img)
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     edges = np.clip(np.hypot(cv2.Sobel(gray, cv2.CV_32F, 1, 0), cv2.Sobel(gray, cv2.CV_32F, 0, 1)) * 1.6, 0, 1)
-    people = np.maximum(ch['alpha'], ch['alpha_b'])
+    people = np.maximum(np.maximum(ch['alpha'], ch['alpha_b']), inv_people)
     if os.environ.get('FINISH', 'ink') == 'ink':
         import ink as INK
         lake_keep = ((ys > HZ + 2) & (ys < G.lake_y(xs) - 3) & (xs < 10200)).astype(np.float32)
-        keep = np.clip(0.75 * (ma_ > 0.3) + 0.55 * (ta > 0.5) + 0.65 * (people > 0.5) + 0.6 * (mpa > 0.5) + 0.85 * lake_keep, 0, 1).astype(np.float32)
+        keep = np.clip(0.75 * (ma_ > 0.3) + 0.55 * (ta > 0.5) + 0.65 * (people > 0.5) + 0.85 * (mpa > 0.15) + 0.85 * lake_keep + 0.55 * (inv_extra.get('pergola', 0 * ta) > 0.2) + 0.30 * (inv_extra.get('glow', 0 * ta).mean(-1) > 0.2 if 'glow' in inv_extra else 0), 0, 1).astype(np.float32)
         keep = cv2.GaussianBlur(keep, (0, 0), 2.0)
-        out = INK.finish(img, lines=[(ta > 0.5, 2.6, 0.95), (people > 0.5, 1.6, 0.85), (mpa > 0.5, 1.8, 0.9)], keep=keep, seed=9, light_x=-1.0)
+        out = INK.finish(img, lines=[(ta > 0.5, 2.6, 0.95), (people > 0.5, 1.6, 0.85), (mpa > 0.5, 1.8, 0.9), (inv_people > 0.5, 1.4, 0.55)], keep=keep, seed=9, light_x=-1.0)
         if verbose: print('inked', round(time.time() - t0, 1))
         br, ba = birds_garden(x0, w)
         out = out * (1 - ba[..., None]) + br
@@ -285,6 +291,7 @@ def render_garden(x0=GX0, w=GW, paint_it=True, verbose=True):
     br, ba = birds_garden(x0, w)
     out = out * (1 - ba[..., None]) + br
     out = festive(out, x0, w, s_pole)
+    out = INV.living(out, x0, w)
     return np.clip(out, 0, 1).astype(np.float32)
 
 

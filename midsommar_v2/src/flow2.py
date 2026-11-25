@@ -237,7 +237,7 @@ def critters2(out, x0):
     CR.swan_family(out, 4760 - x0, 1236, 132, rng)
     CR.flower_boat(out, 4990 - x0, 1296, 116, 11, pal=0)
     CR.swan_family(out, 7740 - x0, 1046, 70, rng, tint=(1.0, 0.97, 0.93))
-    CR.flower_boat(out, 8060 - x0, 962, 54, 13, pal=2)
+    CR.lone_boat(out, 8318 - x0, 950, 0.36, water_fn=lambda X, Y: (Y < G.lake_y(X + x0) - 3).astype(np.float32))                                       # the lantern girl's boat, empty, moored where the water ends
     for (lx, ly, S) in CR.lantern_flock():
         if x0 + 40 < lx < x0 + FW - 40 and lx < 8750:
             CR.sky_lantern(out, lx - x0, ly, S, day=float(smoothstep(6800, 8400, lx)) * 0.55, warm=1.0)
