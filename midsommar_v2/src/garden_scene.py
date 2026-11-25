@@ -1,6 +1,7 @@
 """Garden actors + final assembly: the spiral of girls round a garlanded maypole (long golden shadows), the plank A-frame temple (your
 reference) with a woman in the doorway, flower beds, grass, mist, the same birds and white-robed walkers as the pond, then the oil-paint pass."""
 import math
+import os
 import numpy as np
 import cv2
 import cairo
@@ -16,6 +17,7 @@ from trees import leaf
 import house as HS
 import meadow as MD
 import critters as CR
+import ribbons as RB
 
 TAU = 2 * math.pi
 DRESSES, BELTS, HAIRS, SKINS = CH.DRESSES, CH.BELTS, CH.HAIRS, CH.SKINS
@@ -110,6 +112,9 @@ def festive(out, x0, w, s_pole):
     top = by - 7.4 * s_pole
     sh = lambda p: (p[0] - x0, p[1])
     gold = [(0.97, 0.94, 0.86), (0.96, 0.78, 0.24), (0.40, 0.62, 0.90), (0.84, 0.20, 0.18), (0.30, 0.60, 0.34)]
+    rr_, ra_ = RB.ribbon_layer(x0, w)                                     # the five silk ribbons that left the arch's canopy arrive at the maypole
+    ramp = smoothstep(8668, 8699, np.arange(x0, x0 + w, dtype=np.float32))[None, :]
+    out = out * (1 - ra_[..., None] * ramp[..., None]) + rr_ * ramp[..., None]
     CR.festoon(out, sh((cx, top + 0.6 * s_pole)), sh((CXG, APEX_Y + 6)), 90, 34, rng, fw=30, pal=gold)
     CR.festoon(out, sh((cx, top + 1.5 * s_pole)), sh((CXG - HALF + 24, BASE_Y - 26)), 70, 22, rng, fw=26, pal=gold[1:] + gold[:1])
     CR.festoon(out, sh((CXG, APEX_Y + 6)), sh((CXG - HALF * 0.97, BASE_Y - 24)), 8, 30, rng, fw=22, pal=gold)
@@ -177,9 +182,20 @@ def render_garden(x0=GX0, w=GW, paint_it=True, verbose=True):
     if verbose: print('composited', round(time.time() - t0, 1))
     if not paint_it:
         return img
+    cache_save('f_garden_raw', x0, img)
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     edges = np.clip(np.hypot(cv2.Sobel(gray, cv2.CV_32F, 1, 0), cv2.Sobel(gray, cv2.CV_32F, 0, 1)) * 1.6, 0, 1)
     people = np.maximum(ch['alpha'], ch['alpha_b'])
+    if os.environ.get('FINISH', 'ink') == 'ink':
+        import ink as INK
+        keep = np.clip(0.75 * (ma_ > 0.3) + 0.55 * (ta > 0.5) + 0.65 * (people > 0.5) + 0.6 * (mpa > 0.5), 0, 1).astype(np.float32)
+        keep = cv2.GaussianBlur(keep, (0, 0), 2.0)
+        out = INK.finish(img, lines=[(ta > 0.5, 2.6, 0.95), (people > 0.5, 1.6, 0.85), (mpa > 0.5, 1.8, 0.9)], keep=keep, seed=9)
+        if verbose: print('inked', round(time.time() - t0, 1))
+        br, ba = birds_garden(x0, w)
+        out = out * (1 - ba[..., None]) + br
+        out = festive(out, x0, w, s_pole)
+        return np.clip(out, 0, 1).astype(np.float32)
     detail = np.clip(edges + (people > 0.5) * 0.6 + (ta > 0.5) * 0.3 + (mpa > 0.5) * 0.4 + (ma_ > 0.3) * 0.35, 0, 1)
     fine_hard = (people > 0.5) | (mpa > 0.6)
     sk = 0.30 + 0.35 * cv2.GaussianBlur((people > 0.3).astype(np.float32), (0, 0), 4.0)

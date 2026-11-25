@@ -1,10 +1,23 @@
-# Midsummer carousel v3 - sixteen slides, one world
+# Midsummer carousel v4 - sixteen slides, one world
 
 `panorama_17280x1350.png` is the lossless master; `slides/slide_01..16.jpg` are the cuts (1080 x 1350, swipe left to right).
 `python3 slice_panorama.py` re-cuts PNG slides from the master. `contact_sheet.jpg` shows all sixteen; `border_check.jpg` shows every border
 with a red hairline on the cut. Everything is generated in code (numpy + cairo + OpenCV) - no image-generation model, no copied reference.
 
-## What v3 changes (the "realistic" slides, 3-12)
+## What v4 changes (after the feedback "creative, beautiful, well drawn - not a weird paint")
+* **Ink and gouache, not an oil-paint filter** (`src/ink.py`). Studying John Bauer's *Princess Tuvstarr* (big simple shapes, flat washes, one thin confident dark
+  contour, almost-mirror water, a few tiny precise details) and modern Scandinavian folk-pattern illustration (calm sun with a face, bows, wisteria, tidy symmetry),
+  the stroke-simulating paint pass was replaced by: bilateral flattening into gouache washes, pigment pooling at colour edges, an ink contour drawn round the
+  shapes the scenes *know* (house, trunks, boat, figures - not found by edge detection), a pixel of misregistration between ink and colour, and paper grain.
+* **Nothing is longer than it can be** (`src/flow3.py`, `src/ribbons.py`). The 4000 px bough is gone. Slides 5-8 are four different pictures that turn into
+  one another: **5 the fold** - the arch's own leaves curl into a vine spiral round a flat folk flower and the picture twists inside the spiral, mist lifts off the
+  pond into it; **6 the sea** - clouds condense out of the mirror, lump by lump and row by row, the lake becomes a sea of cloud and the girls take shape out of the
+  mist (ghosts at the left border, solid at the right); **7 the gold** - the cloud settles back into the lake; **8 the shore** - the water ends at the meadow.
+  What does cross the borders is what could: five silk ribbons untied from the folk flower that stream right, twist, and arrive at the top of the maypole in slide 9.
+* Everything from v3 (shared world sky and lake, the cathedral of two trees, the A-frame, meadow, swans, boats, lanterns, deer) is kept; the canopy now thins
+  toward slide 3 instead of ending in a wall and has shed blossom petals onto that lake.
+
+## What v3 changed (the "realistic" slides, 3-12)
 v2 had the right structure but the realistic slides were dark, flat and green. v3 rebuilds them:
 * **One continuous lake and sky** (`src/world.py`). The pond, the current and the garden no longer have three separate skies: the sky, the far shore
   and the mirrored water are rendered once for x = 2000..12900 and sliced. The sun goes down at x = 7330 as one whole disc; left of it the sky is dusk
@@ -37,7 +50,7 @@ v2 had the right structure but the realistic slides were dark, flat and green. v
 | 1-2 | flat dalmalning on plywood: whole sun, kurbits swirls, birds, ring dance, sun's long ray handing over to the moon, star rings |
 | 3 | the cloud-face asleep over the dusk lake (folk -> real, row by row); swans, a candle boat, lily pads, walkers on the far shore |
 | 4 | the cathedral of two trees standing in the lake; lantern girl in a rowboat; laburnum, wisteria, fireflies |
-| 5-8 | one current to the right: dusk -> sunset, vines, many-coloured leaves, kurbits turning real, the chain of girls walking the water, swans and boats |
+| 5-8 | the fold (leaf spiral round a folk flower) -> sea of cloud, girls condensing out of mist -> gold lake -> shore; five silk ribbons run from the fold to the maypole |
 | 9-11 | the same lake at golden hour: spiral dance round the maypole, bear and swan clouds, the plank A-frame, bunting, wildflower meadow, deer |
 | 11-12 | the garden is redrawn in graphite + gouache; the house's planks run on as ruled pencil toward the vanishing point |
 | 12-16 | one-point-perspective triangular corridor; vanishing point exactly on the 13|14 cut with a Droste doorway; the girl who turns back; a ring of young people round nothing; the overhead spiral dance |
@@ -48,4 +61,4 @@ within 1.7x of the picture's own column-to-column texture.
 ## Known limits
 Faces are small and stylised at slide scale; the near hallway figures are a little mannequin-like from behind; the bear cloud reads as an animal mainly
 by its legs and back; the trees and clouds are painterly-real (leaf dabs, volumetric density), not photographs.
-Rebuild: `pip install -r requirements.txt && ./build_all.sh` (~15 min, 4 cores; caches in `work/`, git-ignored).
+Rebuild: `pip install -r requirements.txt && ./build_all.sh` (~6 min, 4 cores; caches in `work/`, git-ignored).

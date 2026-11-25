@@ -1,6 +1,7 @@
 """Slides 3-8, rebuilt: the dusk lake (shared WORLD sky / shore / water), the cathedral of two ancient trees standing IN the water, the lantern girl in her boat,
 the sleeping woman's cloud, the lily pads and the white-robed walkers on the far shore. Everything is lit by three lights (blue sky, rose afterglow, lantern)."""
 import math
+import os
 import numpy as np
 import cv2
 import cairo
@@ -146,9 +147,18 @@ def render_pond(x0=X0, w=CW, paint_it=True, verbose=True):
     fine_hard = detail > 0.9
     fine_soft = cv2.GaussianBlur(detail, (0, 0), 6.0)
     detail = np.clip(detail + edges + 0.55 * (ac > 0.5), 0, 1)
-    out, n = paint(img, passes=((11, 1.0, 0.0), (6.5, 1.0, 0.025), (3.8, 1.0, 0.03), (2.2, 1.1, 0.04), (1.4, 1.3, 0.06)),
-                   default_flow=0.0, default_w=0.55, detail=detail, seed=7, struct_keep=0.30 + 0.40 * fine_soft, verbose=verbose, fine_mask=fine_hard)
-    if verbose: print('painted', n, round(time.time() - t0, 1))
+    if os.environ.get('FINISH', 'ink') == 'ink':
+        import ink as INK
+        boat_full = np.zeros((H, w), np.float32); boat_full[oy:oy + BT.BH, ox:ox + BT.BW] = boat_a
+        keep = np.clip(1.0 * (fine_soft > 0.5) + 0.62 * (ac > 0.4) + 0.5 * (wa > 0.5), 0, 1).astype(np.float32)
+        keep[HZ - 48:HZ + 14, :] = np.maximum(keep[HZ - 48:HZ + 14, :], 0.85)
+        keep = cv2.GaussianBlur(keep, (0, 0), 1.6)
+        out = INK.finish(img, lines=[(wa > 0.5, 2.2, 0.80), (boat_full > 0.5, 1.8, 0.85)], keep=keep, seed=7)
+        if verbose: print('inked', round(time.time() - t0, 1))
+    else:
+        out, n = paint(img, passes=((11, 1.0, 0.0), (6.5, 1.0, 0.025), (3.8, 1.0, 0.03), (2.2, 1.1, 0.04), (1.4, 1.3, 0.06)),
+                       default_flow=0.0, default_w=0.55, detail=detail, seed=7, struct_keep=0.30 + 0.40 * fine_soft, verbose=verbose, fine_mask=fine_hard)
+        if verbose: print('painted', n, round(time.time() - t0, 1))
     # ---- crisp post layers
     out = SC.face_paint_real(out, x0, FACE['cx'], FACE['cy'], FACE['S'], strength=1.0)
     bfr, bfa = P2.bark_face_layer(x0, w)

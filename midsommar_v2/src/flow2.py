@@ -1,6 +1,6 @@
-"""EXPERIMENT - not wired into build_all.sh; the delivered slides still come from flow.py.
-The long bough (bough_layers) is REJECTED: one branch running across four slides is not credible. The reusable parts are cloud_sea / sea_alpha
-(water turning into a sea of cloud, row by row), rising_mist, drag (sideways line-by-line pull) and the girls-condensing-from-mist compositing.
+"""LIBRARY for flow3.py (the slides 5-8 stage): cloud_sea / sea_alpha (the lake turning into a sea of cloud, row by row), rising_mist, drag (the sideways
+line-by-line pull), petals2, critters2. bough_layers() is an unused, REJECTED experiment (one branch running across four slides is not credible) - the long
+object that does cross the borders is a set of silk ribbons (ribbons.py).
 
 Slides 5-8, rebuilt as a real metamorphosis (x 4300..8700) - four different pictures that turn into one another, not one picture recoloured.
 
