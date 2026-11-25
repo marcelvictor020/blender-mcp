@@ -191,8 +191,6 @@ def post(out, x0, w, water_mask=None):
         water_mask = np.load(WORK + '/flow_water_mask.npy').astype(np.float32)
     before = out.copy()
     out = footprints(out, x0, w)
-    rr, ra = RB.ribbon_layer(x0, w)
-    out = out * (1 - ra[..., None]) + rr
     out = F2.critters2(out, x0)
     out = RF.add_reflections(out, before, x0, w, water_mask)
     return np.clip(out, 0, 1).astype(np.float32)

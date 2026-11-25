@@ -45,6 +45,7 @@ def drag(img, x0, w):
     D = A * (0.30 + 0.70 * np.clip(0.5 + 1.0 * row_noise(7)[:, None], 0, 1.3))
     yy = np.arange(H, dtype=np.float32)[:, None]
     D = D * (1 - np.exp(-(((yy - HZ) / 55.0) ** 2)))                       # the horizon (and the walkers standing on it) stays put
+    D = D * (1 - np.exp(-(((xs - 7330.0) / 300.0) ** 4)))                     # ... and so does the far house (a wide, flat-topped exemption)
     mx = (np.arange(w, dtype=np.float32)[None, :] - D).astype(np.float32)
     my = np.broadcast_to(np.arange(H, dtype=np.float32)[:, None], (H, w)).astype(np.float32).copy()
     return cv2.remap(img, mx, my, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
@@ -111,7 +112,7 @@ def sea_alpha(x0, w, n):
     xs = np.arange(x0, x0 + w, dtype=np.float32)[None, :]
     rn = row_noise(13, 50)[HZ:HZ + nh][:, None]
     xr = xs + 380.0 * rn
-    e = smoothstep(4750, 5950, xr) * (1 - smoothstep(7050, 8000, xr))
+    e = smoothstep(4750, 5950, xr) * (1 - smoothstep(6650, 7150, xr))
     thr = 1.0 - e
     a = smoothstep(thr - 0.16, thr + 0.24, n)
     kk = np.arange(1, nh + 1, dtype=np.float32)[:, None]
@@ -223,9 +224,14 @@ def petals2(x0, w, seed=3, n=1100):
         gr = cairo.LinearGradient(x, y, x - math.cos(a) * tail, y - math.sin(a) * tail)
         gr.add_color_stop_rgba(0, *col, 0.45); gr.add_color_stop_rgba(1, *col, 0)
         c.set_source(gr); c.set_line_width(sz * 0.6); c.new_path(); c.move_to(x, y); c.line_to(x - math.cos(a) * tail, y - math.sin(a) * tail); c.stroke()
+        wd = rng.uniform(0.7, 1.15)
+        def petal_path(dx, dy, ro=0.0):
+            c.new_path(); c.save(); c.translate(x + dx, y + dy); c.rotate(a + ro); c.scale(sz, sz * 0.5 * wd)
+            c.move_to(-1.0, 0.0); c.curve_to(-0.45, -0.95, 0.50, -0.85, 1.0, 0.0); c.curve_to(0.50, 0.80, -0.40, 0.90, -1.0, 0.0); c.close_path(); c.restore()
         if y > HZ + 24:                                                         # on the water / cloud: a contact shadow, so it sits in the picture
-            c.set_source_rgba(0.04, 0.03, 0.10, 0.28); c.new_path(); c.save(); c.translate(x + 1.6, y + 2.2); c.rotate(a); c.scale(sz, sz * 0.5); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
-        c.set_source_rgba(*col, 0.96); c.new_path(); c.save(); c.translate(x, y); c.rotate(a); c.scale(sz, sz * 0.5); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
+            c.set_source_rgba(0.04, 0.03, 0.10, 0.28); petal_path(1.6, 2.2); c.fill()
+        petal_path(0.0, 0.0); c.set_source_rgba(*col, 0.96); c.fill_preserve()
+        c.set_source_rgba(col[0] * 0.78, col[1] * 0.74, col[2] * 0.76, 0.40); c.set_line_width(0.6); c.stroke()
         placed += 1
     return L.get()
 
@@ -239,18 +245,18 @@ def critters2(out, x0):
     CR.swan_family(out, 7740 - x0, 1046, 70, rng, tint=(1.0, 0.97, 0.93))
     CR.lone_boat(out, 8318 - x0, 950, 0.36, water_fn=lambda X, Y: (Y < G.lake_y(X + x0) - 3).astype(np.float32))                                       # the lantern girl's boat, empty, moored where the water ends
     for (lx, ly, S) in CR.lantern_flock():
-        if x0 + 40 < lx < x0 + FW - 40 and lx < 8750:
+        if x0 + 40 < lx < x0 + FW - 40 and lx < 8750 and not no_fly(lx):
             CR.sky_lantern(out, lx - x0, ly, S, day=float(smoothstep(6800, 8400, lx)) * 0.55, warm=1.0)
     items = []
     kinds_dusk = ['blue', 'white', 'yellow']; kinds_gold = ['monarch', 'yellow', 'admiral', 'white']
     for i in range(18):
         x = rng.uniform(5100, 8350); y = rng.uniform(140, 700)
-        if abs(x - SUN_X) < 160 and abs(y - 766) < 200: continue
+        if abs(x - SUN_X) < 160 and abs(y - 766) < 200 or no_fly(x): continue
         kind = (kinds_dusk if x < 6300 else kinds_gold)[i % (3 if x < 6300 else 4)]
         items.append((x - x0, y, rng.uniform(15, 25), float(F.flow_angle(x, y)) + math.pi / 2 + rng.normal(0, 0.4), kind, rng.uniform(0.35, 0.95), int(rng.integers(1 << 20))))
     CR.butterflies(out, items)
-    CR.fireflies(out, rng, 70, (4450 - x0, 5300 - x0), (740, 1320), size=(1.3, 3.4), glow=0.95)
-    CR.fireflies(out, rng, 26, (7000 - x0, 8200 - x0), (700, 1100), size=(1.2, 2.4), glow=0.55, color=(1.0, 0.90, 0.55))
+    CR.fireflies(out, rng, 70, (4450 - x0, 5030 - x0), (740, 1320), size=(1.3, 3.4), glow=0.95)
+    CR.fireflies(out, rng, 26, (6900 - x0, 8200 - x0), (700, 1100), size=(1.2, 2.4), glow=0.55, color=(1.0, 0.90, 0.55))
     return out
 
 

@@ -18,7 +18,7 @@ from folk import Z
 
 X0, X1 = 2000, 8200
 CW = X1 - X0
-AX0, AW = 3000, 2100
+AX0, AW = 2250, 2850
 
 
 def embed(sub, sx0, x0, w):
@@ -178,6 +178,7 @@ def render_pond(x0=X0, w=CW, paint_it=True, verbose=True):
     CR.swan_family(out, 2430 - x0, 1222, 140, rng)
     CR.flower_boat(out, 2960 - x0, 1085, 74, 21, pal=1)
     CR.fireflies(out, rng, 70, (3120 - x0, 4560 - x0), (260, 1000), size=(1.4, 3.6), glow=1.0)
+    CR.fireflies(out, rng, 26, (2500 - x0, 3260 - x0), (120, 560), size=(1.2, 3.0), glow=0.9)
     CR.fireflies(out, rng, 36, (3300 - x0, 4400 - x0), (880, 1250), size=(1.2, 2.8), glow=0.8, color=(1.0, 0.86, 0.50))
     boat_full2 = np.zeros((H, w), np.float32); boat_full2[oy:oy + BT.BH, ox:ox + BT.BW] = boat_a
     wmask = 1.0 - np.clip(wa + 0.8 * ac + boat_full2, 0, 1)

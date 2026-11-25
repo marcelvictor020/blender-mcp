@@ -16,6 +16,7 @@ from shared import GIRL_X
 
 TAU = 2 * math.pi
 YW = 1214.0
+BR_OUT = [(3500, 580), (3412, 470), (3296, 338), (3130, 224), (2940, 156), (2750, 132), (2578, 154), (2452, 212)]            # the left trunk's long bough: it crosses the 3|4 border and keeps going over slide 3
 HOLE = (3790.0, 70.0, 230.0, 135.0)
 ROOTS_L = [[(3352, 1090), (3296, 1150), (3228, 1196), (3150, 1218)], [(3400, 1080), (3446, 1150), (3508, 1198), (3592, 1220)], [(3342, 1040), (3270, 1100), (3196, 1130), (3112, 1168)]]
 ROOTS_R = [[(4204, 1090), (4262, 1150), (4332, 1196), (4412, 1218)], [(4160, 1080), (4118, 1150), (4056, 1198), (3980, 1220)], [(4214, 1040), (4290, 1100), (4368, 1130), (4452, 1168)]]
@@ -55,6 +56,7 @@ def wood_geometry(x0, w):
     PS['L'] = enc_bough(c, TRUNK_L, 112, 18, 1)
     PS['R'] = enc_bough(c, TRUNK_R, 104, 16, 2)
     PS['BR'] = enc_bough(c, BR_RIGHT, 34, 11, 7)
+    PS['out1'] = enc_bough(c, BR_OUT, 30, 3.0, 11)
     rgb, a = L.get()
     enc = rgb / np.maximum(a, 1e-3)[..., None]
     return enc, a, PS
@@ -221,7 +223,7 @@ def ivy_run(c, x, y, ang, length, rng, lantern):
                 leaf(c, px, py, rng.uniform(13, 24), a + sd * rng.uniform(0.7, 1.5), col)
 
 
-def render_arch(x0=3000, w=2100, seed=404, verbose=True):
+def render_arch(x0=2250, w=2850, seed=404, verbose=True):
     import time
     t0 = time.time()
     lantern = BT.LANTERN
@@ -259,6 +261,33 @@ def render_arch(x0=3000, w=2100, seed=404, verbose=True):
                 ox, oy = rng.normal(0, 26), rng.normal(0, 26)
                 r_ = rng.uniform(26, 56) * (0.7 + 0.5 * float(smoothstep(700, 300, P[k][1])))
                 clump(c, P[k][0] + ox, P[k][1] + oy, r_, r_ * 0.85, int(r_ * r_ * 0.09), rng, lantern, size=(10, 19), skew=0.25 * np.sign(ox))
+    # the long bough over slide 3: leaves thin out toward its tip, wisteria and laburnum hang from it (kept clear of the sleeping face), blossom, no wall at the border
+    P, R = PS['out1']
+    for k in range(0, len(P), 3):
+        x, y = float(P[k][0]), float(P[k][1])
+        pk = float(smoothstep(2440, 3320, x)) ** 0.7
+        if rng.random() > 0.18 + 0.82 * pk: continue
+        for _ in range(2):
+            ox, oy = rng.normal(0, 22), rng.normal(0, 16)
+            r_ = rng.uniform(17, 44) * (0.55 + 0.45 * pk)
+            clump(c, x + ox, y + oy - 4, r_, r_ * 0.85, int(r_ * r_ * 0.10), rng, lantern, size=(10, 19), hole=False)
+    for k in range(0, len(P), 4):
+        x, y = float(P[k][0]), float(P[k][1])
+        pk = float(smoothstep(2440, 3320, x)) ** 0.7
+        if rng.random() > 0.80: continue
+        hl = rng.uniform(40, 150) * (0.55 + 0.45 * pk)
+        if 2360 < x < 2980: hl = min(hl, 246 - y)
+        if hl < 24: continue
+        hanging_leaves(c, x + rng.normal(0, 5), y + float(R[k]) * rng.uniform(0.3, 1.0), hl, rng, lantern)
+    nfl = 0
+    for k in range(0, len(P), 6):
+        x, y = float(P[k][0]), float(P[k][1])
+        if x < 2820 or x > 3440 or rng.random() > 0.75: continue
+        chain_flowers(c, x + rng.normal(0, 6), y + float(R[k]) * 0.9, rng.uniform(70, 170), rng, lantern, 'lab' if nfl % 2 == 0 else 'wist'); nfl += 1
+    for k in range(len(P)):
+        x, y = float(P[k][0]), float(P[k][1])
+        if rng.random() > 0.55 * float(smoothstep(2500, 3300, x)): continue
+        blossom(c, x + rng.normal(0, 26), y + rng.normal(0, 22), rng.uniform(3.4, 6.4), [(0.98, 0.95, 0.90), (0.97, 0.80, 0.84), (0.99, 0.90, 0.70)][int(rng.integers(3))], rng)
     # curtains of leaves down the outer sides of the arch
     for side, (xa, xb) in enumerate(((3080, 3330), (4300, 4780))):
         for _ in range(26):
@@ -292,7 +321,7 @@ def render_arch(x0=3000, w=2100, seed=404, verbose=True):
         for j in range(7):
             ivy_run(c, X0t + side * rng.uniform(-95, 95), YW - rng.uniform(20, 120), -math.pi / 2 + rng.normal(0, 0.25), rng.uniform(160, 520), rng, lantern)
     rc, ac = LC.get()
-    fx = smoothstep(3000, 3520, xs)[0] ** 1.3
+    fx = np.ones(xs.shape[1], np.float32)                                   # no fade: the canopy is a real object that crosses the border
     rc = rc * fx[None, :, None]; ac = ac * fx[None, :]
     rb = rb * fx[None, :, None]; ab = ab * fx[None, :]
     if verbose: print('foliage', round(time.time() - t0, 1))

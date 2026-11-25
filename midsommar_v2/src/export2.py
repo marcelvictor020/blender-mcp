@@ -1,10 +1,10 @@
-"""Final export + verification for the 17-slide carousel (18360 x 1350 -> 17 slides of 1080 x 1350).
+"""Final export + verification for the 16-slide carousel (17280 x 1350 -> 16 slides of 1080 x 1350).
 Writes the panorama (PNG master + JPEG) and the slides (PNG + JPEG) from ONE 8-bit conversion, re-reads them and proves exact sizes,
-bit-exact re-assembly, and that every one of the 16 borders is no more abrupt than the picture's own texture."""
+bit-exact re-assembly, and that every one of the 15 borders is no more abrupt than the picture's own texture."""
 import os
 import numpy as np
 import cv2
-from util import WORK, W, H, SL, HZ
+from util import WORK, W_FINAL as W, H, SL, HZ
 
 OUT = os.path.dirname(WORK)
 SLIDES = os.path.join(OUT, 'slides')

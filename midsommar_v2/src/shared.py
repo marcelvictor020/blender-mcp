@@ -98,3 +98,11 @@ def _reeds():
 
 
 REEDS = _reeds()
+
+
+# design-space x ranges where nothing small and airborne may sit: the two zones that the finished carousel melts across (see compose2.build)
+NO_FLY = [(5040, 5760), (6120, 6840), (11340, 11900), (12420, 12980)]
+
+
+def no_fly(x):
+    return any(a <= x <= b for a, b in NO_FLY)

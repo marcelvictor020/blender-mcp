@@ -30,57 +30,59 @@ def seg(arr, x0, a, b):
 
 
 def build(verbose=True):
+    """design space (18360 px, 17 slides) -> the finished carousel (17280 px, 16 slides).
+
+    Design space holds every stage at the position it was authored. Two design slides are never shown: the dull sea-of-cloud slide (design 6, the lake is
+    simply cut from the fold straight into the sunset, with a row-by-row melt across 600 px) and the moon page between the invitation and the hallway (the
+    invitation melts into the drawing of the same meadow, and the hallway starts). The moon ends the carousel instead, melting out of the overhead dance."""
+    from blend import stagger_blend
     canvas = np.zeros((H, W, 3), np.float32)
     x0f, folk = cache_load('f_folk')
     x0p, pond = cache_load('f_pond')
     x0g, garden = cache_load('f_garden')
     x0w, flow = cache_load('f_flow')
     x0h, hall = cache_load('f_hall')
-    # ---- 1. folk world
+    # ---- 1. folk world, folk -> pond (the painted cloud turns real, row by row), pond, the flow stage, the garden
     canvas[:, 0:1600] = seg(folk, x0f, 0, 1600)
-    # ---- 2. folk -> pond: the painted cloud turns real; the plywood sky becomes a real sky, row by row
     A = seg(folk, x0f, 1600, 3200)
     Bp = seg(pond, x0p, 1600, 3200)
-    Bp[:, :max(0, x0p - 1600)] = A[:, :max(0, x0p - 1600)]                   # (the pond has no data left of x=2000: use the folk there)
+    Bp[:, :max(0, x0p - 1600)] = A[:, :max(0, x0p - 1600)]
     canvas[:, 1600:3200] = stagger_blend(A, Bp, 1600, 2640.0, 500.0, seed=5, amp=200.0)
-    if verbose: print('folk -> pond')
-    # ---- 3. pond, then the flow stage (pond -> garden), then the garden
     canvas[:, 3200:4300] = seg(pond, x0p, 3200, 4300)
     canvas[:, 4300:8700] = seg(flow, x0w, 4300, 8700)
     canvas[:, 8700:12900 + SHIFT] = seg(garden, x0g, 8700, 12900 + SHIFT)
-    if verbose: print('pond / flow / garden placed')
-    # ---- 4. garden -> drawing (row-by-row), then the hallway behind its left doorframe
-    a, b = 11200, 12900 + SHIFT
-    G = canvas[:, a:b].copy()
+    if verbose: print('design placed')
+    # ---- 2. the DRAWING version of the meadow (graphite + gouache), with pencil construction lines, and the hallway behind its left doorframe
+    a2 = x0h                                                       # 12000: where the hall image starts
+    b2 = 12900 + SHIFT
+    G = canvas[:, a2:b2].copy()
     sk = SK.sketchify(G, line_gain=2.5)
-    ypap = fbm(a, 0, b - a, H, 3, 2, 421) * 0.04
+    ypap = fbm(a2, 0, b2 - a2, H, 3, 2, 421) * 0.04
     sk = np.clip(sk * (1 + ypap[..., None]), 0, 1)
-    mixed = stagger_blend(G, sk, a, 12640.0, 700.0, seed=3, amp=250.0)
-    # pencil fan: the temple's plank rows run on, ruled, toward the vanishing point; construction rays radiate from it
-    Lr = Layer(b - a, H, a, 0, 2)
+    Lr = Layer(b2 - a2, H, a2, 0, 2)
     c = Lr.ctx
     rng = np.random.default_rng(81)
     ay, by = TEMPLE['apex_y'], TEMPLE['base_y']
-    for yj in np.arange(ay + 20, by, 21.0):
+    for yj in np.arange(ay + 20, by, 21.0):                        # the plank rows of the house run on, ruled, toward the vanishing point
         x_s = float(xB(yj))
+        wob = rng.uniform(0, 6.28)
         pts = []
         n = 330
-        wob = rng.uniform(0, 6.28)
         for i in range(n + 1):
             xx = x_s + i * 16.0
             g = ((xx - x_s) / (VPX - x_s)) * float(smoothstep(0, 900, xx - x_s))
             pts.append((xx, yj + (HZ - yj) * g + 0.9 * math.sin(i * 0.37 + wob) * min(1.0, i / 40.0)))
-        press = rng.uniform(0.55, 1.0)                                                   # how hard this stroke was pressed
-        gaps = rng.uniform(0, 1, n) < 0.035                                              # the ruler is lifted now and then
+        press = rng.uniform(0.55, 1.0)
+        gaps = rng.uniform(0, 1, n) < 0.035
         for i in range(n):
             if pts[i + 1][0] > float(jamb_l(pts[i + 1][1])) - 5: break
-            if pts[i][0] < a - 20 or pts[i][0] > b + 20 or gaps[i]: continue
+            if pts[i][0] < a2 - 20 or pts[i][0] > b2 + 20 or gaps[i]: continue
             xm = pts[i][0]
-            al = 0.30 * press * float(smoothstep(11900, 12700, xm)) * (1 - 0.6 * float(smoothstep(13200, 14000, xm)))     # the lines surface out of the sky after the girls' slide
+            al = 0.30 * press * float(smoothstep(12100, 12800, xm)) * (1 - 0.6 * float(smoothstep(13200, 14000, xm)))
             if al < 0.01: continue
             c.set_source_rgba(0.24, 0.22, 0.22, al); c.set_line_width(0.8 + 0.7 * press)
             c.new_path(); c.move_to(*pts[i]); c.line_to(*pts[i + 1]); c.stroke()
-    for k in range(70):
+    for k_ in range(70):                                           # construction rays radiate from the vanishing point
         ang = rng.uniform(math.pi - 0.95, math.pi + 0.95)
         L_ = rng.uniform(1700, 3700)
         x1, y1 = VPX + L_ * math.cos(ang), HZ + L_ * math.sin(ang)
@@ -89,55 +91,61 @@ def build(verbose=True):
             t0, t1 = s_ / steps, (s_ + 1) / steps
             xa, ya = VPX + (x1 - VPX) * t0, HZ + (y1 - HZ) * t0
             xb, yb = VPX + (x1 - VPX) * t1, HZ + (y1 - HZ) * t1
-            if xb < 11880: continue
-            al = 0.20 * float(smoothstep(11880, 13680, xa)) * (0.55 + 0.45 * rng.random())
+            if xb < a2: continue
+            al = 0.20 * float(smoothstep(12100, 13700, xa)) * (0.55 + 0.45 * rng.random())
             c.set_source_rgba(0.25, 0.26, 0.30, al); c.set_line_width(1.0)
             c.new_path(); c.move_to(xa, ya); c.line_to(xb, yb); c.stroke()
-    # the ground plane is drawn too: transversals (horizontals at geometrically spaced depths) cross the orthogonals that run to the vanishing point
-    for kk in range(1, 46):
+    for kk in range(1, 46):                                        # the ground plane is drawn too: transversals cross the orthogonals
         y = HZ + 9.0 * 1.19 ** kk
         if y > H - 4: break
         xr = float(jamb_l(y)) - 6
-        x_a = 11960 + 34 * kk
+        x_a = a2 + 20 + 34 * kk
         if xr <= x_a: continue
         press = rng.uniform(0.5, 1.0)
         xx = x_a
         while xx < xr:
             seg_l = rng.uniform(60, 320)
-            if rng.random() < 0.10: xx += rng.uniform(8, 26); continue                  # the ruler slips: a gap
+            if rng.random() < 0.10: xx += rng.uniform(8, 26); continue
             xe = min(xr, xx + seg_l)
-            al = 0.24 * press * float(smoothstep(12000, 12700, xx)) * (1 - 0.7 * float(smoothstep(13300, 13700, xx)))
+            al = 0.24 * press * float(smoothstep(12100, 12900, xx)) * (1 - 0.7 * float(smoothstep(13300, 13700, xx)))
             if al > 0.01:
                 c.set_source_rgba(0.24, 0.23, 0.25, al); c.set_line_width(0.9 + 0.5 * press)
                 c.new_path(); c.move_to(xx, y + rng.normal(0, 0.35)); c.line_to(xe, y + rng.normal(0, 0.35)); c.stroke()
             xx = xe
-    # a compass circle round the moon, with its centre mark and a pair of axes (the first thing in the picture that is being drawn)
-    from garden import SUN_G as _S
-    mcx, mcy, mr = 12560.0, 300.0, 96.0 * 1.34
-    c.set_source_rgba(0.24, 0.23, 0.28, 0.34); c.set_line_width(1.0)
-    for q in range(0, 360, 6):
-        if (q // 6) % 5 == 4: continue                                                      # dashes with the odd gap
-        a0, a1 = math.radians(q), math.radians(q + 5)
-        c.new_path(); c.arc(mcx, mcy, mr, a0, a1); c.stroke()
-    c.set_source_rgba(0.24, 0.23, 0.28, 0.26)
-    c.new_path(); c.move_to(mcx - mr * 1.25, mcy); c.line_to(mcx + mr * 1.25, mcy); c.move_to(mcx, mcy - mr * 1.25); c.line_to(mcx, mcy + mr * 1.25); c.stroke()
-    c.new_path(); c.arc(mcx, mcy, mr * 1.07, math.radians(206), math.radians(262)); c.stroke()                  # an overshoot, as a hand would leave
     lr, la = Lr.get()
-    mixed = mixed * (1 - la[..., None]) + lr
-    canvas[:, a:b] = mixed
-    # the hallway: begins at the doorframe's left jamb (the world flips inside out there)
+    sk = sk * (1 - la[..., None]) + lr
+    skh = np.zeros((H, W - a2, 3), np.float32)
+    skh[:, :b2 - a2] = sk
     xs_h = np.arange(x0h, x0h + hall.shape[1], dtype=np.float32)[None, :]
     yy = np.arange(H, dtype=np.float32)[:, None]
     jl = jamb_l(yy)
     Mb = smoothstep(-1.5, 2.5, xs_h - jl + 3.0)
-    reg = slice(x0h, x0h + hall.shape[1])
-    canvas[:, reg] = canvas[:, reg] * (1 - Mb[..., None]) + hall * Mb[..., None]
-    if verbose: print('garden -> drawing -> hall')
-    import clouds3 as CL3
-    from garden import SUN_G
-    xa, xb = int(SUN_G[0]) - 320, int(SUN_G[0]) + 320
-    CL3.sun_overlay(canvas[:, xa:xb], xa, SUN_G)                                   # the sun is drawn last: one round disc, never bent by a blend or a drag
-    return canvas
+    skh = skh * (1 - Mb[..., None]) + hall * Mb[..., None]
+    if verbose: print('drawing + hallway')
+    # ---- 3. the finished carousel
+    Wf = W - 2 * SL
+    fin = np.zeros((H, Wf, 3), np.float32)
+    fin[:, :5100] = canvas[:, :5100]
+    fin[:, 5100:5700] = stagger_blend(canvas[:, 5100:5700], canvas[:, 6180:6780], 5100, 5400.0, 440.0, seed=17, amp=120.0)
+    fin[:, 5700:10300] = canvas[:, 6780:11380]
+    fin[:, 10300:10800] = stagger_blend(canvas[:, 11380:11880], skh[:, 12460 - a2:12960 - a2], 10300, 10560.0, 420.0, seed=19, amp=70.0)
+    fin[:, 10800:] = skh[:, 12960 - a2:W - a2]
+    if verbose: print('cut + joined')
+    # ---- 4. silk ribbons from the fold to the far house (drawn in finished coordinates, so they are one continuous object)
+    import ribbons as RB
+    rx0, rw = 4900, 1500
+    rr, ra = RB.ribbon_layer(rx0, rw)
+    fin[:, rx0:rx0 + rw] = fin[:, rx0:rx0 + rw] * (1 - ra[..., None]) + rr
+    # ---- 5. the moon, the sun's twin, melts out of the overhead dance
+    import moon_slide as MS
+    xm0, moon = cache_load('f_moon')                                # first column = finished x 15700
+    out = np.zeros((H, W_FINAL, 3), np.float32)
+    zb = 15900                                                      # the ring dance sits whole in its own slide; the night takes over only in the last 300 px
+    out[:, :zb] = fin[:, :zb]
+    out[:, zb:zb + 300] = stagger_blend(fin[:, zb:zb + 300], moon[:, zb - xm0:zb - xm0 + 300], zb, zb + 150.0, 240.0, seed=23, amp=46.0)
+    out[:, zb + 300:] = moon[:, zb + 300 - xm0:]
+    if verbose: print('moon joined', out.shape)
+    return out
 
 
 def grade(img, seed=1):
@@ -166,7 +174,7 @@ def grade(img, seed=1):
 
 def cut_sheet(img, path):
     tiles = []
-    for k in range(1, N_SLIDES):
+    for k in range(1, N_FINAL):
         x = k * SL
         t = img[:, x - 220: x + 220].copy()
         t[:, 218:222] = t[:, 218:222] * 0.5 + np.array([1, 0, 0], np.float32) * 0.5

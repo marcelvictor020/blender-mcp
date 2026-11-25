@@ -13,6 +13,8 @@ import water as W
 from shared import RIBBON, ribbon_thick, FACE
 from folk import ribbon_puffs
 from garden import SUN_G, mist, glitter, lake_y
+import cairo
+BASE_Y_FRAC = 0.985
 
 WX0, WX1 = 2000, 12900 + SHIFT
 WW = WX1 - WX0
@@ -66,6 +68,68 @@ def hills_(img, x0, w):
         img[HZ - 160:HZ + 2] = sl * (1 - m[..., None]) + col * m[..., None]
 
 
+def far_island_house(img, x0, w):
+    """a low island at the sun's own place with the yellow A-frame standing on it, seen from across the lake: against the sun its face is in shade, so it is a
+    dark violet shape with glowing windows and a gold rim along the roof; two firs and a birch stand beside it. The lake mirrors all of it."""
+    import house as HS
+    from trees2 import conifer, birch, deciduous, CONIF, BIRCHP, DECID
+    cx = 7330.0
+    s = 0.235
+    rgb, a = HS.render_house(HS.BX0, HS.WL)
+    rgb = rgb[HS.BY0:HS.BY1]; a = a[HS.BY0:HS.BY1]
+    h0, w0 = a.shape
+    nw, nh = int(round(w0 * s)), int(round(h0 * s))
+    rgb = cv2.resize(rgb, (nw, nh), interpolation=cv2.INTER_AREA); a = cv2.resize(a, (nw, nh), interpolation=cv2.INTER_AREA)
+    base_y = HZ + 8
+    # the island: a low mound with reeds, the same colours as the far shore
+    L = Layer(w, 120, x0, HZ - 60, 3)
+    c = L.ctx
+    rng = np.random.default_rng(71)
+    xs = np.linspace(cx - 230, cx + 230, 70)
+    top = base_y - 9 * np.sin(np.linspace(0, math.pi, 70)) ** 0.7 - 1.2 * np.sin(xs * 0.2)
+    c.new_path(); c.move_to(xs[0], base_y + 6)
+    for x_, y_ in zip(xs, top): c.line_to(float(x_), float(y_))
+    c.line_to(xs[-1], base_y + 6); c.close_path()
+    g_ = cairo.LinearGradient(0, base_y - 10, 0, base_y + 6); g_.add_color_stop_rgb(0, 0.42, 0.40, 0.30); g_.add_color_stop_rgb(1, 0.18, 0.20, 0.16)
+    c.set_source(g_); c.fill()
+    for (tx, th, kind) in ((cx - 170, 84, 'c'), (cx - 140, 62, 'c'), (cx - 198, 50, 'c'), (cx + 150, 90, 'b'), (cx + 182, 66, 'c'), (cx + 122, 54, 'd')):
+        hz = (0.66, 0.50, 0.70)
+        yb = float(np.interp(tx, xs, top)) + 2
+        if kind == 'c': conifer(c, tx, yb, th, rng, CONIF, 0.46, hz, density=0.8)
+        elif kind == 'b': birch(c, tx, yb, th, rng, BIRCHP, 0.46, hz, density=0.8)
+        else: deciduous(c, tx, yb, th, rng, DECID, 0.46, hz, density=0.8)
+    lr, la = L.get()
+    img[HZ - 60:HZ + 60] = img[HZ - 60:HZ + 60] * (1 - la[..., None]) + lr
+    # the house: shade side toward us, violet; lit windows glow; a gold rim where the sun grazes the roof
+    lum = rgb.mean(-1) / np.maximum(a, 1e-3)
+    warm = (rgb[..., 0] - rgb[..., 2]) / np.maximum(a, 1e-3)
+    win = np.clip((lum - 0.62) * 4.0, 0, 1) * np.clip(warm * 3.0, 0, 1) * (a > 0.8)
+    body = rgb * 0.50 + np.array([0.20, 0.10, 0.16], np.float32)[None, None, :] * a[..., None] * 0.55
+    col = body * (1 - win[..., None]) + rgb * 1.15 * win[..., None]
+    rim = np.clip(a - cv2.GaussianBlur(a, (0, 0), 2.4), 0, 1) * 3.0
+    col = col + rim[..., None] * np.array([1.0, 0.82, 0.48], np.float32) * 1.0
+    # lit windows: warm squares with a soft glow (positions are the real ones of the house)
+    Ld = Layer(HS.WL, HS.HL, HS.BX0, HS.BY0, 1)
+    placed = HS.windows(Ld.ctx, np.random.default_rng(73))
+    rw = np.random.default_rng(9)
+    glow = np.zeros((nh, nw), np.float32)
+    for (xx, yy) in placed:
+        if rw.random() < 0.38: continue
+        gx_, gy_ = (xx - HS.BX0) * s, (yy - HS.BY0) * s
+        X, Y = np.meshgrid(np.arange(nw, dtype=np.float32) - gx_, np.arange(nh, dtype=np.float32) - gy_)
+        glow += np.exp(-(X * X / 5.0 + Y * Y / 8.0))
+    col = col + np.clip(glow, 0, 1)[..., None] * np.array([1.0, 0.80, 0.42], np.float32) * 1.1 * a[..., None]
+    col = col * (1 - 0.14) + 0.14 * np.array([0.90, 0.68, 0.58], np.float32)[None, None, :] * a[..., None]            # haze
+    x_a = int(round(cx - nw / 2 - x0)); y_a = int(round(base_y - nh * (BASE_Y_FRAC)))
+    xa, xb = max(0, x_a), min(w, x_a + nw)
+    ya, yb = y_a, y_a + nh
+    sub = img[ya:yb, xa:xb]
+    am = a[:, xa - x_a:xb - x_a][..., None]
+    img[ya:yb, xa:xb] = sub * (1 - am) + col[:, xa - x_a:xb - x_a]
+    return img
+
+
+
 def lake_mist(x0, w, h):
     ys = np.arange(h, dtype=np.float32)[:, None]
     xs = np.arange(x0, x0 + w, dtype=np.float32)[None, :]
@@ -84,7 +148,7 @@ def build_chunk(x0, w, forest_seed=81, verbose=True, skip=None):
     Hm = np.clip(Hm * (1 + 0.06 * fbm(x0, 0, w, HZ, 26, 3, 31)) + 0.9 * fbm(x0, 0, w, HZ, 11, 3, 32) * inside, 0, None)
     Hm = cv2.GaussianBlur(Hm, (0, 0), 2.0)
     ext_a = np.clip(Hm / 11.0, 0, 1) * 0.9
-    sky, Dsky = CL.sky(x0, w, sun=SUN_G, seed=3, cov_x=cover, extra=ext_a, extra_h=Hm / 9.0, tw=dusk, disc_on=False)
+    sky, Dsky = CL.sky(x0, w, sun=SUN_G, seed=3, cov_x=cover, extra=ext_a, extra_h=Hm / 9.0, tw=dusk, disc_on=True)
     if verbose: print('world sky', round(time.time() - t0, 1))
     ys_ = np.arange(HZ, dtype=np.float32)[:, None]; xs_ = np.arange(x0, x0 + w, dtype=np.float32)[None, :]
     mx, my, mr = 7080.0, 250.0, 84.0                                                  # the day-moon of slide 2, still up, pale in the blue
@@ -104,7 +168,7 @@ def build_chunk(x0, w, forest_seed=81, verbose=True, skip=None):
     img = np.zeros((H, w, 3), np.float32)
     img[:HZ] = sky
     hills_(img, x0, w)
-    layers = T2.world_forest(x0, w, seed=forest_seed, skip=skip)
+    layers = T2.world_forest(x0, w, seed=forest_seed, skip=skip if skip is not None else None)
     if verbose: print('world forest', round(time.time() - t0, 1))
     mst = lake_mist(x0, w, HZ + 60)
     xs = np.arange(x0, x0 + w, dtype=np.float32)[None, :]
@@ -116,6 +180,7 @@ def build_chunk(x0, w, forest_seed=81, verbose=True, skip=None):
         m = mst[HZ - 520:HZ + 60] * (0.34 + 0.24 * li)
         img[HZ - 520:HZ + 60] = img[HZ - 520:HZ + 60] * (1 - m[..., None]) + hz_c * m[..., None] * 0.95
     far_lights(img, x0, np.random.default_rng(5))
+    if x0 < 7330 < x0 + w: far_island_house(img, x0, w)
     if verbose: print('shore', round(time.time() - t0, 1))
     wc = lake_colour(x0, w)
     lake = mirror_water(img, x0, w, wc, seed=17)

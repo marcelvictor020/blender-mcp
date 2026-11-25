@@ -24,7 +24,7 @@ HC = 1.55
 FG = 1000.0
 T_G = 520
 FEET_Y = 1296
-SPACING = 0.57 * T_G
+SPACING = 0.455 * T_G
 KEEP = None
 
 
@@ -257,8 +257,9 @@ def girls(x0, w):
     light = invite_light()
     base = dict(view='front', creep=1.0, smile=0.6, soft=1.0, crown=True, wilt=0.25, feet=False, hem_y=0.0, bow=True, curl_l=0.85, curl_r=0.85,
                 skin=(0.95, 0.80, 0.72))
-    poseA = dict(base, arm_l=(-0.285, 0.80), arm_r=(0.285, 0.46), curl_l=0.88, curl_r=0.30, lean=0.055, hair=(0.86, 0.66, 0.36), dress=(0.96, 0.94, 0.88))
-    poseB = dict(base, arm_r=(0.285, 0.80), arm_l=(-0.285, 0.46), curl_r=0.88, curl_l=0.30, lean=-0.055, hair=(0.36, 0.23, 0.13), dress=(0.95, 0.93, 0.87))
+    # the twins hold hands (inner arms, elbows tucked in), the outer arm of each waves you in
+    poseA = dict(base, arm_l=(-0.285, 0.80), arm_r=(0.170, 0.50), elbow_r=(0.100, 0.625), curl_l=0.88, curl_r=0.30, lean=0.055, hair=(0.86, 0.66, 0.36), dress=(0.96, 0.94, 0.88))
+    poseB = dict(base, arm_r=(0.285, 0.80), arm_l=(-0.170, 0.50), elbow_l=(-0.100, 0.625), curl_r=0.88, curl_l=0.30, lean=-0.055, hair=(0.36, 0.23, 0.13), dress=(0.95, 0.93, 0.87))
     canvas = np.zeros((H, w, 3), np.float32); alpha = np.zeros((H, w), np.float32); shadow = np.zeros((H, w), np.float32)
     for (xc, pose, sd) in ((CX - SPACING / 2, poseA, 31), (CX + SPACING / 2, poseB, 32)):
         sp = fig.render(T_G, pose, light, seed=sd, ss=3)
@@ -326,8 +327,9 @@ def render(x0, w, img):
 def living(out, x0, w):
     """crisp touches on the finished picture: fireflies waking round the light, lanterns rising behind the girls, butterflies on their hands"""
     rng = np.random.default_rng(4321)
-    CR.fireflies(out, rng, 60, (CX - 420 - x0, CX + 420 - x0), (560, 1180), size=(1.4, 3.6), glow=0.95)
-    for (dx, y, S, wm) in ((-330, 300, 13, 1.0), (300, 240, 11, 1.0), (-140, 150, 9, 0.9), (380, 420, 9, 0.9), (110, 330, 7, 0.8), (-440, 470, 8, 0.8)):
+    CR.fireflies(out, rng, 34, (CX - 420 - x0, CX + 120 - x0), (560, 760), size=(1.4, 3.6), glow=0.95)
+    CR.fireflies(out, rng, 16, (CX - 520 - x0, CX - 330 - x0), (760, 1180), size=(1.4, 3.2), glow=0.85)
+    for (dx, y, S, wm) in ((-330, 300, 13, 1.0), (-140, 150, 9, 0.9), (110, 330, 7, 0.8), (-440, 470, 8, 0.8), (60, 90, 7, 0.8)):
         CR.sky_lantern(out, CX + dx - x0, y, S, day=0.35, warm=wm)
     items = [(CX - SPACING / 2 - 0.285 * T_G - x0 - 18, FEET_Y - 0.80 * T_G - 36, 22, 0.5, 'monarch', 0.7, 3), (CX + SPACING / 2 + 0.285 * T_G - x0 + 20, FEET_Y - 0.80 * T_G - 30, 20, -0.4, 'white', 0.6, 5),
              (CX - 60 - x0, 640, 18, 0.2, 'yellow', 0.7, 7), (CX + 170 - x0, 720, 16, -0.3, 'blue', 0.8, 9)]

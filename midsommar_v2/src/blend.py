@@ -60,4 +60,7 @@ def stagger_blend(A, B, xs0, xc, width, seed=1, amp=200.0, soft_min=0.10, fine=1
     soft = np.clip(0.55 + 0.45 * row_noise(h, 22, seed + 3), soft_min, 1.0)
     hw = (0.5 * width * soft)[:, None]
     m = smoothstep(b - hw, b + hw, X)
+    e = 60.0                                                       # whatever the row noise does, the zone starts as pure A and ends as pure B (no hard edge at its borders)
+    m = m * smoothstep(xs0, xs0 + e, X)
+    m = 1 - (1 - m) * smoothstep(xs0 + w, xs0 + w - e, X)
     return A * (1 - m[..., None]) + B * m[..., None]

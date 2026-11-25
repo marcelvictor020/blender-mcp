@@ -102,7 +102,7 @@ def birds_garden(x0, w):
     from pond2 import draw_bird_real
     L = Layer(w, H, x0, 0, 2)
     for (bx, by, bs, ba, seed) in BIRDS:
-        if bx < 6300: continue
+        if bx < 6300 or no_fly(bx): continue
         draw_bird_real(L.ctx, bx, by, bs * 0.95, ba * 0.7, seed, (seed % 100) * 0.4 + bx * 0.011)
     rgb, a = L.get()
     return cv2.GaussianBlur(rgb, (0, 0), 0.6) * 1.0, cv2.GaussianBlur(a, (0, 0), 0.7)
@@ -185,9 +185,6 @@ def festive(out, x0, w, s_pole):
     top = by - 7.4 * s_pole
     sh = lambda p: (p[0] - x0, p[1])
     gold = [(0.97, 0.94, 0.86), (0.96, 0.78, 0.24), (0.40, 0.62, 0.90), (0.84, 0.20, 0.18), (0.30, 0.60, 0.34)]
-    rr_, ra_ = RB.ribbon_layer(x0, w)                                     # the five silk ribbons that left the arch's canopy arrive at the maypole
-    ramp = smoothstep(8668, 8699, np.arange(x0, x0 + w, dtype=np.float32))[None, :]
-    out = out * (1 - ra_[..., None] * ramp[..., None]) + rr_ * ramp[..., None]
     CR.festoon(out, sh((cx, top + 0.6 * s_pole)), sh((CXG, APEX_Y + 6)), 90, 34, rng, fw=30, pal=gold)
     CR.festoon(out, sh((cx, top + 1.5 * s_pole)), sh((CXG - HALF + 24, BASE_Y - 26)), 70, 22, rng, fw=26, pal=gold[1:] + gold[:1])
     CR.festoon(out, sh((CXG, APEX_Y + 6)), sh((CXG - HALF * 0.97, BASE_Y - 24)), 8, 30, rng, fw=22, pal=gold)
@@ -196,10 +193,9 @@ def festive(out, x0, w, s_pole):
     CR.deer_pair(out, 12760 - x0, HZ + 130, 70)
     before_sky = out.copy()
     for (lx, ly, S) in CR.lantern_flock():
-        if x0 + 40 < lx < x0 + w - 40 and lx >= 8750:
+        if x0 + 40 < lx < x0 + w - 40 and lx >= 8750 and not no_fly(lx):
             CR.sky_lantern(out, lx - x0, ly, S, day=0.55, warm=0.8)
     out = lantern_posts(out, x0, w, rng)
-    CR.moon_open_eyed(out, 12560 - x0, 300, 96)                                                   # the moon that is about to be drawn: its eyes are open
     kinds = ['monarch', 'blue', 'yellow', 'white', 'admiral']
     items = []
     for i in range(18):
@@ -276,7 +272,7 @@ def render_garden(x0=GX0, w=GW, paint_it=True, verbose=True):
         lake_keep = ((ys > HZ + 2) & (ys < G.lake_y(xs) - 3) & (xs < 10200)).astype(np.float32)
         keep = np.clip(0.75 * (ma_ > 0.3) + 0.55 * (ta > 0.5) + 0.65 * (people > 0.5) + 0.85 * (mpa > 0.15) + 0.85 * lake_keep + 0.55 * (inv_extra.get('pergola', 0 * ta) > 0.2) + 0.30 * (inv_extra.get('glow', 0 * ta).mean(-1) > 0.2 if 'glow' in inv_extra else 0), 0, 1).astype(np.float32)
         keep = cv2.GaussianBlur(keep, (0, 0), 2.0)
-        out = INK.finish(img, lines=[(ta > 0.5, 2.6, 0.95), (people > 0.5, 1.6, 0.85), (mpa > 0.5, 1.8, 0.9), (inv_people > 0.5, 1.4, 0.55)], keep=keep, seed=9, light_x=-1.0)
+        out = INK.finish(img, lines=[(ta > 0.5, 2.6, 0.95), (people > 0.5, 1.6, 0.85), (mpa > 0.5, 1.8, 0.9), (inv_people > 0.5, 1.1, 0.30)], keep=keep, seed=9, light_x=-1.0)
         if verbose: print('inked', round(time.time() - t0, 1))
         br, ba = birds_garden(x0, w)
         out = out * (1 - ba[..., None]) + br

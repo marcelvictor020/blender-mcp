@@ -18,7 +18,7 @@ from fig import Light
 import overhead as OV
 
 TAU = 2 * math.pi
-HX0, HX1 = 11800 + SHIFT, W
+HX0, HX1 = 12000, W
 HW = HX1 - HX0
 
 
@@ -45,15 +45,36 @@ def standing_list():
 
 
 def stand_pose(f):
+    """relaxed, individual: nobody stands like a mannequin. Weight on one leg (a lean), the head a little turned or bowed, and four ways to hold the arms."""
     i = f['i']
     r = np.random.default_rng(500 + i)
     male = (i % 3 == 1) or (i >= 100 and i % 2 == 1)
     turned = (i == 5)
-    pose = dict(view='front' if turned else 'back', yaw=(0.55 if turned else r.uniform(-0.25, 0.25)), male=male, hair_style='short' if male else 'long',
+    view = 'front' if turned else 'back'
+    zf = 1.0 if view == 'front' else -1.0                                      # which way "in front of her body" points on the screen's z axis
+    style = i % 5
+    if turned:
+        arm_l, arm_r = (-0.118, 0.53), (0.118, 0.53)
+        a3 = {'arm3_l': (-0.060, 0.560, 0.105), 'arm3_r': (0.060, 0.560, 0.105)}                       # hands lightly folded at the waist, she has turned to look back at us
+    elif style == 0:
+        arm_l, arm_r = (-0.124, 0.49), (0.124, 0.49); a3 = {}
+    elif style == 1:
+        arm_l, arm_r = (-0.118, 0.52), (0.118, 0.52)
+        a3 = {'arm3_l': (-0.040, 0.540, 0.115 * zf), 'arm3_r': (0.040, 0.540, 0.115 * zf)}              # hands clasped in front of her
+    elif style == 2:
+        arm_l, arm_r = (-0.178, 0.50), (0.124, 0.48)
+        a3 = {'arm3_l': (-0.178, 0.500, 0.012)}                                                            # a hand on the hip, the elbow out
+    elif style == 3:
+        arm_l, arm_r = (-0.124, 0.49), (0.150, 0.50)
+        a3 = {'arm3_r': (0.150, 0.520, 0.085 * zf)}                                                        # one hand reaching a little forward
+    else:
+        arm_l, arm_r = (-0.122, 0.505), (0.122, 0.505)
+        a3 = {'arm3_l': (-0.100, 0.505, -0.050 * zf), 'arm3_r': (0.100, 0.505, -0.050 * zf)}             # hands behind the back
+    pose = dict(view=view, yaw=(0.55 if turned else r.uniform(-0.30, 0.30)), male=male, hair_style='short' if male else 'long',
                 hair=HAIR_F[int(r.integers(len(HAIR_F)))], dress=DRESS[int(r.integers(len(DRESS)))], skin=SKIN[int(r.integers(len(SKIN)))],
-                arm_l=(-0.128, 0.46 + 0.05 * r.random()), arm_r=(0.128, 0.46 + 0.05 * r.random()), smile=(0.18 if turned else 0.30), feet=True,
+                arm_l=arm_l, arm_r=arm_r, smile=(0.18 if turned else 0.30), feet=True,
                 hem_y=0.05, bow=(r.random() < 0.7), wilt=0.35 + 0.5 * min(1.0, i / 12.0), belt=[(0.60, 0.68, 0.90), (0.90, 0.62, 0.62), (0.92, 0.78, 0.36), (0.58, 0.76, 0.56)][int(r.integers(4))],
-                lean=r.normal(0, 0.012), crown=True, curl_l=0.5, curl_r=0.5)
+                lean=(0.034 if i % 2 else -0.030) * (1 if i % 3 else -1) + r.normal(0, 0.008), crown=True, curl_l=0.55, curl_r=0.55, fold=1.0 + 0.5 * r.random(), **a3)
     if i % 4 == 1 and not turned:
         pose['yaw'] = 0.0                                                      # some bow their heads
     return pose
@@ -61,7 +82,7 @@ def stand_pose(f):
 
 def ring_girls():
     """six young people holding hands in a ring round nothing: wide enough that every pair of clasped hands reads"""
-    Zc, Xc, rr, n = 10.6, 1.30, 1.28, 6
+    Zc, Xc, rr, n = 10.6, 1.30, 1.06, 6
     out = []
     for i in range(n):
         th = TAU * i / n + 0.55
@@ -85,14 +106,20 @@ def ring_pose(g, prv, nxt):
         u, v = (mx - g['x']) / T, (g['y'] - my) / T
         sx = 0.11 if u > 0 else -0.11
         d = math.hypot(u - sx, v - 0.787)
-        if d > 0.31:
-            k = 0.31 / d
+        if d > 0.30:
+            k = 0.30 / d
             u = sx + (u - sx) * k; v = 0.787 + (v - 0.787) * k
         return (u, v)
     left, right = sorted([tgt(prv), tgt(nxt)], key=lambda t: t[0])
     return dict(view=view, facing=facing, yaw=0.3 * c_, arm_l=left, arm_r=right, male=(g['i'] % 3 == 2), hair_style='short' if (g['i'] % 3 == 2) else 'long',
                 hair=HAIR_F[int(r.integers(len(HAIR_F)))], dress=DRESS[int(r.integers(len(DRESS)))], skin=SKIN[int(r.integers(len(SKIN)))],
-                smile=0.12, eyes_closed=True, feet=True, hem_y=0.05, wilt=0.7, bow=True, lean=0.0, crown=True, curl_l=0.8, curl_r=0.8)
+                smile=0.12, eyes_closed=True, feet=True, hem_y=0.05, wilt=0.7, bow=True, lean=0.0, crown=True, curl_l=0.8, curl_r=0.8, fold=1.3)
+
+
+def chair_spec():
+    Z, X = 7.7, 2.20                                       # between two doorframes, near the right wall, turned to face it
+    s = F_ / Z
+    return dict(Z=Z, s=s, X=X, x=VPX + s * X, y=HZ + HE * s, T=int(round(1.05 * s)))
 
 
 def hall_items():
@@ -105,15 +132,17 @@ def hall_items():
     ring = ring_girls()
     for k, g in enumerate(ring):
         items.append((F_ / g['s'], 'ring', (g, ring[(k - 1) % len(ring)], ring[(k + 1) % len(ring)])))
+    cs = chair_spec()
+    items.append((cs['Z'], 'chair', cs))
     items.sort(key=lambda t: -t[0])
     return items
 
 
 def board(x0, w):
     """the overhead ring dance on a plywood board beyond the last doorframe; returns (rgb, mask) over the hall's canvas rect"""
-    bx0 = 15080 + SHIFT
+    bx0 = 15560
     bw = HX1 - bx0
-    paint = OV.render_overhead(bw, H, seed=7, cx_frac=(16640 + SHIFT - bx0) / bw, cy_frac=0.56)
+    paint = OV.render_overhead(bw, H, seed=7, cx_frac=(17790 - bx0) / bw, cy_frac=0.55, r_out_frac=0.262, r_in_frac=0.080, turns=1.8, wref=1330, ribbons=False, th0=-0.76 * math.pi, tail=12, step_k=1.25, fold=1.0, feast=((1040.0, 500.0), -0.82, 820.0, 132.0))
     from paint import paint as _paint
     paint, _ = _paint(paint, passes=((6.0, 1.0, 0.0), (3.4, 1.0, 0.03), (2.0, 1.1, 0.04)), default_flow=0.0, default_w=0.4, seed=17, struct_keep=0.50, relief=0.30, verbose=False)
     yy, xx = np.mgrid[0:H, 0:bw]
@@ -181,6 +210,10 @@ def render_hall(x0=HX0, w=HW, verbose=True, paint_base=True):
             T = int(1.72 * s)
             sp = fig.render(T, stand_pose(d), light, seed=900 + d['i'])
             fig.composite(img, sp, VPX + s * X - x0, HZ + HE * s, shadow=True, shadow_col=(0.16, 0.08, 0.05), sh_kw=dict(kx=0.95, ky=0.30, strength=0.5))
+        elif kind == 'chair':
+            import props3d as PR
+            sp = PR.render_chair(d['T'], 1.15, light)
+            fig.composite(img, sp, d['x'] - x0, d['y'], shadow=True, shadow_col=(0.16, 0.08, 0.05), sh_kw=dict(kx=0.95, ky=0.30, strength=0.5))
         else:
             g, prv, nxt = d
             sp = fig.render(g['T'], ring_pose(g, prv, nxt), light, seed=950 + g['i'])
@@ -209,4 +242,4 @@ if __name__ == '__main__':
     cache_save('f_hall', HX0, img)
     preview(img, WORK + '/f_hall_preview.png', 2400)
     for k in range(5):
-        save_png(WORK + f'/f_hall_s{13 + k}.png', img[:, 11880 + SHIFT + 1080 * k - HX0: 11880 + SHIFT + 1080 * (k + 1) - HX0])
+        save_png(WORK + f'/f_hall_s{13 + k}.png', img[:, 13040 + 1080 * k - HX0: 13040 + 1080 * (k + 1) - HX0])

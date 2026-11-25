@@ -235,19 +235,214 @@ def spiral_path(cx, cy, r_out, r_in, turns, th0, squash=0.92):
     return th, X, Y
 
 
-def render_overhead(w, h, seed=7, cx_frac=0.50, cy_frac=0.56, r_out_frac=0.40, r_in_frac=0.085, s_frac=0.0775, turns=2.1, tail=9):
+def paste_rot(img, sp, x, y, r_vec, f_vec):
+    """composite a top-view sprite (its +x = the person's right, its up = the way she faces) at (x, y), rotated so that she faces f_vec"""
+    rgbp, a = sp['rgb'], sp['a']
+    Hs, Ws = a.shape
+    ox, oy = sp['anchor']
+    M = np.array([[r_vec[0], -f_vec[0], x - r_vec[0] * ox + f_vec[0] * oy], [r_vec[1], -f_vec[1], y - r_vec[1] * ox + f_vec[1] * oy]], np.float32)
+    cs = np.array([[0, 0, 1], [Ws, 0, 1], [0, Hs, 1], [Ws, Hs, 1]], np.float32) @ M.T
+    H_, W_ = img.shape[:2]
+    x0, x1 = max(0, int(np.floor(cs[:, 0].min())) - 2), min(W_, int(np.ceil(cs[:, 0].max())) + 2)
+    y0, y1 = max(0, int(np.floor(cs[:, 1].min())) - 2), min(H_, int(np.ceil(cs[:, 1].max())) + 2)
+    if x1 <= x0 or y1 <= y0: return
+    M2 = M.copy(); M2[0, 2] -= x0; M2[1, 2] -= y0
+    src = np.dstack([rgbp, a]).astype(np.float32)
+    wp = cv2.warpAffine(src, M2, (x1 - x0, y1 - y0), flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0, 0))
+    img[y0:y1, x0:x1] = img[y0:y1, x0:x1] * (1 - wp[..., 3:4]) + wp[..., :3]
+
+
+
+def _flower_head(c, x, y, r, col, eye, n=5):
+    for k in range(n):
+        a = TAU * k / n + x * 0.37
+        c.set_source_rgb(*[v * (0.84 if k % 2 else 1.0) for v in col])
+        c.new_path(); c.save(); c.translate(x + math.cos(a) * r * 0.52, y + math.sin(a) * r * 0.52); c.rotate(a); c.scale(r * 0.62, r * (0.36 if n > 5 else 0.52)); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
+    c.set_source_rgb(*eye); c.new_path(); c.arc(x, y, r * 0.27, 0, TAU); c.fill()
+
+
+def feast_table(w, h, c0, ang, Lt, Wt, rng):
+    """THE FEAST, laid and waiting: one long table seen from above - white cloth with a red-and-blue folk border, a place for twenty-two (plate, glass, folded napkin,
+    a little posy), a runner of leaves and wildflowers with bread, bowls of strawberries, jugs and candles, a plank bench each side. Nobody is sitting down yet.
+    Returns (rgb, a, shadow) over the (w, h) canvas."""
+    Ls = Layer(w, h, 0, 0, 2); cs = Ls.ctx
+    Lp = Layer(w, h, 0, 0, 2); c = Lp.ctx
+    ca, sa = math.cos(ang), math.sin(ang)
+    T = lambda s_, t_: (c0[0] + ca * s_ - sa * t_, c0[1] + sa * s_ + ca * t_)
+    Dsh = SUN_D * 0.62 * Wt                                                                    # a table-top's shadow is as long as the table is high (about 0.75 m)
+
+    def rect_poly(cc, s0, s1, t0, t1, off=(0.0, 0.0)):
+        pts = [T(s0, t0), T(s1, t0), T(s1, t1), T(s0, t1)]
+        cc.new_path(); cc.move_to(pts[0][0] + off[0], pts[0][1] + off[1])
+        for p in pts[1:]: cc.line_to(p[0] + off[0], p[1] + off[1])
+        cc.close_path()
+
+    # ---- shadows (swept footprints), table + benches
+    cs.set_source_rgba(0, 0, 0, 1)
+    for k in range(14):
+        f = k / 13.0
+        rect_poly(cs, -Lt / 2, Lt / 2, -Wt / 2, Wt / 2, (Dsh[0] * f, Dsh[1] * f)); cs.fill()
+    for sd in (-1, 1):
+        t0, t1 = sd * (Wt * 0.5 + 0.12 * Wt) - 0.16 * Wt, sd * (Wt * 0.5 + 0.12 * Wt) + 0.16 * Wt
+        for k in range(8):
+            f = k / 7.0 * 0.58
+            rect_poly(cs, -Lt * 0.47, Lt * 0.47, min(t0, t1), max(t0, t1), (Dsh[0] * f, Dsh[1] * f)); cs.fill()
+    _, sh = Ls.get()
+    sh = cv2.GaussianBlur(sh, (0, 0), 0.055 * Wt + 1.0)
+
+    # ---- benches
+    for sd in (-1, 1):
+        tc = sd * (Wt * 0.5 + 0.12 * Wt)
+        rect_poly(c, -Lt * 0.47, Lt * 0.47, tc - 0.16 * Wt, tc + 0.16 * Wt)
+        g = cairo.LinearGradient(*T(0, tc - 0.16 * Wt), *T(0, tc + 0.16 * Wt)); g.add_color_stop_rgb(0, 0.76, 0.58, 0.36); g.add_color_stop_rgb(1, 0.60, 0.44, 0.26)
+        c.set_source(g); c.fill_preserve(); c.set_source_rgba(*INK, 0.55); c.set_line_width(0.8); c.stroke()
+        c.set_source_rgba(0.34, 0.22, 0.12, 0.42); c.set_line_width(0.6)
+        for k in range(int(Lt * 0.94 / 74)):                                                  # plank seams
+            s_ = -Lt * 0.47 + k * 74.0 + rng.uniform(-5, 5)
+            c.new_path(); c.move_to(*T(s_, tc - 0.16 * Wt)); c.line_to(*T(s_, tc + 0.16 * Wt)); c.stroke()
+        c.set_source_rgba(0.40, 0.28, 0.16, 0.30)
+        for k in range(26):                                                                     # grain
+            s_ = rng.uniform(-Lt * 0.46, Lt * 0.40); t_ = tc + rng.uniform(-0.13, 0.13) * Wt
+            c.new_path(); c.move_to(*T(s_, t_)); c.line_to(*T(s_ + rng.uniform(30, 90), t_ + rng.normal(0, 0.8))); c.stroke()
+
+    # ---- the cloth
+    rect_poly(c, -Lt / 2, Lt / 2, -Wt / 2, Wt / 2)
+    g = cairo.LinearGradient(*T(0, -Wt / 2), *T(0, Wt / 2)); g.add_color_stop_rgb(0, 0.97, 0.96, 0.92); g.add_color_stop_rgb(1, 0.90, 0.89, 0.85)
+    c.set_source(g); c.fill_preserve(); c.set_source_rgba(*INK, 0.60); c.set_line_width(1.0); c.stroke()
+    for sd in (-1, 1):                                                                           # the border: a red band, a blue line with white dots, red zigzag
+        tb = sd * Wt * 0.455
+        c.set_source_rgba(0.72, 0.15, 0.17, 0.96); c.set_line_width(0.040 * Wt)
+        c.new_path(); c.move_to(*T(-Lt / 2 + 6, tb)); c.line_to(*T(Lt / 2 - 6, tb)); c.stroke()
+        c.set_source_rgba(0.22, 0.38, 0.72, 0.96); c.set_line_width(0.014 * Wt)
+        c.new_path(); c.move_to(*T(-Lt / 2 + 6, tb - sd * 0.040 * Wt)); c.line_to(*T(Lt / 2 - 6, tb - sd * 0.040 * Wt)); c.stroke()
+        step = 0.052 * Wt; n_ = int((Lt - 12) / step)
+        c.set_source_rgba(0.72, 0.15, 0.17, 0.96); c.set_line_width(0.010 * Wt)
+        c.new_path(); c.move_to(*T(-Lt / 2 + 6, tb - sd * 0.075 * Wt))
+        for k in range(n_ + 1):
+            c.line_to(*T(-Lt / 2 + 6 + k * step, tb - sd * (0.075 + 0.020 * (k % 2)) * Wt))
+        c.stroke()
+        c.set_source_rgba(0.98, 0.97, 0.94, 0.95)
+        for k in range(n_):
+            x_, y_ = T(-Lt / 2 + 6 + (k + 0.5) * step, tb); c.new_path(); c.arc(x_, y_, 0.0075 * Wt, 0, TAU); c.fill()
+    c.set_source_rgba(0.55, 0.55, 0.62, 0.10)                                                  # linen weave and a few soft creases from the folding
+    for k in range(9):
+        s_ = -Lt / 2 + (k + 0.5) * Lt / 9 + rng.normal(0, 8)
+        c.set_line_width(2.4); c.new_path(); c.move_to(*T(s_, -Wt / 2)); c.line_to(*T(s_ + rng.normal(0, 3), Wt / 2)); c.stroke()
+
+    def drop(x, y, r, a=0.30):
+        c.set_source_rgba(0.25, 0.22, 0.20, a); c.new_path(); c.save(); c.translate(x + SUN_D[0] * r * 0.35, y + SUN_D[1] * r * 0.35); c.scale(r * 1.05, r * 0.95); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
+
+    # ---- the places
+    n_ps = 11
+    napk = [(0.30, 0.44, 0.80), (0.72, 0.16, 0.18)]
+    for k in range(n_ps):
+        s_ = -Lt / 2 + 0.085 * Lt + k * (0.83 * Lt / (n_ps - 1))
+        for sd in (-1, 1):
+            px, py = T(s_, sd * Wt * 0.285)
+            rp = 0.112 * Wt
+            nx_, ny_ = T(s_ - 0.105 * Wt, sd * Wt * 0.285)
+            c.save(); c.translate(nx_, ny_); c.rotate(ang + rng.normal(0, 0.06)); col = napk[(k + (sd > 0)) % 2]
+            c.new_path(); c.rectangle(-0.030 * Wt, -0.065 * Wt, 0.060 * Wt, 0.130 * Wt); c.restore()
+            c.set_source_rgb(*col); c.fill_preserve(); c.set_source_rgba(*INK, 0.40); c.set_line_width(0.5); c.stroke()
+            drop(px, py, rp, 0.30)
+            c.set_source_rgb(0.93, 0.92, 0.88); c.new_path(); c.arc(px, py, rp, 0, TAU); c.fill_preserve(); c.set_source_rgba(*INK, 0.40); c.set_line_width(0.6); c.stroke()
+            gp = cairo.RadialGradient(px - rp * 0.3, py - rp * 0.3, 1, px, py, rp * 0.78); gp.add_color_stop_rgb(0, 0.99, 0.99, 0.97); gp.add_color_stop_rgb(1, 0.90, 0.89, 0.86)
+            c.set_source(gp); c.new_path(); c.arc(px, py, rp * 0.74, 0, TAU); c.fill()
+            c.set_source_rgba(0.40, 0.52, 0.80, 0.75); c.set_line_width(0.9); c.new_path(); c.arc(px, py, rp * 0.86, 0, TAU); c.stroke()
+            gx_, gy_ = T(s_ + 0.085 * Wt, sd * Wt * 0.42)                                        # the glass
+            drop(gx_, gy_, 0.034 * Wt, 0.22)
+            c.set_source_rgba(0.70, 0.82, 0.96, 0.60); c.new_path(); c.arc(gx_, gy_, 0.034 * Wt, 0, TAU); c.fill_preserve(); c.set_source_rgba(0.40, 0.50, 0.66, 0.8); c.set_line_width(0.6); c.stroke()
+            c.set_source_rgba(1, 1, 1, 0.9); c.new_path(); c.arc(gx_ - 0.010 * Wt, gy_ - 0.010 * Wt, 0.009 * Wt, 0, TAU); c.fill()
+            cx2, cy2 = T(s_ + 0.150 * Wt, sd * Wt * 0.285)                                      # cutlery
+            c.set_source_rgba(0.66, 0.68, 0.72, 0.95); c.set_line_width(1.2)
+            for dd in (-0.020, 0.020):
+                c.new_path(); c.move_to(*T(s_ + 0.135 * Wt, sd * Wt * 0.285 + dd * Wt)); c.line_to(*T(s_ + 0.215 * Wt, sd * Wt * 0.285 + dd * Wt)); c.stroke()
+            qx, qy = T(s_ - 0.030 * Wt, sd * Wt * 0.145)                                        # a posy of three flowers on the cloth by each plate
+            for j, (col2, eye2) in enumerate((((0.98, 0.97, 0.92), (0.96, 0.74, 0.14)), ((0.30, 0.44, 0.92), (0.22, 0.14, 0.52)), ((0.86, 0.14, 0.10), (0.10, 0.06, 0.06)))):
+                _flower_head(c, qx + (j - 1) * 0.026 * Wt, qy + (0.010 if j == 1 else -0.006) * Wt, 0.030 * Wt, col2, eye2)
+
+    # ---- the runner down the middle
+    for k in range(330):                                                                         # leaves
+        s_ = rng.uniform(-Lt / 2 + 0.03 * Lt, Lt / 2 - 0.03 * Lt); t_ = rng.normal(0, 0.075 * Wt)
+        x_, y_ = T(s_, t_); a_ = rng.uniform(0, TAU)
+        c.set_source_rgba(0.16 + 0.10 * rng.random(), 0.30 + 0.12 * rng.random(), 0.12, 0.96)
+        c.new_path(); c.save(); c.translate(x_, y_); c.rotate(a_); c.scale(0.055 * Wt, 0.022 * Wt); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
+    kinds = [((0.86, 0.14, 0.10), (0.10, 0.06, 0.06), 5), ((0.30, 0.44, 0.92), (0.22, 0.14, 0.52), 5), ((0.98, 0.97, 0.92), (0.96, 0.74, 0.14), 11), ((0.99, 0.84, 0.14), (0.80, 0.52, 0.06), 9), ((0.90, 0.44, 0.66), (0.60, 0.20, 0.40), 5)]
+    for k in range(190):
+        s_ = rng.uniform(-Lt / 2 + 0.03 * Lt, Lt / 2 - 0.03 * Lt); t_ = rng.normal(0, 0.070 * Wt)
+        x_, y_ = T(s_, t_); col, eye, n_p = kinds[int(rng.integers(0, 5))]
+        r_ = rng.uniform(0.032, 0.052) * Wt
+        c.set_source_rgba(0.04, 0.05, 0.03, 0.22); c.new_path(); c.arc(x_ + r_ * 0.35, y_ + r_ * 0.4, r_ * 0.9, 0, TAU); c.fill()
+        _flower_head(c, x_, y_, r_, col, eye, n_p)
+    for k in range(7):                                                                           # bread
+        x_, y_ = T(-Lt * 0.40 + k * 0.133 * Lt + rng.normal(0, 6), rng.choice([-1, 1]) * rng.uniform(0.07, 0.13) * Wt)
+        drop(x_, y_, 0.060 * Wt, 0.32)
+        c.save(); c.translate(x_, y_); c.rotate(ang + rng.normal(0, 0.35)); c.scale(0.082 * Wt, 0.050 * Wt)
+        gb = cairo.RadialGradient(-0.3, -0.3, 0.05, 0, 0, 1.0); gb.add_color_stop_rgb(0, 0.88, 0.62, 0.30); gb.add_color_stop_rgb(1, 0.58, 0.34, 0.14)
+        c.new_path(); c.arc(0, 0, 1, 0, TAU); c.set_source(gb); c.fill_preserve(); c.restore()
+        c.set_source_rgba(*INK, 0.40); c.set_line_width(0.6); c.stroke()
+        c.save(); c.translate(x_, y_); c.rotate(ang + rng.normal(0, 0.0)); c.set_source_rgba(0.98, 0.88, 0.62, 0.7); c.set_line_width(0.9)
+        for j in (-1, 0, 1):
+            c.new_path(); c.move_to(j * 0.030 * Wt - 0.010 * Wt, -0.026 * Wt); c.line_to(j * 0.030 * Wt + 0.010 * Wt, 0.026 * Wt); c.stroke()
+        c.restore()
+    for k in range(5):                                                                           # bowls of strawberries and lemons
+        x_, y_ = T(-Lt * 0.34 + k * 0.17 * Lt + rng.normal(0, 8), rng.choice([-1, 1]) * 0.095 * Wt)
+        rb = 0.062 * Wt
+        drop(x_, y_, rb, 0.34)
+        c.set_source_rgb(0.30, 0.42, 0.74); c.new_path(); c.arc(x_, y_, rb, 0, TAU); c.fill_preserve(); c.set_source_rgba(*INK, 0.5); c.set_line_width(0.7); c.stroke()
+        c.set_source_rgb(0.90, 0.88, 0.80); c.new_path(); c.arc(x_, y_, rb * 0.82, 0, TAU); c.fill()
+        for j in range(11):
+            a_ = TAU * j / 11 + k; rr = rb * 0.46 * (0.5 + 0.5 * ((j * 7) % 3) / 2)
+            fx_, fy_ = x_ + math.cos(a_) * rr, y_ + math.sin(a_) * rr
+            c.set_source_rgb(0.84, 0.12, 0.14) if (k + j) % 5 else c.set_source_rgb(0.98, 0.86, 0.22)
+            c.new_path(); c.arc(fx_, fy_, rb * 0.17, 0, TAU); c.fill()
+    for k in range(3):                                                                           # jugs with a big bunch of flowers, seen from above
+        x_, y_ = T(-Lt * 0.22 + k * 0.29 * Lt, 0.0)
+        rj = 0.082 * Wt
+        drop(x_, y_, rj * 1.2, 0.36)
+        c.set_source_rgb(0.62, 0.70, 0.86); c.new_path(); c.arc(x_, y_, rj, 0, TAU); c.fill_preserve(); c.set_source_rgba(*INK, 0.5); c.set_line_width(0.7); c.stroke()
+        for j in range(16):
+            a_ = TAU * j / 16 + k; rr = rj * rng.uniform(0.15, 0.95)
+            col, eye, n_p = kinds[int(rng.integers(0, 5))]
+            _flower_head(c, x_ + math.cos(a_) * rr, y_ + math.sin(a_) * rr, rng.uniform(0.026, 0.040) * Wt, col, eye, n_p)
+    for k in range(6):                                                                           # candles in their holders
+        x_, y_ = T(-Lt * 0.43 + k * 0.172 * Lt, rng.choice([-1, 1]) * 0.040 * Wt)
+        drop(x_, y_, 0.022 * Wt, 0.30)
+        c.set_source_rgb(0.98, 0.96, 0.88); c.new_path(); c.arc(x_, y_, 0.021 * Wt, 0, TAU); c.fill_preserve(); c.set_source_rgba(*INK, 0.5); c.set_line_width(0.5); c.stroke()
+        c.set_source_rgb(1.0, 0.84, 0.30); c.new_path(); c.arc(x_ - 0.002 * Wt, y_ - 0.004 * Wt, 0.0085 * Wt, 0, TAU); c.fill()
+    # the head of the table: a wreath laid on the cloth
+    hx, hy = T(Lt / 2 - 0.040 * Lt, 0.0)
+    for j in range(20):
+        a_ = TAU * j / 20; col, eye, n_p = kinds[j % 5]
+        c.set_source_rgb(0.17, 0.32, 0.12); c.new_path(); c.save(); c.translate(hx + math.cos(a_) * 0.20 * Wt, hy + math.sin(a_) * 0.20 * Wt); c.rotate(a_ + 1.57); c.scale(0.05 * Wt, 0.022 * Wt); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
+        _flower_head(c, hx + math.cos(a_ + 0.15) * 0.20 * Wt, hy + math.sin(a_ + 0.15) * 0.20 * Wt, 0.040 * Wt, col, eye, n_p)
+    for k in range(46):                                                                          # blossoms that fell off the posies onto the grass round the benches
+        s_ = rng.uniform(-Lt * 0.55, Lt * 0.55); t_ = rng.choice([-1, 1]) * rng.uniform(0.70, 1.15) * Wt
+        x_, y_ = T(s_, t_); col, eye, n_p = kinds[int(rng.integers(0, 5))]
+        r_ = rng.uniform(0.026, 0.040) * Wt
+        c.set_source_rgba(0.04, 0.07, 0.02, 0.28); c.new_path(); c.arc(x_ + r_ * 0.5, y_ + r_ * 0.55, r_ * 0.95, 0, TAU); c.fill()
+        _flower_head(c, x_, y_, r_, col, eye, n_p)
+    rgb, a = Lp.get()
+    return rgb, a, sh
+
+def render_overhead(w, h, seed=7, cx_frac=0.50, cy_frac=0.56, r_out_frac=0.40, r_in_frac=0.085, s_frac=0.0775, turns=2.1, tail=9, wref=None, ribbons=True, th0=0.70 * math.pi, step_k=0.80, fold=1.0, feast=None):
     """ONE unbroken line of girls holding hands, spiralling inward round a garlanded pole; its tail leaves the frame at the left
     (the chain that walked in from the lake). Painted in gouache + ink, long shadows down-right."""
     rng = np.random.default_rng(seed)
     img = grass(w, h, 0, seed)
     fl_, fa_ = flower_scatter(w, h, np.random.default_rng(seed + 5))
     img = img * (1 - fa_[..., None]) + fl_
+    if feast is not None:                                                        # the feast table, laid and waiting, before anything stands on the grass
+        frgb, fa, fsh = feast_table(w, h, feast[0], feast[1], feast[2], feast[3], np.random.default_rng(seed + 31))
+        img = img * (1 - 0.50 * fsh[..., None]) + np.array([0.04, 0.09, 0.10], np.float32) * (0.50 * fsh[..., None])
+        img = img * (1 - fa[..., None]) + frgb
     cx, cy = cx_frac * w, cy_frac * h
     S = s_frac * h
-    th, X, Y = spiral_path(cx, cy, r_out_frac * w, r_in_frac * w, turns, 0.70 * math.pi)
+    wr = float(wref or w)
+    th, X, Y = spiral_path(cx, cy, r_out_frac * wr, r_in_frac * wr, turns, th0)
     seg = np.hypot(np.diff(X), np.diff(Y))
     cum = np.concatenate([[0], np.cumsum(seg)])
-    step = 0.80 * S
+    step = step_k * S
     pts = []
     s_ = 0.0
     while s_ < cum[-1]:
@@ -258,7 +453,7 @@ def render_overhead(w, h, seed=7, cx_frac=0.50, cy_frac=0.56, r_out_frac=0.40, r
     tx0, ty0 = X[0] - X[min(40, len(X) - 1)], Y[0] - Y[min(40, len(Y) - 1)]
     nl = math.hypot(tx0, ty0) + 1e-9
     tx0, ty0 = tx0 / nl, ty0 / nl
-    tail_pts = [(X[0] + tx0 * step * k, Y[0] + ty0 * step * k + 0.10 * step * k * math.sin(k * 0.7)) for k in range(1, tail + 1)]
+    tail_pts = [(X[0] + tx0 * step * k - ty0 * 0.55 * step * math.sin(k * 0.42), Y[0] + ty0 * step * k + tx0 * 0.55 * step * math.sin(k * 0.42)) for k in range(1, tail + 1)]
     seq = list(reversed(tail_pts)) + pts                                        # outer tail ... outer end of spiral ... centre
     people = []
     for j, (x, y) in enumerate(seq):
@@ -266,35 +461,57 @@ def render_overhead(w, h, seed=7, cx_frac=0.50, cy_frac=0.56, r_out_frac=0.40, r
     sh = shadow_layer(w, h, [(p['x'], p['y'], p['fa']) for p in people], S)
     Lp = Layer(w, h, 0, 0, 2)
     cc = Lp.ctx
-    cc.set_source_rgba(0, 0, 0, 1); cc.set_line_width(0.07 * w)
-    cc.new_path(); cc.move_to(cx, cy); cc.line_to(cx + SUN_D[0] * 0.70 * w, cy + SUN_D[1] * 0.70 * w); cc.stroke()
+    cc.set_source_rgba(0, 0, 0, 1); cc.set_line_width(0.07 * wr)
+    cc.new_path(); cc.move_to(cx, cy); cc.line_to(cx + SUN_D[0] * 0.70 * wr, cy + SUN_D[1] * 0.70 * wr); cc.stroke()
     _, pa = Lp.get()
     sh = np.maximum(sh, cv2.GaussianBlur(pa, (0, 0), 6.0) * 0.9)
     img = img * (1 - 0.55 * sh[..., None]) + np.array([0.04, 0.09, 0.10], np.float32) * (0.55 * sh[..., None])
+    # ---- the girls: real people seen from straight above (signed-distance bodies, lit by the low sun, rotated to face the pole or the way they walk)
+    import body3d as B3
+    import fig as FG
+    Tg = int(round(S / 0.585))
+    sun_img = np.array([-0.60, -0.80], np.float32); sun_img /= np.linalg.norm(sun_img)
+    HAIRS_ = [(0.80, 0.62, 0.34), (0.55, 0.37, 0.19), (0.34, 0.22, 0.12), (0.88, 0.74, 0.44), (0.20, 0.13, 0.09), (0.64, 0.34, 0.16)]
+    SKINS_ = [(0.93, 0.77, 0.66), (0.90, 0.72, 0.60), (0.87, 0.67, 0.56), (0.92, 0.74, 0.62)]
+    n_p = len(people)
+    for p in people:
+        j = p['j']
+        if j < tail:                                                              # the procession: they walk, so they face the next girl
+            nx_, ny_ = people[min(j + 1, n_p - 1)]['x'], people[min(j + 1, n_p - 1)]['y']
+            p['fa'] = math.atan2(ny_ - p['y'], nx_ - p['x'])
+    for p in sorted(people, key=lambda q: q['y']):
+        j = p['j']
+        f = np.array([math.cos(p['fa']), math.sin(p['fa'])], np.float32)
+        rv = np.array([-math.sin(p['fa']), math.cos(p['fa'])], np.float32)
+        arms = []
+        for jj in (j - 1, j + 1):
+            if 0 <= jj < n_p:
+                q = people[jj]
+                d = np.array([(q['x'] - p['x']) / 2.0, (q['y'] - p['y']) / 2.0], np.float32)
+                k_ = (3.4 - 0.565) / 3.4                                            # the camera is above each girl: undo the perspective so that neighbours' hands meet
+                arms.append((float(d @ rv) / Tg * k_, 0.565, float(d @ f) / Tg * k_))
+        free = [(-0.125, 0.455, 0.020), (0.125, 0.455, 0.020)]
+        arms = sorted(arms, key=lambda a: a[0])
+        if len(arms) == 2: a_l, a_r = arms
+        elif len(arms) == 1: a_l, a_r = (arms[0], free[1]) if arms[0][0] < 0 else (free[0], arms[0])
+        else: a_l, a_r = free
+        a_l = (min(a_l[0], -0.04), a_l[1], a_l[2]); a_r = (max(a_r[0], 0.04), a_r[1], a_r[2])
+        sd_ = int(rng.integers(1 << 30))
+        pose = dict(view='front', male=False, hair=HAIRS_[sd_ % 6], skin=SKINS_[(sd_ // 7) % 4], dress=tuple(np.clip(np.array(LIN) + rng.normal(0, 0.012, 3), 0, 1)),
+                    crown=True, wilt=0.12, feet=False, hem_y=0.05, bow=True, arm_l=(-0.11, 0.5), arm_r=(0.11, 0.5), arm3_l=a_l, arm3_r=a_r, curl_l=0.8, curl_r=0.8, belt=(0.60, 0.68, 0.90), fold=fold)
+        Ld = FG.Light(key_dir=(0.82 * float(sun_img @ rv), 0.57, 0.82 * float(sun_img @ f)), key_col=(1.0, 0.86, 0.60), key_gain=1.05, amb_col=(0.55, 0.64, 0.80), amb_gain=0.62,
+                      bounce_col=(0.30, 0.36, 0.13), bounce_gain=0.45, rim_dir=(0.0, 0.0, 0.0), rim_col=(0, 0, 0), rim_gain=0.0)
+        sp = B3.render(Tg, pose, Ld, seed=sd_ % 100000, ss=2, top=True)
+        paste_rot(img, sp, p['x'], p['y'], rv, f)
     L = Layer(w, h, 0, 0, 2)
     c = L.ctx
     c.set_line_cap(cairo.LINE_CAP_ROUND); c.set_line_join(cairo.LINE_JOIN_ROUND)
-    for k in range(len(people) - 1):                                           # hands first (under sleeves): p's CCW-side shoulder to q's CW-side shoulder
-        p, q = people[k], people[k + 1]
-        fx, fy = math.cos(p['fa']), math.sin(p['fa']); tx, ty = -fy, fx
-        qfx, qfy = math.cos(q['fa']), math.sin(q['fa']); qtx, qty = -qfy, qfx
-        a = (p['x'] + fx * 0.07 * S + tx * 0.255 * S, p['y'] + fy * 0.07 * S + ty * 0.255 * S)
-        b = (q['x'] + qfx * 0.07 * S - qtx * 0.255 * S, q['y'] + qfy * 0.07 * S - qty * 0.255 * S)
-        m = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
-        for (s0, e0) in ((a, m), (b, m)):
-            c.set_source_rgba(*INK, 0.7); c.set_line_width(0.075 * S); c.new_path(); c.move_to(*s0); c.line_to(*e0); c.stroke()
-            c.set_source_rgb(0.92, 0.74, 0.62); c.set_line_width(0.058 * S); c.new_path(); c.move_to(*s0); c.line_to(*e0); c.stroke()
-        c.set_source_rgb(0.90, 0.70, 0.58); c.new_path(); c.arc(m[0], m[1], 0.045 * S, 0, TAU); c.fill()
-    for p in sorted(people, key=lambda p: p['y']):
-        dress = tuple(np.clip(np.array(LIN) + rng.normal(0, 0.012, 3), 0, 1))
-        hair = [(0.80, 0.62, 0.34), (0.55, 0.37, 0.19), (0.34, 0.22, 0.12), (0.88, 0.74, 0.44), (0.20, 0.13, 0.09), (0.64, 0.34, 0.16)][int(rng.integers(6))]
-        top_girl(c, p['x'], p['y'], p['fa'], S, dress, hair, rng, 2)
     hands_pts = []
     for k in range(len(people) - 1):
         p, q = people[k], people[k + 1]
         if k % 2 == 0: hands_pts.append(((p['x'] + q['x']) / 2, (p['y'] + q['y']) / 2))
     hands_pts = [h_ for h_ in hands_pts if math.hypot(h_[0] - cx, h_[1] - cy) < 0.33 * w]
-    pole_painting(c, (cx + 6, cy + 10), (cx - 0.20 * w, cy - 0.58 * h), 0.060 * w, 0.040 * w, rng, S, hands=hands_pts)
+    pole_painting(c, (cx + 6, cy + 10), (cx - 0.20 * wr, cy - 0.58 * h), 0.060 * wr, 0.040 * wr, rng, S, hands=(hands_pts if ribbons else None))
     rgb, a = L.get()
     img = img * (1 - a[..., None]) + rgb
     xx = np.arange(w, dtype=np.float32)[None, :]; yy = np.arange(h, dtype=np.float32)[:, None]

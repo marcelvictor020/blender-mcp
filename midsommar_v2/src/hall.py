@@ -310,9 +310,18 @@ def petals(ctx, n=1500, seed=4):
         col = tuple(mixc(fresh, dead, wilt * 0.85))
         col = tuple(mixc(col, tuple(GOLD), float(fog_amt(Z)) * .6))
         rx = 0.055 * s * r_.uniform(.7, 1.3); ry = rx * HE / Z * 1.6 + 0.4
-        ctx.save(); ctx.translate(x, y); ctx.rotate(r_.normal(0, .5)); ctx.scale(rx, max(ry, .5))
-        ctx.new_path(); ctx.arc(0, 0, 1, 0, TAU); ctx.restore()
-        ctx.set_source_rgba(*col, 0.95); ctx.fill()
+        wd = r_.uniform(0.55, 1.0)                                                       # some petals lie narrow, curled
+        ang = r_.normal(0, .5)
+        # a real petal (pointed at both ends, fuller toward the tip) with a contact shadow on the boards
+        for k_ in range(2):
+            ctx.save(); ctx.translate(x, y); ctx.rotate(ang)
+            if k_ == 0: ctx.translate(0.10 * rx, 0.22 * max(ry, .5))
+            ctx.scale(rx, max(ry, .5))
+            ctx.new_path(); ctx.move_to(-1.0, 0.0); ctx.curve_to(-0.45, -1.15 * wd, 0.45, -1.05 * wd, 1.0, 0.0); ctx.curve_to(0.50, 0.95 * wd, -0.40, 1.00 * wd, -1.0, 0.0); ctx.close_path()
+            ctx.restore()
+            if k_ == 0: ctx.set_source_rgba(0.20, 0.10, 0.05, 0.20)
+            else: ctx.set_source_rgba(*col, 0.96)
+            ctx.fill()
 
 
 # ---- people --------------------------------------------------------------------------------------------------

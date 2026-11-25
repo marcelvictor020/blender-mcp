@@ -215,9 +215,17 @@ def _hand(mk, P, Wr, Ee, curl, sx, T, male):
     mk.limb(P(*t1), P(*t2), 0.0066 * T * k, 0.0056 * T * k)
 
 
+USE_3D = True
+
+
 def render(T, pose=None, light=None, seed=0, ss=2):
-    """-> dict(rgb premult (h,w,3), a (h,w), sil (h,w), anchor=(ox,oy), pt=callable(u,v)->(x,y), lantern=(x,y) or None)"""
+    """-> dict(rgb premult (h,w,3), a (h,w), sil (h,w), anchor=(ox,oy), pt=callable(u,v)->(x,y), lantern=(x,y) or None)
+    People are rendered as volumes (body3d.py: signed-distance bodies, real shadows, painted face projected on the head). The flat painter below is kept for the
+    few special cases the 3D bodies do not model (a figure holding a lantern, lamp-lit figures)."""
     p = {**DEFAULT, **(pose or {})}
+    if USE_3D and not p['lantern'] and not p['plights']:
+        import body3d
+        return body3d.render(T, pose, light, seed, ss)
     L = light or Light()
     rnd = np.random.default_rng(seed)
     Ws, Hs = int(T * 1.30) | 1, int(T * 1.16)
@@ -616,8 +624,8 @@ def _face(c, fx, hh, p, L, rnd, male):
     nx0, ny0 = fx(0.0, 0.06)
     nx1, ny1 = fx(0.0, -0.14)
     side = -1 if L.key[0] > 0 else 1                                        # shadow falls away from the light
-    c.set_source_rgba(0.46, 0.26, 0.24, 0.30)
-    c.set_line_width(0.045 * hh)
+    c.set_source_rgba(0.46, 0.26, 0.24, 0.42)
+    c.set_line_width(0.052 * hh)
     c.new_path(); c.move_to(nx0 + side * 0.040 * hh, ny0); c.curve_to(nx0 + side * 0.070 * hh, ny0 + 0.08 * hh, nx1 + side * 0.075 * hh, ny1 - 0.02 * hh, nx1 + side * 0.040 * hh, ny1); c.stroke()
     c.set_source_rgba(1.0, 0.92, 0.82, 0.30)
     c.set_line_width(0.030 * hh)
@@ -679,46 +687,68 @@ def _face(c, fx, hh, p, L, rnd, male):
     mx, my = fx(0.0, -0.285)
     sm = p['smile']
     if cr > 0.01:
-        # the grin: far too wide, perfectly even, corners pulled up into the cheeks, a bar of identical teeth, nothing moving - the eyes do not join in
-        mw = (0.17 + 0.145 * cr) * hh
-        lift = (0.060 + 0.045 * cr) * hh
-        for sx in (-1, 1):                                                                  # creases from nose to the corners, apples of the cheeks
-            c.set_source_rgba(0.42, 0.22, 0.20, 0.34 * cr); c.set_line_width(0.016 * hh)
-            c.new_path(); c.move_to(*fx(sx * 0.105, -0.165)); c.curve_to(*fx(sx * 0.215, -0.200), *fx(sx * 0.300, -0.240), *fx(sx * 0.335, -0.292 + 0.05 * cr)); c.stroke()
-            gx_, gy_ = fx(sx * 0.255, -0.045)
-            g = cairo.RadialGradient(gx_, gy_, 0, gx_, gy_, 0.13 * hh); g.add_color_stop_rgba(0, 1.0, 0.90, 0.80, 0.30 * cr); g.add_color_stop_rgba(1, 1.0, 0.90, 0.80, 0)
-            c.set_source(g); c.new_path(); c.arc(gx_, gy_, 0.13 * hh, 0, TAU); c.fill()
-        up = lambda t: (mx + (t * 2 - 1) * mw, my - lift * (1 - (2 * t - 1) ** 2) * -1 - lift * (2 * t - 1) ** 2 * 0.0)
-        # upper lip curve (smile: ends up, centre down) and lower lip curve
-        c.new_path(); c.move_to(mx - mw, my - lift)
-        c.curve_to(mx - mw * 0.55, my + 0.040 * hh, mx + mw * 0.55, my + 0.040 * hh, mx + mw, my - lift)
-        c.curve_to(mx + mw * 0.55, my + 0.115 * hh * (0.6 + 0.4 * cr), mx - mw * 0.55, my + 0.115 * hh * (0.6 + 0.4 * cr), mx - mw, my - lift)
-        c.close_path()
-        c.save(); c.clip_preserve()
-        c.set_source_rgba(0.20, 0.06, 0.07, 1); c.paint()                                   # the dark of the mouth
-        c.set_source_rgba(0.97, 0.95, 0.90, 1)                                              # teeth: one white bar
-        c.new_path(); c.move_to(mx - mw * 0.93, my - lift * 0.82)
-        c.curve_to(mx - mw * 0.55, my + 0.044 * hh, mx + mw * 0.55, my + 0.044 * hh, mx + mw * 0.93, my - lift * 0.82)
-        c.line_to(mx + mw * 0.90, my - lift * 0.82 + 0.052 * hh)
-        c.curve_to(mx + mw * 0.55, my + 0.092 * hh, mx - mw * 0.55, my + 0.092 * hh, mx - mw * 0.90, my - lift * 0.82 + 0.052 * hh)
-        c.close_path(); c.fill()
-        c.set_source_rgba(0.55, 0.50, 0.46, 0.50); c.set_line_width(0.006 * hh)
-        for k in range(-5, 6):
-            tx_ = mx + k * mw * 0.165
-            c.new_path(); c.move_to(tx_, my + 0.040 * hh - lift * 0.3 * (abs(k) / 5.0) ** 2 * 0 + 0.0); c.line_to(tx_, my + 0.092 * hh); c.stroke()
+        # THE SMILE. Too wide by a third and held perfectly still: the corners are pulled up and out, a single even row of upper teeth shows, the lips are thin, and nothing
+        # above the cheeks takes part - no crow's feet, no lifted cheeks, the eyes stay wide and level. (Drawn with a real mouth: opening, teeth, lips.)
+        mw = (0.17 + 0.075 * cr) * hh
+        lift = (0.030 + 0.030 * cr) * hh
+        top0 = my - 0.004 * hh                                                      # centre of the upper lip's lower edge
+        open_h = (0.030 + 0.020 * cr) * hh
+        def edge_y(u, base, k):                                                    # u in [-1,1] along the mouth; the corners rise
+            return base - lift * (abs(u) ** 2.2) + k * (1 - abs(u) ** 1.6)
+        N_ = 48
+        us = [-1 + 2 * k / N_ for k in range(N_ + 1)]
+        upper = [(mx + u * mw, edge_y(u, top0, 0.0)) for u in us]
+        lower = [(mx + u * mw * 0.97, edge_y(u, top0 + open_h, 0.0) + 0.0) for u in us]
+        # skin round the mouth: soft planes, so the grin sits in the face
+        for sx in (-1, 1):
+            gx_, gy_ = mx + sx * (mw + 0.020 * hh), my - lift - 0.012 * hh
+            g = cairo.RadialGradient(gx_, gy_, 0, gx_, gy_, 0.085 * hh); g.add_color_stop_rgba(0, 0.40, 0.18, 0.17, 0.34 * cr); g.add_color_stop_rgba(1, 0.40, 0.18, 0.17, 0)
+            c.set_source(g); c.new_path(); c.arc(gx_, gy_, 0.085 * hh, 0, TAU); c.fill()
+            c.set_source_rgba(0.42, 0.22, 0.20, 0.30 * cr); c.set_line_width(0.013 * hh)                     # nasolabial fold
+            c.new_path(); c.move_to(*fx(sx * 0.105, -0.168)); c.curve_to(*fx(sx * 0.190, -0.200), *fx(sx * 0.262, -0.236), *fx(sx * 0.300, -0.300 + 0.04 * cr)); c.stroke()
+        # the dark of the mouth
+        c.new_path(); c.move_to(*upper[0]); [c.line_to(*p_) for p_ in upper[1:]]; [c.line_to(*p_) for p_ in lower[::-1]]; c.close_path()
+        c.set_source_rgba(0.17, 0.045, 0.055, 1); c.fill_preserve(); c.save(); c.clip()
+        # one even row of upper teeth, hung from the upper lip, 8 across, the corners dark
+        n_t = 9
+        for k in range(n_t):
+            u0, u1 = -0.80 + 1.60 * k / n_t, -0.80 + 1.60 * (k + 1) / n_t
+            x0_, x1_ = mx + u0 * mw, mx + u1 * mw
+            um = 0.5 * (u0 + u1)
+            ytop_ = edge_y(um, top0, 0.0) - 0.002 * hh
+            ybot_ = ytop_ + open_h * (0.82 - 0.20 * abs(um)) * 0.92
+            g = cairo.LinearGradient(0, ytop_, 0, ybot_)
+            g.add_color_stop_rgb(0, 0.80, 0.74, 0.68); g.add_color_stop_rgb(0.22, 0.97, 0.95, 0.88); g.add_color_stop_rgb(0.80, 0.99, 0.98, 0.93); g.add_color_stop_rgb(1, 0.86, 0.82, 0.76)
+            c.set_source(g)
+            c.new_path(); c.move_to(x0_ + 0.0015 * hh, ytop_); c.line_to(x1_ - 0.0015 * hh, ytop_); c.curve_to(x1_ - 0.0010 * hh, ybot_ - 0.006 * hh, x1_ - 0.004 * hh, ybot_, x1_ - 0.007 * hh, ybot_)
+            c.line_to(x0_ + 0.007 * hh, ybot_); c.curve_to(x0_ + 0.004 * hh, ybot_, x0_ + 0.0010 * hh, ybot_ - 0.006 * hh, x0_ + 0.0015 * hh, ytop_); c.close_path(); c.fill()
+        c.set_source_rgba(0.40, 0.34, 0.30, 0.55); c.set_line_width(0.0035 * hh)
+        for k in range(1, n_t):
+            u = -0.80 + 1.60 * k / n_t
+            xx = mx + u * mw
+            c.new_path(); c.move_to(xx, edge_y(u, top0, 0.0)); c.line_to(xx, edge_y(u, top0, 0.0) + open_h * 0.74); c.stroke()
+        for k in range(n_t - 2):                                                    # a hint of the lower teeth, dim, in the shade of the upper
+            u = -0.50 + 1.00 * k / (n_t - 3)
+            xx = mx + u * mw
+            c.set_source_rgba(0.82, 0.78, 0.72, 0.65); c.new_path(); c.save(); c.translate(xx, edge_y(u, top0 + open_h, 0.0) - 0.004 * hh); c.scale(0.012 * hh, 0.006 * hh); c.arc(0, 0, 1, math.pi, TAU); c.restore(); c.fill()
         c.restore()
-        c.set_source_rgba(0.62, 0.22, 0.24, 1); c.set_line_width(0.020 * hh)                    # thin lips
-        c.new_path(); c.move_to(mx - mw, my - lift); c.curve_to(mx - mw * 0.55, my + 0.040 * hh, mx + mw * 0.55, my + 0.040 * hh, mx + mw, my - lift); c.stroke()
-        c.set_source_rgba(0.72, 0.30, 0.30, 0.95); c.set_line_width(0.024 * hh)
-        c.new_path(); c.move_to(mx - mw * 0.97, my - lift + 0.004 * hh); c.curve_to(mx - mw * 0.55, my + 0.115 * hh * (0.6 + 0.4 * cr), mx + mw * 0.55, my + 0.115 * hh * (0.6 + 0.4 * cr), mx + mw * 0.97, my - lift + 0.004 * hh); c.stroke()
-        c.set_source_rgba(1, 0.92, 0.88, 0.35); c.set_line_width(0.010 * hh)
-        c.new_path(); c.move_to(mx - mw * 0.30, my + 0.122 * hh * (0.6 + 0.4 * cr)); c.line_to(mx + mw * 0.30, my + 0.122 * hh * (0.6 + 0.4 * cr)); c.stroke()
-        for sx in (-1, 1):                                                                  # dimples at the corners
-            c.set_source_rgba(0.38, 0.18, 0.16, 0.5); c.set_line_width(0.014 * hh)
-            c.new_path(); c.move_to(mx + sx * (mw + 0.030 * hh), my - lift - 0.030 * hh); c.curve_to(mx + sx * (mw + 0.050 * hh), my - lift, mx + sx * (mw + 0.045 * hh), my - lift + 0.035 * hh, mx + sx * (mw + 0.020 * hh), my - lift + 0.050 * hh); c.stroke()
-        c.set_source_rgba(0.46, 0.26, 0.24, 0.25)
-        c.set_line_width(0.030 * hh)
-        c.new_path(); c.move_to(mx, my - 0.07 * hh); c.line_to(mx, my - 0.015 * hh); c.stroke()
+        # lips: thin upper lip with a cupid's bow, fuller lower lip, a soft highlight
+        c.set_source_rgba(0.62, 0.30, 0.30, 0.95); c.set_line_width(0.012 * hh)
+        c.new_path(); c.move_to(*upper[0]); [c.line_to(*p_) for p_ in upper[1:]]; c.stroke()
+        up2 = [(x, y - 0.012 * hh * (1 - abs((x - mx) / mw) ** 1.4) - (0.004 * hh if abs(x - mx) < 0.05 * mw else 0)) for (x, y) in upper]
+        c.set_source_rgba(0.80, 0.42, 0.42, 0.85); c.new_path(); c.move_to(*upper[0]); [c.line_to(*p_) for p_ in upper[1:]]; [c.line_to(*p_) for p_ in up2[::-1]]; c.close_path(); c.fill()
+        lo2 = [(x, y + 0.028 * hh * (1 - abs((x - mx) / (mw * 0.97)) ** 1.5)) for (x, y) in lower]
+        g = cairo.LinearGradient(0, lower[N_ // 2][1], 0, lo2[N_ // 2][1]); g.add_color_stop_rgba(0, 0.68, 0.30, 0.31, 1); g.add_color_stop_rgba(0.55, 0.84, 0.46, 0.46, 1); g.add_color_stop_rgba(1, 0.74, 0.38, 0.38, 1)
+        c.set_source(g); c.new_path(); c.move_to(*lower[0]); [c.line_to(*p_) for p_ in lower[1:]]; [c.line_to(*p_) for p_ in lo2[::-1]]; c.close_path(); c.fill()
+        c.set_source_rgba(1, 0.92, 0.88, 0.32); c.set_line_width(0.007 * hh)
+        c.new_path(); c.move_to(mx - mw * 0.26, lo2[N_ // 2][1] - 0.010 * hh); c.curve_to(mx - mw * 0.10, lo2[N_ // 2][1] - 0.014 * hh, mx + mw * 0.10, lo2[N_ // 2][1] - 0.014 * hh, mx + mw * 0.26, lo2[N_ // 2][1] - 0.010 * hh); c.stroke()
+        c.set_source_rgba(0.34, 0.14, 0.14, 0.55); c.set_line_width(0.009 * hh)                                 # the corners, pressed in
+        for sx in (-1, 1):
+            cx_, cy_ = mx + sx * mw, upper[0][1] if sx < 0 else upper[-1][1]
+            c.new_path(); c.move_to(cx_ + sx * 0.004 * hh, cy_ - 0.022 * hh); c.curve_to(cx_ + sx * 0.022 * hh, cy_ - 0.012 * hh, cx_ + sx * 0.022 * hh, cy_ + 0.014 * hh, cx_ + sx * 0.004 * hh, cy_ + 0.024 * hh); c.stroke()
+        c.set_source_rgba(0.46, 0.26, 0.24, 0.22)                                                             # philtrum
+        c.set_line_width(0.026 * hh)
+        c.new_path(); c.move_to(mx, my - 0.075 * hh); c.line_to(mx, my - 0.020 * hh); c.stroke()
         return
     mw = 0.17 * hh
     c.set_source_rgba(0.55, 0.20, 0.20, 1)
@@ -783,10 +813,17 @@ def _crown(c, P, T, rnd, back, yaw, head_c, side=False, fc=1, wilt=0.0):
             c.new_path(); c.arc(x + math.cos(a) * r * 0.58, y + math.sin(a) * r * 0.58, r * 0.56, 0, TAU); c.fill()
         c.set_source_rgba(0.96, 0.70, 0.16, 1)
         c.new_path(); c.arc(x, y, r * 0.30, 0, TAU); c.fill()
-    if wilt > 0:                                                         # a few petals already falling
+    if wilt > 0:                                                         # a few petals already falling: real petals (pointed, a little curled), clear of the face
         for k in range(int(3 + 4 * wilt)):
-            px, py = cx + rnd.normal(0, rx * 0.9), cy + rnd.uniform(0.02, 0.30) * T
-            c.set_source_rgba(0.88, 0.80, 0.66, 0.75); c.new_path(); c.save(); c.translate(px, py); c.rotate(rnd.uniform(0, 6)); c.scale(0.012 * T, 0.007 * T); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
+            side_ = 1 if rnd.random() < 0.5 else -1
+            px, py = cx + side_ * rx * rnd.uniform(1.25, 2.3), cy + rnd.uniform(0.03, 0.30) * T
+            col_ = pal[int(rnd.integers(0, len(pal)))]
+            ang = rnd.uniform(0, 6.2832); pl = 0.0105 * T; pw = 0.0052 * T
+            c.save(); c.translate(px, py); c.rotate(ang)
+            c.new_path(); c.move_to(-pl, 0); c.curve_to(-pl * 0.4, -pw * 1.5, pl * 0.5, -pw * 1.3, pl, 0); c.curve_to(pl * 0.5, pw * 1.1, -pl * 0.4, pw * 1.3, -pl, 0); c.close_path()
+            c.set_source_rgba(col_[0] * 0.96, col_[1] * 0.94, col_[2] * 0.92, 0.92); c.fill_preserve()
+            c.set_source_rgba(col_[0] * 0.62, col_[1] * 0.60, col_[2] * 0.62, 0.55); c.set_line_width(0.0016 * T); c.stroke()
+            c.restore()
     # trailing ribbons
     for sx in (-1, 1):
         c.set_source_rgba(0.80, 0.84, 0.95, 0.75)

@@ -76,6 +76,8 @@ def build_chain():
         t = P[min(i + 4, len(P) - 1)] - P[max(i - 4, 0)]
         girls.append(dict(x=float(x), y=float(y), s=sc, spiral=False, th=None, tang=math.atan2(t[1], t[0])))
         u += SPACING_M * sc
+    KEEP = {4, 5, 7, 8, 20, 21, 22, 25, 26, 27, 28, 29, 30, 31}                                # a few walkers on the water; five step ashore into the dance
+    girls = [g for i, g in enumerate(girls) if i in KEEP]
     for (X, Z, th, r) in sp:
         x, y, s = G.gpt(X, Z)
         girls.append(dict(x=float(x), y=float(y), s=float(s), spiral=True, th=float(th), tang=None, X=X, Z=Z))
@@ -106,8 +108,9 @@ def pose_for(g, girls):
         view, facing = 'front', 1
         yaw = 0.45 + 0.4 * (r.random() - 0.5)
 
-    def tgt(q):
-        if q is None: return (0.128 * (1 if r.random() < 0.5 else -1), 0.40)
+    def tgt(q, side=1):
+        if q is None or (not g['spiral'] and not q['spiral'] and math.hypot(g['x'] - q['x'], g['y'] - q['y']) > 0.80 * T):
+            return (0.124 * side, 0.405)                                         # nobody to hold: the arm hangs
         mx = (g['x'] + q['x']) / 2
         my = ((g['y'] - 0.56 * T) + (q['y'] - 0.56 * q['T'])) / 2
         u, v = (mx - g['x']) / T, (g['y'] - my) / T
@@ -117,7 +120,7 @@ def pose_for(g, girls):
             kk = 0.31 / d
             u = sx + (u - sx) * kk; v = 0.787 + (v - 0.787) * kk
         return (u, v)
-    t1, t2 = tgt(prv), tgt(nxt)
+    t1, t2 = tgt(prv, -1), tgt(nxt, 1)
     left, right = sorted([t1, t2], key=lambda t: t[0])
     pose = dict(view=view, facing=facing, yaw=yaw, arm_l=left, arm_r=right,
                 lean=(0.03 + 0.06 * r.random()) * (1 if (k % 2) else -1) * (0.5 + 0.5 * (abs(math.sin(g['th'])) if g['spiral'] else 0.6)),

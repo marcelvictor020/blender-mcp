@@ -1,8 +1,35 @@
-# Midsummer carousel v6 - seventeen slides, one world
+# Midsummer carousel v7 - sixteen slides, one world
 
-`panorama_18360x1350.png` is the lossless master; `slides/slide_01..17.jpg` are the cuts (1080 x 1350, swipe left to right).
+`panorama_17280x1350.png` is the lossless master (`.jpg` for sharing); `slides/slide_01..16.jpg` are the cuts (1080 x 1350, swipe left to right).
 `python3 slice_panorama.py` re-cuts PNG slides from the master. `contact_sheet.jpg` shows all sixteen; `border_check.jpg` shows every border
 with a red hairline on the cut. Everything is generated in code (numpy + cairo + OpenCV) - no image-generation model, no copied reference.
+
+## What v7 changes (the final pass)
+Feedback: the tree on 4 must blend into 3; fewer girls on the lake; a shorter ribbon and no ribbons held in the overhead dance; no moon page before the house -
+end on the moon instead; the sea-of-cloud page is dull - get to the sun at once and give it something to reflect; the overhead dance whole, centred and in
+one picture; the girls must look like people; the smile creepier but not forced. What was done:
+* **The tree blends into slide 3 as it does into slide 5.** The left bough, its wisteria and blossom now sweep across the 3|4 border and hang over the cloud-face
+  lake (`arch2.py` / `pond3.py`: `BR_OUT`, `AX0,AW`); the join is the same row-by-row melt (`blend.stagger_blend`, which now ramps in and out so a zone
+  always starts pure A and ends pure B).
+* **The sea-of-cloud page is gone** (a 600 px row-by-row melt from the fold straight into the sunset: slide 5 -> 6). The ribbons and the sunset sky are
+  untouched; the sun is hidden behind **a far-shore house** (the same plank A-frame, very small, in front of the sunburst) and its **reflection** replaces the
+  second sun (`world.far_island_house`). The ribbons are short and arrive at its finial (`ribbons.py`, drawn in finished coordinates, `compose2`).
+* **Far fewer girls on the lake**: of the 44-girl chain only 14 remain (`chain.KEEP`) - a few walkers on the water, spaced so none collides with a ribbon, a boat or a border, and five who step ashore into the dance.
+* **No moon page before the house.** The invitation (two girls at the gate) melts straight into the first doorframe of the hallway; the carousel ends on
+  **THE MOON** (`moon_slide.py`) - slide 1's sun painted again at night with the same plywood, kurbits and star rings. Its face is awake: pale eyes, small
+  pupils, the girls' too-wide smile in one even row. Below it the ring dance goes round its pole and one small dancer has stepped out of the ring to look at you.
+* **The girls are real volumes** (`src/body3d.py`, signed-distance bodies sphere-traced from front, side, back and from above): key light, soft shadow, ambient
+  occlusion, skin wrap, linen weave and translucency, strand-lit hair with locks and a tapering end, a face painted onto a head with cheeks and a jaw, two-bone
+  arms with 3D targets, a puffed folk blouse, an embroidered hem. The men were redesigned (belted tunic, tapered trousers, shoes). `fig.render` uses it everywhere.
+  Falling petals are petals now (pointed, curled), not beige discs.
+* **The twins** (slide 10) hold hands, their outer hands wave you in, their heads lean toward each other, and the smile is held perfectly still: too wide by a third,
+  one even row of upper teeth, no crow's feet, eyes wide and level, one brow a hair higher.
+* **The overhead dance is one picture** (slide 15, `overhead.py`, `hall2.board`): a spiral of 3D girls seen from above with a wide camera, arms stretched to their
+  neighbours, wreaths and long shadows round a garlanded pole; **no ribbons are held**. Slide 14 leads into it with the procession walking out of the house along
+  the lawn past **the feast, laid and waiting** (`overhead.feast_table`: cloth with a red-and-blue folk border, twenty-two places, bread, strawberries, jugs of
+  wildflowers, a bench each side - nobody is sitting down yet). The night takes over only in the last 300 px (`compose2`).
+* **The hallway** was re-centred (vanishing point on the middle of slide 12), the figures are lit 3D people, a ladder-back chair stands in the last doorway
+  (`props3d.py`), and the petals on the boards are pointed petals with contact shadows.
 
 ## What v5 changes (more realism: reflections, perspective, real shade)
 Studied what painters do to make a picture read as real - lost-and-found edges, a core shadow and reflected light inside every shadow, cast shadows with
@@ -85,18 +112,22 @@ v2 had the right structure but the realistic slides were dark, flat and green. v
 | | |
 |---|---|
 | 1-2 | flat dalmalning on plywood: whole sun, kurbits swirls, birds, ring dance, sun's long ray handing over to the moon, star rings |
-| 3 | the cloud-face asleep over the dusk lake (folk -> real, row by row); swans, a candle boat, lily pads, walkers on the far shore |
+| 3 | the cloud-face asleep over the dusk lake (folk -> real, row by row); the tree's bough, wisteria and blossom arrive from the right; swans, a candle boat |
 | 4 | the cathedral of two trees standing in the lake; lantern girl in a rowboat; laburnum, wisteria, fireflies |
-| 5-8 | the fold (leaf spiral round a folk flower) -> sea of cloud, girls condensing out of mist -> gold lake -> shore; five silk ribbons run from the fold to the maypole |
-| 9-10 | the same lake at golden hour: spiral dance round the maypole, bear and swan clouds, bunting, wildflower meadow; the plank A-frame with its lantern-post avenue |
-| 11 | the invitation: two smiling girls at a garlanded gate whose frames run to a golden light (the same background as the house) |
-| 12-13 | the meadow is redrawn in graphite + gouache (open-eyed moon, ruled transversals and orthogonals to the vanishing point), then the first doorframe |
-| 13-17 | one-point-perspective triangular corridor; vanishing point exactly on the 14|15 cut with a Droste doorway; the girl who turns back; a ring of young people round nothing; the overhead spiral dance |
+| 5 | the fold: the arch's leaves curl into a vine spiral round a folk flower; five silk ribbons are untied from it |
+| 6 | the sunset with its god-rays; the ribbons run to the far-shore house and its reflection; a few girls standing on the water |
+| 7-8 | the shore: girls walk out of the lake and wind round the maypole; bear and swan clouds, bunting, the empty boat |
+| 9-10 | the plank A-frame with its lantern-post avenue; the invitation: two smiling girls at a garlanded gate whose frames run to a golden light |
+| 11 | the first doorframe: the meadow turns into a drawing and the corridor begins |
+| 12-13 | one-point-perspective triangular corridor; the girl who turns back; a ring of young people round nothing; the chair in the last doorway |
+| 14-15 | out of the house on to the lawn: the laid feast, the procession, and the whole spiral dance seen from above |
+| 16 | the moon, the sun's night twin, awake; the ring dance below, one dancer has stepped out of it |
 
-Horizon row 783 (58 %) throughout. Verified by `src/export2.py`: exact sizes, slides re-assemble into the panorama bit-for-bit, and every one of the 16 borders is
+Horizon row 783 (58 %) throughout. Verified by `src/export2.py`: exact sizes, slides re-assemble into the panorama bit-for-bit, and every one of the 15 borders is
 within 1.7x of the picture's own column-to-column texture.
 
 ## Known limits
-Faces are small and stylised at slide scale; the near hallway figures are a little mannequin-like from behind; the bear cloud reads as an animal mainly
-by its legs and back; the trees and clouds are painterly-real (leaf dabs, volumetric density), not photographs.
-Rebuild: `pip install -r requirements.txt && ./build_all.sh` (~6 min, 4 cores; caches in `work/`, git-ignored).
+Faces are small at slide scale (zoom in and they are painted, not photographed); hallway figures seen from behind are simple; the bear cloud reads as an animal mainly
+by its legs and back; the trees and clouds are painterly-real (leaf dabs, volumetric density), not photographs. The v6 text below describes the 17-slide layout - slide
+numbers there are the old ones.
+Rebuild: `pip install -r requirements.txt && ./build_all.sh` (~8 min, 4 cores; caches in `work/`, git-ignored).

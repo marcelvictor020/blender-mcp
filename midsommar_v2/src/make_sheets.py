@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import cv2
-from util import WORK, W, H, SL
+from util import WORK, W_FINAL as W, H, SL
 
 OUT = os.path.dirname(WORK)
 N = W // SL

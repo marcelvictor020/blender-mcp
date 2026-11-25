@@ -16,7 +16,9 @@ W, H = N_SLIDES * SL, 1350             # canvas
 NW = 17280                             # width the value noise tiles over (kept at the 16-slide size so no texture re-seeds when slides are added)
 SHIFT = W - NW                         # slides inserted after the house ('the invitation', slide 11) push the drawing + hallway right by this much
 HZ = 783                              # shared horizon (58 % of 1350)
-VPX = 14040 + SHIFT                   # vanishing point x  (the 14|15 cut of 17)
+VPX = 14580                           # vanishing point x: the CENTRE of design slide 14 (= slide 12 of the finished carousel), so the hallway group sits in one slide
+N_FINAL = 16                          # the finished carousel: two design slides are cut out (the dull sea-of-cloud slide and the moon page) and the moon ends it
+W_FINAL = N_FINAL * SL
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORK = os.path.join(ROOT, 'work')
 os.makedirs(WORK, exist_ok=True)
