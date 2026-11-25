@@ -1,0 +1,5 @@
+work/
+__pycache__/
+*.pyc
+slides/*.png
+panorama_17280x1350.jpg
