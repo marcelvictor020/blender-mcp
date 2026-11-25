@@ -109,7 +109,7 @@ def shade_wood(x0, w, enc, a, lantern, seed=5):
 SH, MD, LT, HI = (0.010, 0.040, 0.050), (0.045, 0.150, 0.105), (0.19, 0.38, 0.16), (0.50, 0.56, 0.20)
 
 
-def leaf_rgb(sky_l, glow_l, lan_l, rng, haze=0.0, hazec=(0.46, 0.38, 0.64)):
+def leaf_rgb(sky_l, glow_l, lan_l, rng, haze=0.0, hazec=(0.46, 0.38, 0.64), gold=0.0):
     t = sky_l
     if t < 0.45: col = [SH[i] + (MD[i] - SH[i]) * t / 0.45 for i in range(3)]
     else: col = [MD[i] + (LT[i] - MD[i]) * (t - 0.45) / 0.55 for i in range(3)]
@@ -120,6 +120,7 @@ def leaf_rgb(sky_l, glow_l, lan_l, rng, haze=0.0, hazec=(0.46, 0.38, 0.64)):
     j = 1 + rng.normal(0, 0.10)
     col = [col[0] * j * (1 + rng.normal(0, 0.05)), col[1] * j, col[2] * j * (1 + rng.normal(0, 0.08))]
     if rng.random() < 0.04: col = [col[0] + 0.18, col[1] + 0.12, col[2] - 0.03]                 # a few sun-yellowed leaves
+    if gold > 0: col = [col[0] * (1 + 0.60 * gold) + 0.05 * gold, col[1] * (1 + 0.26 * gold) + 0.03 * gold, col[2] * (1 - 0.45 * gold)]
     return tuple(float(np.clip(v * (1 - haze) + hazec[i] * haze, 0, 1)) for i, v in enumerate(col))
 
 
@@ -136,7 +137,7 @@ def dab_light(px, py, n, lantern):
     return sky, gl, lam / (1.0 + (d / 300.0) ** 2)
 
 
-def clump(c, cx, cy, rx, ry, n, rng, lantern, size=(13, 24), haze=0.0, hole=True, skew=0.0):
+def clump(c, cx, cy, rx, ry, n, rng, lantern, size=(13, 24), haze=0.0, hole=True, skew=0.0, gold_fn=None):
     for _ in range(n):
         th = rng.uniform(0, TAU); rad = math.sqrt(rng.random())
         u, v = rad * math.cos(th), rad * math.sin(th)
@@ -148,7 +149,7 @@ def clump(c, cx, cy, rx, ry, n, rng, lantern, size=(13, 24), haze=0.0, hole=True
         nz = math.sqrt(max(0.0, 1 - u * u * 0.8 - v * v * 0.8))
         nn = (u * 0.9 + skew, v * 0.9, nz)
         sky, gl, lan = dab_light(px, py, nn, lantern)
-        col = leaf_rgb(sky * 0.85 + 0.10 * (1 - rad), gl, lan, rng, haze)
+        col = leaf_rgb(sky * 0.85 + 0.10 * (1 - rad), gl, lan, rng, haze, gold=(gold_fn(px) if gold_fn else 0.0))
         leaf(c, px, py, rng.uniform(*size), rng.uniform(0, TAU), col)
 
 
@@ -246,7 +247,7 @@ def render_arch(x0=3000, w=2100, seed=404, verbose=True):
     c = LC.ctx
     # ceiling clumps (a dome of leaves with a skylight over the girl)
     for _ in range(240):
-        cx = rng.uniform(3140, 4980); cy = rng.uniform(-70, 190)
+        cx = rng.uniform(3060, 4980); cy = rng.uniform(-70, 190)
         r_ = rng.uniform(46, 98)
         clump(c, cx, cy, r_, r_ * 0.78, int(r_ * r_ * 0.060), rng, lantern, size=(12, 22))
     # clumps hugging the boughs
@@ -259,7 +260,7 @@ def render_arch(x0=3000, w=2100, seed=404, verbose=True):
                 r_ = rng.uniform(26, 56) * (0.7 + 0.5 * float(smoothstep(700, 300, P[k][1])))
                 clump(c, P[k][0] + ox, P[k][1] + oy, r_, r_ * 0.85, int(r_ * r_ * 0.09), rng, lantern, size=(10, 19), skew=0.25 * np.sign(ox))
     # curtains of leaves down the outer sides of the arch
-    for side, (xa, xb) in enumerate(((3140, 3330), (4300, 4780))):
+    for side, (xa, xb) in enumerate(((3080, 3330), (4300, 4780))):
         for _ in range(26):
             cx = rng.uniform(xa, xb); cy = rng.uniform(200, 560)
             clump(c, cx, cy, rng.uniform(28, 52), rng.uniform(55, 110), int(rng.uniform(150, 300)), rng, lantern, size=(11, 20), skew=-0.3 if side == 0 else 0.3)
@@ -291,7 +292,7 @@ def render_arch(x0=3000, w=2100, seed=404, verbose=True):
         for j in range(7):
             ivy_run(c, X0t + side * rng.uniform(-95, 95), YW - rng.uniform(20, 120), -math.pi / 2 + rng.normal(0, 0.25), rng.uniform(160, 520), rng, lantern)
     rc, ac = LC.get()
-    fx = smoothstep(3010, 3150, xs)[0]
+    fx = smoothstep(3000, 3520, xs)[0] ** 1.3
     rc = rc * fx[None, :, None]; ac = ac * fx[None, :]
     rb = rb * fx[None, :, None]; ab = ab * fx[None, :]
     if verbose: print('foliage', round(time.time() - t0, 1))
@@ -317,6 +318,25 @@ def trunk_reflection(rgb, a, x0, w, depth=136):
     out_rgb[y0:y0 + n] = fr[:n] * fade[:n][..., None]
     out_a[y0:y0 + n] = fa[:n] * fade[:n]
     return out_rgb, out_a
+
+
+def shed_petals(x0, w, seed=21):
+    """white and pink blossom petals floating on the water, thickest around the trunk feet and thinning leftward into slide 3"""
+    L = Layer(w, H, x0, 0, 2)
+    c = L.ctx
+    rng = np.random.default_rng(seed)
+    n = 0
+    while n < 520:
+        x = rng.uniform(2300, 3330)
+        if rng.random() > float(smoothstep(2350, 3300, x)) ** 1.5: continue
+        y = HZ + 22 + (rng.random() ** 0.8) * 500
+        if y > 1340: continue
+        s = 0.55 + (y - HZ) / 420.0
+        col = [(0.98, 0.96, 0.92), (0.97, 0.80, 0.84), (0.99, 0.90, 0.72)][int(rng.integers(3))]
+        c.set_source_rgba(0.02, 0.03, 0.10, 0.25); c.new_path(); c.save(); c.translate(x + 1.5 * s, y + 1.2 * s); c.rotate(rng.uniform(-0.5, 0.5)); c.scale(5.5 * s, 2.3 * s); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
+        c.set_source_rgba(*col, 0.95); c.new_path(); c.save(); c.translate(x, y); c.rotate(rng.uniform(-0.5, 0.5)); c.scale(5.5 * s, 2.3 * s); c.arc(0, 0, 1, 0, TAU); c.restore(); c.fill()
+        n += 1
+    return L.get()
 
 
 def water_rings(x0, w):

@@ -127,6 +127,8 @@ def render_pond(x0=X0, w=CW, paint_it=True, verbose=True):
     wr, wra = AR.water_rings(AX0, AW)
     wr, wra = embed(wr, AX0, x0, w), embed(wra, AX0, x0, w)
     img = img * (1 - wra[..., None]) + wr
+    sp_r, sp_a = AR.shed_petals(x0, w)
+    img = img * (1 - sp_a[..., None]) + sp_r
     gl, g = W.lantern_light(x0, w)
     edge = np.clip(ac - cv2.GaussianBlur(ac, (0, 0), 3.0), 0, 1)
     img = 1 - (1 - img) * (1 - np.clip(gl, 0, 1))
